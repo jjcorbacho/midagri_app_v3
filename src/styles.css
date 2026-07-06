@@ -1,0 +1,334 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   MIDAGRI Design System — tokens
+   ------------------------------------------------------------
+   Migrado 1:1 del sistema original (React). Ver docs/02-arquitectura.md.
+   ============================================================ */
+
+@theme inline {
+  /* Radios */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Color tokens */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Marca y superficies */
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-soft: var(--brand-accent-soft);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+
+  /* Sidebar */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-active: var(--sidebar-active);
+
+  /* Estados de negocio */
+  --color-state-registrado: var(--state-registrado);
+  --color-state-registrado-foreground: var(--state-registrado-foreground);
+  --color-state-registrado-soft: var(--state-registrado-soft);
+  --color-state-enviado: var(--state-enviado);
+  --color-state-enviado-foreground: var(--state-enviado-foreground);
+  --color-state-enviado-soft: var(--state-enviado-soft);
+  --color-state-subsanado: var(--state-subsanado);
+  --color-state-subsanado-foreground: var(--state-subsanado-foreground);
+  --color-state-subsanado-soft: var(--state-subsanado-soft);
+  --color-state-validado: var(--state-validado);
+  --color-state-validado-foreground: var(--state-validado-foreground);
+  --color-state-validado-soft: var(--state-validado-soft);
+  --color-state-observado: var(--state-observado);
+  --color-state-observado-foreground: var(--state-observado-foreground);
+  --color-state-observado-soft: var(--state-observado-soft);
+  --color-state-aprobado: var(--state-aprobado);
+  --color-state-aprobado-foreground: var(--state-aprobado-foreground);
+  --color-state-aprobado-soft: var(--state-aprobado-soft);
+
+  /* Tipografía */
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Sombras (discretas, app-grade) */
+  --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+  --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 1px -1px rgb(15 23 42 / 0.04);
+  --shadow-md: 0 4px 8px -2px rgb(15 23 42 / 0.06), 0 2px 4px -2px rgb(15 23 42 / 0.04);
+  --shadow-lg: 0 12px 24px -8px rgb(15 23 42 / 0.10), 0 4px 8px -4px rgb(15 23 42 / 0.06);
+}
+
+:root {
+  /* Radios base */
+  --radius: 0.625rem; /* 10px */
+
+  /* Superficies */
+  --background: oklch(0.985 0.002 240);
+  --foreground: oklch(0.18 0.02 240);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 240);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 240);
+  --surface-1: oklch(1 0 0);
+  --surface-2: oklch(0.975 0.003 240);
+  --surface-3: oklch(0.955 0.004 240);
+
+  /* Acción principal */
+  --primary: oklch(0.52 0.07 215);            /* #327490 teal MIDAGRI */
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.96 0.005 240);
+  --secondary-foreground: oklch(0.22 0.02 240);
+  --muted: oklch(0.96 0.005 240);
+  --muted-foreground: oklch(0.48 0.01 240);
+  --accent: oklch(0.95 0.02 200);
+  --accent-foreground: oklch(0.22 0.02 240);
+  --destructive: oklch(0.58 0.21 27);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.92 0.005 240);
+  --input: oklch(0.92 0.005 240);
+  --ring: oklch(0.55 0.10 215);
+
+  /* Marca */
+  --brand: oklch(0.52 0.07 215);              /* #327490 */
+  --brand-secondary: oklch(0.68 0.07 200);    /* #4FA6B1 */
+  --brand-foreground: oklch(0.99 0 0);
+  --brand-soft: oklch(0.96 0.02 210);
+  --brand-accent: oklch(0.58 0.10 135);       /* verde oliva agrario */
+  --brand-accent-soft: oklch(0.96 0.04 135);
+
+  /* Sidebar */
+  --sidebar: oklch(0.20 0.015 240);
+  --sidebar-foreground: oklch(0.99 0 0);
+  --sidebar-muted: oklch(0.65 0.01 240);
+  --sidebar-active: oklch(0.52 0.07 215);
+
+  /* Estados de negocio (color principal + soft para fondos) */
+  --state-registrado: oklch(0.62 0.01 240);
+  --state-registrado-foreground: oklch(0.32 0.01 240);
+  --state-registrado-soft: oklch(0.95 0.004 240);
+
+  --state-enviado: oklch(0.78 0.15 95);
+  --state-enviado-foreground: oklch(0.42 0.12 85);
+  --state-enviado-soft: oklch(0.96 0.09 100);
+
+  --state-subsanado: oklch(0.82 0.14 100);
+  --state-subsanado-foreground: oklch(0.45 0.11 90);
+  --state-subsanado-soft: oklch(0.97 0.07 105);
+
+  --state-validado: oklch(0.58 0.16 245);
+  --state-validado-foreground: oklch(0.38 0.14 245);
+  --state-validado-soft: oklch(0.96 0.04 245);
+
+  --state-observado: oklch(0.60 0.20 25);
+  --state-observado-foreground: oklch(0.42 0.17 25);
+  --state-observado-soft: oklch(0.96 0.05 25);
+
+  --state-aprobado: oklch(0.60 0.14 150);
+  --state-aprobado-foreground: oklch(0.36 0.11 150);
+  --state-aprobado-soft: oklch(0.96 0.05 150);
+}
+
+.dark {
+  --background: oklch(0.15 0.015 240);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.21 0.02 240);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.21 0.02 240);
+  --popover-foreground: oklch(0.98 0 0);
+  --surface-1: oklch(0.21 0.02 240);
+  --surface-2: oklch(0.24 0.02 240);
+  --surface-3: oklch(0.28 0.02 240);
+
+  --primary: oklch(0.70 0.09 210);
+  --primary-foreground: oklch(0.15 0.015 240);
+  --secondary: oklch(0.25 0.02 240);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.25 0.02 240);
+  --muted-foreground: oklch(0.72 0.01 240);
+  --accent: oklch(0.28 0.03 210);
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.70 0.19 22);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.72 0.10 210);
+
+  --brand: oklch(0.70 0.09 210);
+  --brand-foreground: oklch(0.15 0.015 240);
+  --brand-soft: oklch(0.30 0.05 210);
+  --brand-secondary: oklch(0.75 0.08 200);
+  --brand-accent: oklch(0.68 0.11 135);
+  --brand-accent-soft: oklch(0.30 0.06 135);
+
+  --sidebar: oklch(0.12 0.015 240);
+  --sidebar-foreground: oklch(0.98 0 0);
+  --sidebar-muted: oklch(0.65 0.01 240);
+  --sidebar-active: oklch(0.70 0.09 210);
+
+  --state-registrado: oklch(0.72 0.01 240);
+  --state-registrado-foreground: oklch(0.90 0.01 240);
+  --state-registrado-soft: oklch(0.28 0.01 240);
+
+  --state-enviado: oklch(0.82 0.16 100);
+  --state-enviado-foreground: oklch(0.92 0.13 100);
+  --state-enviado-soft: oklch(0.34 0.10 100);
+
+  --state-subsanado: oklch(0.85 0.15 105);
+  --state-subsanado-foreground: oklch(0.93 0.13 105);
+  --state-subsanado-soft: oklch(0.36 0.10 105);
+
+  --state-validado: oklch(0.70 0.15 245);
+  --state-validado-foreground: oklch(0.90 0.10 245);
+  --state-validado-soft: oklch(0.30 0.09 245);
+
+  --state-observado: oklch(0.70 0.19 25);
+  --state-observado-foreground: oklch(0.92 0.13 25);
+  --state-observado-soft: oklch(0.33 0.11 25);
+
+  --state-aprobado: oklch(0.72 0.13 150);
+  --state-aprobado-foreground: oklch(0.92 0.10 150);
+  --state-aprobado-soft: oklch(0.30 0.08 150);
+}
+
+/* ============================================================
+   Tipografía y densidad base
+   ============================================================ */
+@layer base {
+  * { border-color: var(--color-border); }
+  html, body { font-family: var(--font-sans); font-feature-settings: "cv11", "ss01"; }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Foco accesible global */
+  :where(button, [role="button"], a, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+/* ============================================================
+   Utilidades de tipografía (escala consistente)
+   ============================================================ */
+@utility text-display {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+@utility text-h1 {
+  font-size: 1.5rem;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  font-weight: 700;
+}
+@utility text-h2 {
+  font-size: 1.25rem;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+@utility text-h3 {
+  font-size: 1.0625rem;
+  line-height: 1.35;
+  font-weight: 600;
+}
+@utility text-body {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  font-weight: 400;
+}
+@utility text-small {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  font-weight: 400;
+}
+@utility text-caption {
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--color-muted-foreground);
+}
+
+/* Patrones reutilizables */
+@utility section-title {
+  font-size: 1.125rem;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-foreground);
+}
+@utility kpi-number {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-foreground);
+}
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   Transiciones y motion
+   ============================================================ */
+@layer base {
+  :root {
+    --motion-fast: 150ms;
+    --motion-base: 220ms;
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
+/* Thin rounded scrollbar for compact subgrids */
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+.thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.thin-scroll::-webkit-scrollbar-track { background: transparent; }
+.thin-scroll::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 9999px;
+}
+.thin-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.4);
+}

@@ -1,0 +1,134 @@
+# MIDAGRI — Sistema de Capacitaciones (Angular)
+
+Reconstrucción **Angular 22 Enterprise** del Sistema de Capacitaciones y Asistencias
+Técnicas de MIDAGRI (originalmente un prototipo React/Lovable). Registra eventos de
+capacitación y asistencia técnica de las 26 áreas usuarias, gestiona participantes
+(productores agrarios), y controla el flujo de revisión/aprobación institucional.
+
+> 📄 Documentación complementaria:
+> - [docs/01-analisis.md](docs/01-analisis.md) — Auditoría del sistema original (inventario, funcionalidades, riesgos).
+> - [docs/02-arquitectura.md](docs/02-arquitectura.md) — Arquitectura, relación entre módulos, flujo de navegación y escalabilidad.
+
+---
+
+## 1. Descripción funcional
+
+| Módulo | Descripción | Roles |
+|---|---|---|
+| Autenticación | Login institucional (simulado; rol derivado del usuario) | Todos |
+| Dashboard | Accesos a módulos según rol | Todos |
+| Capacitaciones N1 | Bandeja con KPIs, filtros y stepper de registro en 3 pasos (evento → participantes → sustento PDF) | ADMINISTRADOR, TECNICO1 |
+| Seguimiento y revisión | Validar u observar registros enviados (en lote) | ADMIN_DZ |
+| Seguimiento y aprobación | Aprobar u observar registros validados (en lote) | ADMIN_UE |
+| Configuración › Campos | Constructor de formularios: campos base + personalizados por área, visibilidad, vista previa móvil/desktop | ADMINISTRADOR (edición), ADMIN_UE (visibilidad) |
+| Configuración › Reglas | Actividades, aforos, horas, criterio de éxito y periodo de medición por área | ADMINISTRADOR |
+| Reportes / Perfil | Placeholder institucional / ficha del usuario | Todos |
+
+**Credenciales de prueba** (clave única `Midagri2026*`):
+`mtorres` (Administrador) · `admindz` (Admin DZ) · `adminue` (Admin UE) · `tecnico1` (Técnico N1).
+
+## 2. Arquitectura implementada
+
+- **Feature-Based Architecture**: `core / shared / features / layout`.
+- **Standalone Components** en el 100% del árbol (sin NgModules).
+- **Signals** para el estado global (servicios `providedIn: 'root'`) + `computed()` para derivados.
+- **Reactive Forms** con validaciones en login, formulario de evento, participante y campos personalizados.
+- **Lazy Loading** por pantalla (`loadComponent`) — verificado en el build (un chunk por vista).
+- **Guards**: `authGuard` (sesión) y `roleGuard` (matriz de acceso por rol con fallback).
+- **Interceptors**: `authInterceptor` (Bearer token, placeholder) y `errorInterceptor` (401 → logout, resto → toast).
+- **Design system MIDAGRI** migrado 1:1: Tailwind CSS 4 + tokens `oklch` (light/dark), tipografía DM Sans / IBM Plex Mono.
+- `ChangeDetectionStrategy.OnPush` en todos los componentes.
+
+### Estructura de carpetas
+
+```
+src/app/
+├── core/        guards · interceptors · services (mock CRUD) · models · constants
+├── shared/      components (badge, kpi, modal, toast, mapa Perú) · utils (UTM, fechas)
+├── features/    autenticacion · dashboard · capacitaciones · seguimiento · configuracion · reportes · perfil · errores
+├── layout/      shell · sidebar · header
+├── app.routes.ts · app.config.ts · app.component.ts
+src/environments/  environment.ts · environment.prod.ts
+docs/              01-analisis.md · 02-arquitectura.md
+```
+
+## 3. Dependencias
+
+| Paquete | Uso |
+|---|---|
+| `@angular/*` ^22 | Framework (router, forms, http) |
+| `tailwindcss` + `@tailwindcss/postcss` ^4 | Estilos y tokens del design system |
+| `tw-animate-css` | Animaciones utilitarias (fade/slide de la UI original) |
+| `lucide-angular` | Iconografía (misma familia que el original) |
+| `rxjs` ~7.8 | Observables (forms, interceptors, contratos de servicios) |
+
+> Nota: `.npmrc` fija `legacy-peer-deps=true` porque `lucide-angular` declara peers
+> hasta Angular 21; es compatible en runtime con Angular 22 (verificado).
+
+## 4. Instalación y ejecución
+
+```bash
+# Requisitos: Node.js ≥ 20 y npm
+cd midagri-angular
+npm install          # instala dependencias
+
+npm start            # servidor de desarrollo → http://localhost:4200
+npm run build        # build de producción → dist/midagri-angular
+npm run watch        # build incremental en modo desarrollo
+```
+
+## 5. Guía para el equipo backend
+
+La aplicación funciona 100% con datos simulados en memoria. Todo lo que hay que
+tocar está marcado con `TODO(backend)` o vive en archivos concretos:
+
+### 5.1 Configurar la URL del API
+`src/environments/environment.ts` → `apiBaseUrl` (y `environment.prod.ts`).
+Cuando el API esté disponible, poner `useMocks: false` y retirar los seeds.
+
+### 5.2 Autenticación y autorización
+1. `core/services/auth.service.ts` → reemplazar `login()` por
+   `POST {apiBaseUrl}/auth/login`, almacenar el JWT y devolverlo en `getToken()`.
+2. `core/interceptors/auth.interceptor.ts` → ya adjunta `Authorization: Bearer …`
+   cuando `getToken()` devuelve valor; no requiere cambios.
+3. `core/guards/auth.guard.ts` → añadir validación de vigencia del token.
+4. La clave demo vive solo en `features/autenticacion/login.component.ts`
+   (constante `DEFAULT_PASSWORD`): eliminarla al delegar la validación al API.
+
+### 5.3 Servicios de dominio (contratos REST sugeridos)
+
+Cada servicio documenta el endpoint en el JSDoc de cada método; basta con
+sustituir el cuerpo por `HttpClient` conservando la firma:
+
+| Servicio | Endpoints sugeridos |
+|---|---|
+| `cursos.service.ts` | `GET /cursos?area=…` · `GET /cursos/{id}` · `POST /cursos` · `PUT /cursos/{id}` · `PATCH /cursos/{id}/estado` · `DELETE /cursos/{id}` |
+| `participantes.service.ts` | `GET/POST /cursos/{id}/participantes` · `PUT/DELETE /participantes/{id}` |
+| `campos.service.ts` | `GET /areas/{area}/formularios/{form}/campos` · `POST/PUT/DELETE /campos/{id}` · `PATCH /campos/{id}/visibilidad` |
+| `reglas.service.ts` | `GET/PUT /areas/{area}/config` |
+| `productores.service.ts` | `GET /productores/{dni}` (padrón: 200 / 404) |
+
+### 5.4 Carga de archivos de sustento
+`features/capacitaciones/sustento-modal/` y `stepper/` seleccionan y validan el
+PDF (tipo + 15 MB) pero solo guardan el nombre. Implementar subida
+`multipart/form-data` antes del `PATCH` de estado.
+
+### 5.5 Datos simulados a retirar
+- `core/constants/mock-data.const.ts` (cursos, participantes, padrón, campos seed).
+- Botones "Autocompletar" del stepper (métodos `simular()` de los formularios),
+  pensados solo para demos.
+
+### 5.6 Reglas de negocio ya modeladas (referencia para el API)
+`core/models/curso.model.ts` concentra la máquina de estados y sus invariantes
+(`canEditCurso`, `canDeleteCurso`, `canSendForReview`, `isLocked`,
+`nextEstadoOnSend`). El backend debe replicarlas como fuente de verdad.
+
+## 6. Decisiones y desviaciones justificadas
+
+| Cambio respecto al original | Justificación |
+|---|---|
+| Tooltips Radix → atributo `title` nativo | Misma información sin dependencia extra; sin impacto funcional |
+| Calendario shadcn en vista previa de campo fecha → `<input type="date">` | Vista previa decorativa; evita portar un datepicker completo |
+| Eventos globales `window.dispatchEvent('sodega:simular-*')` → métodos públicos + `viewChild` | Antipatrón en Angular; mismo comportamiento |
+| Corrección de bug: id del curso recién creado | El original asumía un id (`Date.now()`) que podía no coincidir; ahora `create()` devuelve el registro real |
+| Código muerto de `_shell.tsx` (bloque inalcanzable) no migrado | Era inalcanzable tras un `return` |

@@ -1,0 +1,355 @@
+// ============================================================
+// Datos simulados (seed) — SOLO PARA DESARROLLO.
+// El equipo backend debe eliminar este archivo cuando los
+// servicios consuman el API real (ver core/services/*).
+// Lógica de generación migrada 1:1 del prototipo original.
+// ============================================================
+
+import { Curso, EstadoCurso } from '../models/curso.model';
+import { CampoPersonalizado } from '../models/campo.model';
+import { Participante, ProductorBD } from '../models/participante.model';
+
+export const CURSOS_INICIALES: Curso[] = [
+  {
+    id: '1',
+    codigo: 'CAP-2024-001',
+    nombreTema: 'Manejo de Suelos Orgánicos en Cacao',
+    estado: 'Registrado',
+    fecha: '12 May 2024',
+    hora: '09:00',
+    horas: 8,
+    participantes: 3,
+    region: 'Huancavelica',
+    provincia: 'Angaraes',
+    distrito: 'Lircay',
+    area: 'SODEGA',
+    tipo: 'capacitacion',
+    extensionista: 'Ing. Marcos Torres Quispe',
+  },
+  {
+    id: '2',
+    codigo: 'CAP-2024-002',
+    nombreTema: 'Riego Tecnificado por Goteo en Altura',
+    estado: 'Enviado',
+    fecha: '15 May 2024',
+    hora: '08:30',
+    horas: 12,
+    participantes: 18,
+    region: 'Cusco',
+    provincia: 'Calca',
+    distrito: 'Pisac',
+    area: 'PSI',
+    tipo: 'capacitacion',
+    extensionista: 'Ing. Lucía Ramos Pérez',
+    fotoSustento: 'sustento-002.pdf',
+  },
+  {
+    id: '3',
+    codigo: 'CAP-2024-005',
+    nombreTema: 'Sanidad y Manejo Integrado de Papa Nativa',
+    estado: 'Registrado',
+    fecha: '18 May 2024',
+    hora: '10:00',
+    horas: 16,
+    participantes: 0,
+    region: 'Cajamarca',
+    provincia: 'Hualgayoc',
+    distrito: 'Bambamarca',
+    area: 'DGDAA',
+    tipo: 'capacitacion',
+    extensionista: 'Ing. Pedro Salas Vega',
+  },
+  {
+    id: '4',
+    codigo: 'AST-2024-014',
+    nombreTema: 'Control orgánico de plagas en café',
+    estado: 'Observado',
+    fecha: '22 May 2024',
+    hora: '07:30',
+    horas: 6,
+    participantes: 12,
+    region: 'Junín',
+    provincia: 'Satipo',
+    distrito: 'Río Tambo',
+    area: 'AGRORURAL',
+    tipo: 'asistencia',
+    extensionista: 'Tec. Rosa Vilca',
+    observacionesHistorial: [
+      {
+        fecha: '23/05/2024',
+        descripcion: 'Falta adjuntar lista de asistencia firmada por los participantes.',
+        autor: 'ADMIN_DZ',
+      },
+    ],
+    fotoSustento: 'sustento-014.pdf',
+  },
+  {
+    id: '5',
+    codigo: 'AST-2024-021',
+    nombreTema: 'Asistencia técnica en sanidad bovina',
+    estado: 'Aprobado',
+    fecha: '25 May 2024',
+    hora: '14:00',
+    horas: 4,
+    participantes: 9,
+    region: 'Puno',
+    provincia: 'Azángaro',
+    distrito: 'Asillo',
+    area: 'DGDG',
+    tipo: 'asistencia',
+    extensionista: 'MVZ. Carlos Apaza',
+    fotoSustento: 'sustento-021.pdf',
+  },
+  {
+    id: '6',
+    codigo: 'CAP-2024-009',
+    nombreTema: 'Buenas prácticas agrícolas en quinua',
+    estado: 'Validado',
+    fecha: '29 May 2024',
+    hora: '09:00',
+    horas: 10,
+    participantes: 30,
+    region: 'Ayacucho',
+    provincia: 'Huamanga',
+    distrito: 'Quinua',
+    area: 'DGAAA',
+    tipo: 'capacitacion',
+    extensionista: 'Ing. Sofía Núñez',
+    fotoSustento: 'sustento-009.pdf',
+  },
+];
+
+export const PARTICIPANTES_INICIALES: Participante[] = [
+  { id: 'p1', cursoId: '1', tipoParticipante: 'PRODUCTOR', dni: '45678912', apellidos: 'Quispe Mamani', nombres: 'Juan Carlos', fechaNacimiento: '1982-04-12', primActividad: 'Agricultura — Cacao' },
+  { id: 'p2', cursoId: '1', tipoParticipante: 'PRODUCTOR', dni: '78451236', apellidos: 'Huamán Flores', nombres: 'María Elena', fechaNacimiento: '1986-09-03', primActividad: 'Agricultura — Café' },
+  { id: 'p3', cursoId: '1', tipoParticipante: 'OTRO', dni: '12365478', apellidos: 'Ccahuana Yupanqui', nombres: 'Pedro', fechaNacimiento: '1973-01-25', primActividad: 'Asistencia técnica' },
+];
+
+// ===== Seed masivo: 11 registros para 3 áreas con 1-6 participantes c/u =====
+(() => {
+  const seedAreas = [
+    { area: 'SODEGA', region: 'Huancavelica', provincia: 'Angaraes', distrito: 'Lircay', ext: 'Ing. Marcos Torres Quispe' },
+    { area: 'DGDAA', region: 'Cajamarca', provincia: 'Hualgayoc', distrito: 'Bambamarca', ext: 'Ing. Pedro Salas Vega' },
+    { area: 'AGRORURAL', region: 'Junín', provincia: 'Satipo', distrito: 'Río Tambo', ext: 'Tec. Rosa Vilca Roque' },
+  ];
+  const temasCap = [
+    'Manejo integrado de plagas en papa',
+    'Buenas prácticas en cosecha de café',
+    'Fertilización balanceada en quinua',
+    'Sanidad animal en alpacas',
+    'Conservación de suelos en ladera',
+    'Riego por aspersión en hortalizas',
+    'Producción orgánica de cacao',
+    'Manejo postcosecha de granos andinos',
+    'Inseminación artificial en bovinos',
+    'Reforestación con especies nativas',
+    'Asociatividad y cadenas productivas',
+  ];
+  const temasAt = [
+    'Asistencia técnica en injertos de palto',
+    'AT en control fitosanitario de cítricos',
+    'AT en pastos cultivados para ganadería',
+    'AT en compostaje y biofertilizantes',
+    'AT en manejo reproductivo bovino',
+  ];
+  const estadosSeed: EstadoCurso[] = ['Registrado', 'Enviado', 'Enviado-Subsanado', 'Validado', 'Observado', 'Aprobado'];
+  const nombresPool = [
+    ['Quispe Huamán', 'Carlos Alberto'], ['Mamani Condori', 'Rosa María'], ['Vilca Roque', 'Luis Enrique'],
+    ['Ccahuana Yupanqui', 'Pedro Pablo'], ['Huamán Flores', 'María Elena'], ['Apaza Choque', 'Juana'],
+    ['Salas Vega', 'Jorge'], ['Ramos Pérez', 'Lucía'], ['Núñez Castro', 'Sofía'], ['Torres Lima', 'Andrés'],
+    ['Pari Coaquira', 'Felipe'], ['Suca Maquera', 'Elena'],
+  ];
+  const actividades = ['Agricultura — Papa', 'Agricultura — Café', 'Agricultura — Quinua', 'Ganadería — Bovinos', 'Ganadería — Alpacas', 'Agricultura — Cacao'];
+  const tipos: Participante['tipoParticipante'][] = ['PRODUCTOR', 'OTRO'];
+  const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+  let cursoSeq = 1000;
+  let partSeq = 1000;
+  let dniSeq = 50000000;
+
+  seedAreas.forEach((a, ai) => {
+    for (let i = 0; i < 11; i++) {
+      const esCap = i % 3 !== 0; // mezcla capacitaciones y asistencias
+      const tipo: Curso['tipo'] = esCap ? 'capacitacion' : 'asistencia';
+      const tema = esCap ? temasCap[i % temasCap.length] : temasAt[i % temasAt.length];
+      const estado = estadosSeed[(ai + i) % estadosSeed.length];
+      const nParts = ((ai * 7 + i * 3) % 6) + 1; // 1..6
+      const dia = ((i * 2) % 27) + 1;
+      const fecha = `${String(dia).padStart(2, '0')} ${meses[(ai + i) % 12]} 2024`;
+      const cursoId = `s${cursoSeq++}`;
+      const codigo = `${esCap ? 'CAP' : 'AST'}-${a.area}-${String(100 + i).padStart(3, '0')}`;
+
+      const necesitaHistorial = estado === 'Observado';
+      CURSOS_INICIALES.push({
+        id: cursoId,
+        codigo,
+        nombreTema: tema,
+        estado,
+        fecha,
+        hora: `${String(7 + (i % 6)).padStart(2, '0')}:${i % 2 === 0 ? '00' : '30'}`,
+        horas: 4 + (i % 9),
+        participantes: nParts,
+        region: a.region,
+        provincia: a.provincia,
+        distrito: a.distrito,
+        area: a.area,
+        tipo,
+        extensionista: a.ext,
+        fotoSustento: estado !== 'Registrado' ? `sustento-${codigo}.pdf` : undefined,
+        observacionesHistorial: necesitaHistorial
+          ? [{ fecha: '10/06/2024', descripcion: 'Adjuntar acta firmada y verificar coordenadas.', autor: 'ADMIN_DZ' }]
+          : undefined,
+      });
+
+      for (let p = 0; p < nParts; p++) {
+        const np = nombresPool[(p + i + ai) % nombresPool.length];
+        PARTICIPANTES_INICIALES.push({
+          id: `s${partSeq++}`,
+          cursoId,
+          tipoParticipante: tipos[(p + i) % tipos.length],
+          dni: String(dniSeq++),
+          apellidos: np[0],
+          nombres: np[1],
+          fechaNacimiento: `19${70 + ((p + i * 3) % 30)}-${String(((p + i) % 12) + 1).padStart(2, '0')}-${String(((p * 5 + i) % 27) + 1).padStart(2, '0')}`,
+          primActividad: actividades[(p + i + ai) % actividades.length],
+        });
+      }
+    }
+  });
+})();
+
+// ===== Seed extendido: 10 áreas × (11 capacitaciones + 10 asistencias), 1..20 participantes =====
+(() => {
+  const areas10 = [
+    { area: 'PSI', region: 'Lima', provincia: 'Lima', distrito: 'San Isidro', ext: 'Ing. Andrés Paredes' },
+    { area: 'UEFSA', region: 'Lima', provincia: 'Lima', distrito: 'La Molina', ext: 'Ing. Carla Vergara' },
+    { area: '2328744', region: 'Áncash', provincia: 'Huaraz', distrito: 'Independencia', ext: 'Ing. Raúl Mendoza' },
+    { area: '2308865', region: 'La Libertad', provincia: 'Trujillo', distrito: 'Laredo', ext: 'Ing. Patricia Soto' },
+    { area: '2643338', region: 'Lambayeque', provincia: 'Chiclayo', distrito: 'Pomalca', ext: 'Ing. Daniel Ríos' },
+    { area: 'PEBLT', region: 'Puno', provincia: 'Puno', distrito: 'Acora', ext: 'Ing. Mónica Ticona' },
+    { area: 'PEBPT', region: 'Tumbes', provincia: 'Tumbes', distrito: 'Corrales', ext: 'Ing. Hugo Farfán' },
+    { area: 'PEAH', region: 'Huánuco', provincia: 'Leoncio Prado', distrito: 'Rupa-Rupa', ext: 'Ing. Sandra Loayza' },
+    { area: 'PEJSIB', region: 'San Martín', provincia: 'Moyobamba', distrito: 'Soritor', ext: 'Ing. Iván Pinedo' },
+    { area: 'PEPP', region: 'Madre de Dios', provincia: 'Tambopata', distrito: 'Tambopata', ext: 'Ing. Karina Vela' },
+  ];
+  const temasCap2 = [
+    'Manejo integrado de plagas en papa', 'Buenas prácticas en cosecha de café',
+    'Fertilización balanceada en quinua', 'Sanidad animal en alpacas',
+    'Conservación de suelos en ladera', 'Riego por aspersión en hortalizas',
+    'Producción orgánica de cacao', 'Manejo postcosecha de granos andinos',
+    'Inseminación artificial en bovinos', 'Reforestación con especies nativas',
+    'Asociatividad y cadenas productivas',
+  ];
+  const temasAt2 = [
+    'AT en injertos de palto', 'AT en control fitosanitario de cítricos',
+    'AT en pastos cultivados para ganadería', 'AT en compostaje y biofertilizantes',
+    'AT en manejo reproductivo bovino', 'AT en poda de cafetales',
+    'AT en cosecha tecnificada de arroz', 'AT en sanidad de cuyes',
+    'AT en manejo de invernaderos', 'AT en preparación de bioles',
+  ];
+  const estadosSeed2: EstadoCurso[] = ['Registrado', 'Enviado', 'Enviado-Subsanado', 'Validado', 'Observado', 'Aprobado'];
+  const nombresPool2 = [
+    ['Quispe Huamán', 'Carlos Alberto'], ['Mamani Condori', 'Rosa María'], ['Vilca Roque', 'Luis Enrique'],
+    ['Ccahuana Yupanqui', 'Pedro Pablo'], ['Huamán Flores', 'María Elena'], ['Apaza Choque', 'Juana'],
+    ['Salas Vega', 'Jorge'], ['Ramos Pérez', 'Lucía'], ['Núñez Castro', 'Sofía'], ['Torres Lima', 'Andrés'],
+    ['Pari Coaquira', 'Felipe'], ['Suca Maquera', 'Elena'], ['Chávez Bravo', 'Manuel'],
+    ['Rojas Ayala', 'Diana'], ['Sánchez Pinto', 'Óscar'], ['Cárdenas León', 'Beatriz'],
+    ['Flores Quispe', 'Hernán'], ['Gutiérrez Mora', 'Isabel'], ['Choque Mamani', 'Víctor'],
+    ['Pacheco Tito', 'Gladys'],
+  ];
+  const actividades2 = ['Agricultura — Papa', 'Agricultura — Café', 'Agricultura — Quinua', 'Ganadería — Bovinos', 'Ganadería — Alpacas', 'Agricultura — Cacao', 'Agricultura — Arroz', 'Forestal — Eucalipto'];
+  const tipos2: Participante['tipoParticipante'][] = ['PRODUCTOR', 'OTRO'];
+  const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+  let cursoSeq = 5000;
+  let partSeq = 5000;
+  let dniSeq = 60000000;
+
+  areas10.forEach((a, ai) => {
+    const total = 21; // 11 caps + 10 ats
+    for (let i = 0; i < total; i++) {
+      const esCap = i < 11;
+      const tipo: Curso['tipo'] = esCap ? 'capacitacion' : 'asistencia';
+      const idxTema = esCap ? i : i - 11;
+      const tema = esCap ? temasCap2[idxTema] : temasAt2[idxTema];
+      const estado = estadosSeed2[(ai * 2 + i) % estadosSeed2.length];
+      const nParts = ((ai * 3 + i * 7) % 20) + 1; // 1..20
+      const dia = ((i * 3 + ai) % 27) + 1;
+      const fecha = `${String(dia).padStart(2, '0')} ${meses[(ai + i) % 12]} 2024`;
+      const cursoId = `x${cursoSeq++}`;
+      const codigo = `${esCap ? 'CAP' : 'AST'}-${a.area}-${String(200 + i).padStart(3, '0')}`;
+      const necesitaHistorial = estado === 'Observado';
+
+      CURSOS_INICIALES.push({
+        id: cursoId,
+        codigo,
+        nombreTema: tema,
+        estado,
+        fecha,
+        hora: `${String(7 + (i % 9)).padStart(2, '0')}:${i % 2 === 0 ? '00' : '30'}`,
+        horas: esCap ? 4 + (i % 9) : 2 + (i % 7),
+        participantes: nParts,
+        region: a.region,
+        provincia: a.provincia,
+        distrito: a.distrito,
+        area: a.area,
+        tipo,
+        extensionista: a.ext,
+        fotoSustento: estado !== 'Registrado' ? `sustento-${codigo}.pdf` : undefined,
+        observacionesHistorial: necesitaHistorial
+          ? [{ fecha: '12/06/2024', descripcion: 'Verificar lista de asistencia y coordenadas GPS.', autor: 'ADMIN_DZ' }]
+          : undefined,
+      });
+
+      for (let p = 0; p < nParts; p++) {
+        const np = nombresPool2[(p + i + ai) % nombresPool2.length];
+        PARTICIPANTES_INICIALES.push({
+          id: `x${partSeq++}`,
+          cursoId,
+          tipoParticipante: tipos2[(p + i) % tipos2.length],
+          dni: String(dniSeq++),
+          apellidos: np[0],
+          nombres: np[1],
+          fechaNacimiento: `19${70 + ((p + i * 3) % 30)}-${String(((p + i) % 12) + 1).padStart(2, '0')}-${String(((p * 5 + i) % 27) + 1).padStart(2, '0')}`,
+          primActividad: actividades2[(p + i + ai) % actividades2.length],
+        });
+      }
+    }
+  });
+})();
+
+/** Padrón simulado de productores (búsqueda por DNI en Paso 2). */
+export const PRODUCTORES_BD: ProductorBD[] = [
+  { dni: '45678912', apellidos: 'Quispe Mamani', nombres: 'Juan Carlos', fechaNacimiento: '1982-04-12', sexo: 'Masculino', primActividad: 'Agricultura — Cacao', estadoCivil: 'Casado', ubigeo: '090301 - Huancavelica / Angaraes / Lircay', direccion: 'Jr. Bolognesi 245', restricciones: 'Ninguna' },
+  { dni: '78451236', apellidos: 'Huamán Flores', nombres: 'María Elena', fechaNacimiento: '1986-09-03', sexo: 'Femenino', primActividad: 'Agricultura — Café', estadoCivil: 'Soltera', ubigeo: '080404 - Cusco / Calca / Pisac', direccion: 'Av. Cusco 1102', restricciones: 'Ninguna' },
+  { dni: '12365478', apellidos: 'Ccahuana Yupanqui', nombres: 'Pedro', fechaNacimiento: '1973-01-25', sexo: 'Masculino', primActividad: 'Asistencia técnica', estadoCivil: 'Casado', ubigeo: '060601 - Cajamarca / Hualgayoc / Bambamarca', direccion: 'Calle Real 88', restricciones: 'Ninguna' },
+  { dni: '87654321', apellidos: 'Mamani Condori', nombres: 'Rosa', fechaNacimiento: '1990-11-30', sexo: 'Femenino', primActividad: 'Ganadería — Bovinos', estadoCivil: 'Conviviente', ubigeo: '210301 - Puno / Azángaro / Asillo', direccion: 'Comunidad Asillo s/n', restricciones: 'Ninguna' },
+  { dni: '23456789', apellidos: 'Vilca Roque', nombres: 'Luis', fechaNacimiento: '1978-07-14', sexo: 'Masculino', primActividad: 'Agricultura — Quinua', estadoCivil: 'Casado', ubigeo: '050108 - Ayacucho / Huamanga / Quinua', direccion: 'Jr. Sucre 412', restricciones: 'Ninguna' },
+];
+
+export const CAMPOS_PERSONALIZADOS_INICIALES: CampoPersonalizado[] = [
+  {
+    id: 'f-seed-1',
+    area: 'SODEGA',
+    formulario: 'capacitacion',
+    nombre: 'Modalidad de ejecución',
+    tipo: 'select',
+    opciones: ['Presencial', 'Virtual', 'Mixta'],
+    requerido: true,
+    activo: true,
+    tieneData: true,
+    visiblePorArea: { SODEGA: true },
+  },
+  {
+    id: 'f-seed-2',
+    area: 'AGRORURAL_1',
+    formulario: 'participante_cap',
+    nombre: 'Nivel de instrucción del productor',
+    tipo: 'radio',
+    opciones: ['Primaria', 'Secundaria', 'Superior', 'Ninguno'],
+    requerido: false,
+    activo: true,
+    tieneData: false,
+    visiblePorArea: { AGRORURAL_1: false },
+  },
+];
