@@ -1,6 +1,12 @@
-/** Roles del sistema (mismos códigos que el sistema original). */
-export type Rol = 'ADMINISTRADOR' | 'ADMIN_DZ' | 'ADMIN_UE' | 'TECNICO1';
+import { Perfil } from './usuario-sodega.model';
 
+/**
+ * Rol del sistema = perfil SODEGA (base del proyecto).
+ * Se mantiene el alias `Rol` por compatibilidad con el código existente.
+ */
+export type Rol = Perfil;
+
+/** Vista simplificada del usuario en sesión (derivada de la sesión SODEGA). */
 export interface User {
   username: string;
   nombre: string;

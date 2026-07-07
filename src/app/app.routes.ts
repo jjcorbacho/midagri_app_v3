@@ -93,6 +93,35 @@ export const routes: Routes = [
         ],
       },
       {
+        path: 'usuarios',
+        children: [
+          {
+            path: '',
+            loadComponent: () =>
+              import('./features/usuarios/gestion-usuarios.component').then(
+                (m) => m.GestionUsuariosComponent,
+              ),
+            title: 'Gestión de Usuarios — SODEGA',
+          },
+          {
+            path: 'nuevo',
+            loadComponent: () =>
+              import('./features/usuarios/usuario-form.component').then(
+                (m) => m.UsuarioFormComponent,
+              ),
+            title: 'Nuevo usuario — SODEGA',
+          },
+          {
+            path: ':id',
+            loadComponent: () =>
+              import('./features/usuarios/usuario-form.component').then(
+                (m) => m.UsuarioFormComponent,
+              ),
+            title: 'Edición de usuario — SODEGA',
+          },
+        ],
+      },
+      {
         path: 'reportes',
         loadComponent: () =>
           import('./features/reportes/reportes.component').then((m) => m.ReportesComponent),

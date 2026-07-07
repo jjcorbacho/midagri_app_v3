@@ -48,7 +48,7 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
                 <span
                   class="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold"
                   [class]="isAdmin() ? 'bg-state-aprobado-soft text-state-aprobado-foreground' : 'bg-state-enviado-soft text-state-enviado-foreground'"
-                >{{ isAdmin() ? 'ADMINISTRADOR' : 'ADMIN_UE' }}</span>
+                >{{ isAdmin() ? 'ADMINISTRADOR GENERAL' : 'ADMIN. UNIDAD ORGANIZACIONAL' }}</span>
               </div>
               <h1 class="text-2xl font-bold text-foreground">Configuración de Formularios — {{ area().code }}</h1>
             </div>
@@ -214,7 +214,7 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
                   <p class="text-sm text-teal-700/70 italic">
                     {{ isAdmin()
                       ? 'Sin campos personalizados en este formulario.'
-                      : 'El ADMINISTRADOR aún no ha publicado campos personalizados activos.' }}
+                      : 'El ADMINISTRADOR GENERAL aún no ha publicado campos personalizados activos.' }}
                   </p>
                   @if (isAdmin()) {
                     <button
@@ -411,7 +411,7 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
           <div class="flex items-center gap-2 text-xs text-slate-400 italic">
             <lucide-angular [img]="InfoIcon" class="size-4" />
             {{ isAdmin()
-              ? 'Los cambios se guardan como catálogo y se reflejan en la vista del ADMIN_UE.'
+              ? 'Los cambios se guardan como catálogo y se reflejan en la vista del Administrador de Unidad Organizacional.'
               : 'Marca como visibles los campos que deben aparecer en los formularios de los técnicos.' }}
           </div>
           <div class="flex gap-3">

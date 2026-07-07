@@ -41,11 +41,14 @@ import { AREAS } from '../../core/constants/areas.const';
           class="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-secondary transition-colors"
         >
           <div class="text-right hidden sm:block">
-            <div class="text-sm font-medium">
-              {{ auth.user()?.nombre }} {{ auth.user()?.apellido }}
-            </div>
-            <div class="text-[11px] text-muted-foreground uppercase tracking-tight">
-              {{ auth.user()?.rol }} • {{ areaService.currentArea() }}
+            <div class="text-sm font-medium">{{ nombreHeader() }}</div>
+            <div class="text-[11px] text-muted-foreground tracking-tight">
+              <span class="font-bold text-brand">{{ perfilHeader() }}</span>
+              @if (!auth.isAdministrador()) {
+                <span class="truncate max-w-[220px] inline-block align-bottom" [title]="auth.session()?.unidad">
+                  · {{ auth.session()?.unidad }}
+                </span>
+              }
             </div>
           </div>
           <div class="size-9 rounded-full bg-secondary ring-1 ring-black/10 flex items-center justify-center">
@@ -133,6 +136,24 @@ export class HeaderComponent {
     const u = this.auth.user();
     if (!u) return '';
     return `${u.nombre[0] ?? ''}${u.apellido[0] ?? ''}`;
+  }
+
+  /** "Carlos Candelaria B." — formato de header del prototipo SODEGA. */
+  nombreHeader(): string {
+    const nombre = this.auth.session()?.nombreCompleto ?? '';
+    const partes = nombre.trim().split(/\s+/).filter(Boolean);
+    if (partes.length >= 3) {
+      const primerNombre = partes[0];
+      const apellidoPaterno = partes[partes.length - 2];
+      const inicialMaterno = partes[partes.length - 1].charAt(0).toUpperCase() + '.';
+      return `${primerNombre} ${apellidoPaterno} ${inicialMaterno}`;
+    }
+    return nombre;
+  }
+
+  perfilHeader(): string {
+    const perfil = this.auth.session()?.perfil ?? '';
+    return perfil === 'Administrador General' ? 'Administrador G.' : perfil;
   }
 
   onAreaChange(event: Event): void {

@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   FileText,
   Settings,
+  UsersRound,
   ChevronRight,
 } from 'lucide-angular';
 import type { LucideIconData } from 'lucide-angular';
@@ -49,6 +50,13 @@ const BASE_ITEMS: DashboardItem[] = [
     description: 'Reportes y estadísticas institucionales de capacitaciones y asistencias.',
     icon: FileText,
     accent: 'bg-state-aprobado-soft text-state-aprobado-foreground',
+  },
+  {
+    to: '/usuarios',
+    label: 'Gestión de Usuarios',
+    description: 'Usuarios, perfiles, vigencias laborales, ámbitos presupuestales y permisos SODEGA.',
+    icon: UsersRound,
+    accent: 'bg-brand-accent-soft text-brand-accent',
   },
   {
     to: '/configuracion',
@@ -123,15 +131,24 @@ export class DashboardComponent {
   readonly areaService = inject(AreaService);
   readonly ChevronRightIcon = ChevronRight;
 
+  /** Tarjetas por perfil SODEGA. */
   readonly items = computed<DashboardItem[]>(() => {
-    const rol = this.auth.user()?.rol;
-    if (rol === 'ADMIN_DZ') return BASE_ITEMS.filter((i) => i.to === '/seguimiento/revision');
-    if (rol === 'ADMIN_UE') {
-      return BASE_ITEMS.filter(
-        (i) => i.to === '/seguimiento/aprobacion' || i.to === '/configuracion',
+    if (this.auth.isJefeArea()) {
+      return BASE_ITEMS.filter((i) =>
+        ['/seguimiento/aprobacion', '/reportes', '/usuarios'].includes(i.to),
       );
     }
-    if (rol === 'TECNICO1') return TECNICO1_ITEMS;
+    if (this.auth.isAdminDZ()) {
+      return BASE_ITEMS.filter((i) =>
+        ['/seguimiento/revision', '/usuarios'].includes(i.to),
+      );
+    }
+    if (this.auth.isAdminUE()) {
+      return BASE_ITEMS.filter((i) =>
+        ['/seguimiento/aprobacion', '/reportes', '/usuarios', '/configuracion'].includes(i.to),
+      );
+    }
+    if (this.auth.isTecnico1()) return TECNICO1_ITEMS;
     return BASE_ITEMS;
   });
 }

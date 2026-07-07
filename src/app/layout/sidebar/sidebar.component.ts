@@ -12,6 +12,7 @@ import {
   Settings,
   Sliders,
   Wrench,
+  UsersRound,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -45,6 +46,7 @@ const NAV_FULL: NavItem[] = [
   { to: '/seguimiento/revision', label: 'Seguimiento y revisión', icon: ClipboardCheck },
   { to: '/seguimiento/aprobacion', label: 'Seguimiento y aprobación', icon: ShieldCheck },
   { to: '/reportes', label: 'Reportes', icon: FileText },
+  { to: '/usuarios', label: 'Gestión de Usuarios', icon: UsersRound, matchPrefix: ['/usuarios'] },
   {
     to: '/configuracion',
     label: 'Configuración',
@@ -176,18 +178,29 @@ export class SidebarComponent {
     { initialValue: this.router.url.split('?')[0] },
   );
 
-  /** Menú filtrado por rol (misma matriz que el original). */
+  /** Menú filtrado por perfil SODEGA. */
   readonly nav = computed<NavItem[]>(() => {
+    if (this.auth.isJefeArea()) {
+      return [
+        { to: '/dashboard', label: 'Inicio', icon: Home },
+        { to: '/seguimiento/aprobacion', label: 'Aprobación de Evaluaciones UO', icon: ShieldCheck },
+        { to: '/reportes', label: 'Reportes', icon: FileText },
+        { to: '/usuarios', label: 'Gestión de Usuarios', icon: UsersRound, matchPrefix: ['/usuarios'] },
+      ];
+    }
     if (this.auth.isAdminDZ()) {
       return [
         { to: '/dashboard', label: 'Inicio', icon: Home },
-        { to: '/seguimiento/revision', label: 'Seguimiento y revisión', icon: ClipboardCheck },
+        { to: '/seguimiento/revision', label: 'Evaluación de Técnicos', icon: ClipboardCheck },
+        { to: '/usuarios', label: 'Gestión de Usuarios', icon: UsersRound, matchPrefix: ['/usuarios'] },
       ];
     }
     if (this.auth.isAdminUE()) {
       return [
         { to: '/dashboard', label: 'Inicio', icon: Home },
-        { to: '/seguimiento/aprobacion', label: 'Seguimiento y aprobación', icon: ShieldCheck },
+        { to: '/seguimiento/aprobacion', label: 'Evaluación de Administrador DZ', icon: ShieldCheck },
+        { to: '/reportes', label: 'Reportes', icon: FileText },
+        { to: '/usuarios', label: 'Gestión de Usuarios', icon: UsersRound, matchPrefix: ['/usuarios'] },
         {
           to: '/configuracion',
           label: 'Configuración',

@@ -37,7 +37,7 @@ const ICON_TONES: Record<string, string> = {
             <lucide-angular [img]="ClipboardListIcon" class="size-5 text-brand" />
             <h1 class="text-2xl font-bold tracking-tight">{{ title() }}</h1>
             <span class="px-2.5 py-1 bg-secondary text-muted-foreground font-semibold text-[11px] rounded-md ml-1 tracking-widest">
-              {{ rol() }}
+              {{ rolLabel() || rol() }}
             </span>
           </div>
           <p class="text-sm text-muted-foreground max-w-[80ch]">{{ subtitle() }}</p>
@@ -355,6 +355,8 @@ export class SeguimientoPanelComponent {
   readonly estadoAprobar = input.required<EstadoCurso>();
   readonly labelAprobar = input.required<string>();
   readonly rol = input<'ADMIN_DZ' | 'ADMIN_UE'>('ADMIN_DZ');
+  /** Etiqueta visible del perfil (los códigos DZ/UE controlan los estados accionables). */
+  readonly rolLabel = input<string>('');
 
   readonly SearchIcon = Search;
   readonly AlertTriangleIcon = AlertTriangle;

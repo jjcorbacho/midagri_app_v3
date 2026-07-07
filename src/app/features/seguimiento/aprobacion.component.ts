@@ -15,6 +15,7 @@ import { EstadoCurso } from '../../core/models/curso.model';
       estadoAprobar="Aprobado"
       labelAprobar="Aprobar"
       rol="ADMIN_UE"
+      rolLabel="ADMINISTRADOR UNIDAD ORGANIZACIONAL"
     />
   `,
 })

@@ -13,19 +13,30 @@ capacitación y asistencia técnica de las 26 áreas usuarias, gestiona particip
 
 ## 1. Descripción funcional
 
-| Módulo | Descripción | Roles |
-|---|---|---|
-| Autenticación | Login institucional (simulado; rol derivado del usuario) | Todos |
-| Dashboard | Accesos a módulos según rol | Todos |
-| Capacitaciones N1 | Bandeja con KPIs, filtros y stepper de registro en 3 pasos (evento → participantes → sustento PDF) | ADMINISTRADOR, TECNICO1 |
-| Seguimiento y revisión | Validar u observar registros enviados (en lote) | ADMIN_DZ |
-| Seguimiento y aprobación | Aprobar u observar registros validados (en lote) | ADMIN_UE |
-| Configuración › Campos | Constructor de formularios: campos base + personalizados por área, visibilidad, vista previa móvil/desktop | ADMINISTRADOR (edición), ADMIN_UE (visibilidad) |
-| Configuración › Reglas | Actividades, aforos, horas, criterio de éxito y periodo de medición por área | ADMINISTRADOR |
-| Reportes / Perfil | Placeholder institucional / ficha del usuario | Todos |
+La **base de autenticación y permisos** proviene del prototipo oficial de la Plataforma
+SODEGA v3.1 ([docs/referencia/sodega-login-permisos.html](docs/referencia/sodega-login-permisos.html)):
+login unificado con selección de perfil/OPA y **5 perfiles jerárquicos**.
 
-**Credenciales de prueba** (clave única `Midagri2026*`):
-`mtorres` (Administrador) · `admindz` (Admin DZ) · `adminue` (Admin UE) · `tecnico1` (Técnico N1).
+| Módulo | Descripción | Perfiles |
+|---|---|---|
+| Autenticación SODEGA | Login unificado con validación en vivo y modal de selección de perfil (Admin General) o de Unidad Responsable/OPA (multi-registro) | Todos |
+| Dashboard | Accesos a módulos según perfil | Todos |
+| **Gestión de Usuarios** | Grilla con 6 KPIs (vigencias, vencidos…), acciones por fila (editar, nueva partida presupuestal, restablecer clave, reasignar OPA, cambiar estado) y formulario de 2 pestañas: RENIEC simulado, datos presupuestales en cascada (categoría → PP → unidad funcional OPAS), régimen laboral con vigencia de contrato (auto-inhabilita cuentas vencidas) y ámbitos territoriales | Todos los perfiles administrativos |
+| Capacitaciones N1 | Bandeja con KPIs, filtros y stepper de registro en 3 pasos (evento → participantes → sustento PDF) | Admin General, Técnico |
+| Evaluación de Técnicos (revisión) | Validar u observar registros enviados (en lote) | Administrador DZ_Cap_Asit. |
+| Evaluación / Aprobación (aprobación) | Aprobar u observar registros validados (en lote) | Admin Unidad Organizacional, Jefe de Área |
+| Configuración › Campos | Constructor de formularios por área con vista previa | Admin General (edición), Admin UO (visibilidad) |
+| Configuración › Reglas | Actividades, aforos, criterio de éxito y periodo por área | Admin General |
+| Reportes / Perfil | Placeholder institucional / ficha del usuario | Según perfil |
+
+**Perfiles** (jerarquía descendente): Administrador General → Jefe de Área →
+Administrador Unidad Organizacional → Administrador DZ_Cap_Asit. → Técnico Capacitación y AT.
+
+**Acceso de prueba:** usuario `ccandelaria` (o alias `candelab`) con cualquier clave —
+es el Administrador General master y elige su perfil de ingreso en el modal.
+Los demás usuarios se crean desde **Gestión de Usuarios** (el "Usuario generado" del
+formulario es su credencial de acceso; registro único entra directo, multi-registro
+elige su Unidad Responsable al ingresar).
 
 ## 2. Arquitectura implementada
 

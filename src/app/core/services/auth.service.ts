@@ -1,77 +1,135 @@
-import { Injectable, computed, signal } from '@angular/core';
-import { Observable, of, delay } from 'rxjs';
-import { Rol, User } from '../models/user.model';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { Perfil, UsuarioSodega } from '../models/usuario-sodega.model';
+import { User } from '../models/user.model';
+import { UsuariosService } from './usuarios.service';
 
-const SESSION_KEY = 'midagri.session';
+const SESSION_KEY = 'sodega.session';
+
+/** Sesión activa de la Plataforma SODEGA. */
+export interface SodegaSession {
+  userGen: string;
+  nombreCompleto: string;
+  perfil: Perfil;
+  unidad: string;
+  opa: string;
+}
+
+/** Resultado de resolver el ingreso (flujo del prototipo SODEGA). */
+export type LoginResolution =
+  | { status: 'no-registrado' }
+  | { status: 'inhabilitado' }
+  | { status: 'seleccion-perfil'; registros: UsuarioSodega[] }   // Admin General elige perfil
+  | { status: 'seleccion-opa'; registros: UsuarioSodega[] }      // varios registros: elige Unidad/OPA
+  | { status: 'directo'; registro: UsuarioSodega };              // registro único habilitado
 
 /**
- * Servicio de autenticación.
+ * Autenticación SODEGA (base del proyecto).
  *
- * ⚠ SIMULADO: replica el comportamiento del prototipo original (rol derivado
- * del nombre de usuario, sesión en sessionStorage). El equipo backend debe:
- *  - Reemplazar `login()` por `this.http.post<LoginResponse>(`${apiBaseUrl}/auth/login`, credenciales)`.
- *  - Emitir/almacenar el token JWT y exponerlo para `auth.interceptor.ts`.
- *  - Implementar refresh de sesión y logout contra el API.
+ * ⚠ SIMULADO: valida contra el registro en memoria de UsuariosService.
+ * El equipo backend debe:
+ *  - Reemplazar `resolverIngreso()` por `POST {apiBaseUrl}/auth/login` (usuario+clave)
+ *    devolviendo los registros/privilegios activos de la cuenta unificada.
+ *  - Emitir el JWT en `confirmarIngreso()` y exponerlo en `getToken()`.
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly _user = signal<User | null>(null);
+  private readonly usuariosService = inject(UsuariosService);
+
+  private readonly _session = signal<SodegaSession | null>(null);
   private readonly _sessionReady = signal(false);
 
-  readonly user = this._user.asReadonly();
+  readonly session = this._session.asReadonly();
   readonly sessionReady = this._sessionReady.asReadonly();
 
-  readonly isAdministrador = computed(() => this._user()?.rol === 'ADMINISTRADOR');
-  readonly isAdminDZ = computed(() => this._user()?.rol === 'ADMIN_DZ');
-  readonly isAdminUE = computed(() => this._user()?.rol === 'ADMIN_UE');
-  readonly isTecnico1 = computed(() => this._user()?.rol === 'TECNICO1');
-  readonly isReadOnly = computed(
-    () => this._user()?.rol === 'ADMIN_DZ' || this._user()?.rol === 'ADMIN_UE',
-  );
+  readonly perfil = computed<Perfil | null>(() => this._session()?.perfil ?? null);
+
+  /* Helpers por perfil (matriz SODEGA) */
+  readonly isAdministrador = computed(() => this.perfil() === 'Administrador General');
+  readonly isJefeArea = computed(() => this.perfil() === 'Jefe de Área');
+  readonly isAdminUE = computed(() => this.perfil() === 'Administrador Unidad Organizacional');
+  readonly isAdminDZ = computed(() => this.perfil() === 'Administrador DZ_Cap_Asit.');
+  readonly isTecnico1 = computed(() => this.perfil() === 'Técnico Capacitación y Asistencia Técnica');
+  readonly isReadOnly = computed(() => this.isAdminDZ() || this.isAdminUE());
+
+  /** Vista compatible del usuario para componentes existentes (perfil, header…). */
+  readonly user = computed<User | null>(() => {
+    const s = this._session();
+    if (!s) return null;
+    const partes = s.nombreCompleto.trim().split(/\s+/);
+    return {
+      username: s.userGen,
+      nombre: partes[0] ?? s.nombreCompleto,
+      apellido: partes.slice(1).join(' ') || '—',
+      rol: s.perfil,
+      email: `${s.userGen}@midagri.gob.pe`,
+    };
+  });
 
   constructor() {
     this.restoreSession();
   }
 
-  /** Restaura la sesión desde sessionStorage (evita expulsión al recargar). */
   private restoreSession(): void {
     try {
       const raw = sessionStorage.getItem(SESSION_KEY);
-      if (raw) this._user.set(JSON.parse(raw) as User);
+      if (raw) this._session.set(JSON.parse(raw) as SodegaSession);
     } catch (e) {
-      console.error('[MIDAGRI] No se pudo restaurar la sesión.', e);
+      console.error('[SODEGA] No se pudo restaurar la sesión.', e);
     } finally {
       this._sessionReady.set(true);
     }
   }
 
-  /**
-   * POST /auth/login (simulado).
-   * El rol se deriva del nombre de usuario, igual que en el prototipo.
-   */
-  login(username: string): Observable<User> {
+  /** ¿El usuario unificado existe en el registro? (mensaje en vivo del login). */
+  usuarioReconocido(username: string): boolean {
     const u = username.trim().toLowerCase();
-    let rol: Rol = 'ADMINISTRADOR';
-    let nombre = 'Marcos';
-    let apellido = 'Torres';
-    if (u === 'admindz' || u.includes('_dz') || u.startsWith('dz')) {
-      rol = 'ADMIN_DZ'; nombre = 'Lucía'; apellido = 'Ramírez';
-    } else if (u === 'adminue' || u.includes('_ue') || u.startsWith('ue')) {
-      rol = 'ADMIN_UE'; nombre = 'Pedro'; apellido = 'Salas';
-    } else if (u === 'tecnico1' || u.includes('tec1') || u.startsWith('tec1')) {
-      rol = 'TECNICO1'; nombre = 'Juan'; apellido = 'Quispe';
-    }
-    const user: User = { username, nombre, apellido, rol, email: `${u}@midagri.gob.pe` };
-    this._user.set(user);
+    if (!u) return false;
+    // Alias de compatibilidad del prototipo
+    if (u === 'candelab' || u === 'psanchez') return true;
+    return this.usuariosService.findByUserGen(u).length > 0;
+  }
+
+  /**
+   * POST /auth/login (simulado): resuelve el flujo de ingreso.
+   *  - Admin General master → selección de perfil.
+   *  - Varios registros habilitados → selección de Unidad Responsable (OPA).
+   *  - Registro único → ingreso directo.
+   */
+  resolverIngreso(username: string): LoginResolution {
+    this.usuariosService.recalcularVigencias();
+    const user = username.trim().toLowerCase();
+    const mappedUser = user === 'candelab' ? 'ccandelaria' : user;
+
+    const registros = this.usuariosService.findByUserGen(mappedUser);
+    if (registros.length === 0) return { status: 'no-registrado' };
+
+    const habilitados = registros.filter((u) => u.estado === 'HABILITADO');
+    if (habilitados.length === 0) return { status: 'inhabilitado' };
+
+    const esAdminGralMaster = mappedUser === 'ccandelaria';
+    if (esAdminGralMaster) return { status: 'seleccion-perfil', registros: habilitados };
+    if (habilitados.length > 1) return { status: 'seleccion-opa', registros: habilitados };
+    return { status: 'directo', registro: habilitados[0] };
+  }
+
+  /** Confirma el ingreso con el perfil/unidad elegidos y persiste la sesión. */
+  confirmarIngreso(registro: UsuarioSodega, perfil?: Perfil, unidad?: string): void {
+    const session: SodegaSession = {
+      userGen: registro.userGen,
+      nombreCompleto: `${registro.nombres} ${registro.apePat} ${registro.apeMat}`,
+      perfil: perfil ?? registro.perfil,
+      unidad: unidad ?? registro.unidad ?? 'Sede Central',
+      opa: registro.opa,
+    };
+    this._session.set(session);
     try {
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify(user));
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
     } catch { /* noop */ }
-    return of(user).pipe(delay(150));
   }
 
   /** POST /auth/logout (simulado). */
   logout(): void {
-    this._user.set(null);
+    this._session.set(null);
     try {
       sessionStorage.removeItem(SESSION_KEY);
     } catch { /* noop */ }

@@ -15,6 +15,7 @@ import { EstadoCurso } from '../../core/models/curso.model';
       estadoAprobar="Validado"
       labelAprobar="Validar"
       rol="ADMIN_DZ"
+      rolLabel="ADMINISTRADOR DZ_CAP_ASIT."
     />
   `,
 })
