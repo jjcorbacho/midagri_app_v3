@@ -206,7 +206,10 @@ export class SidebarComponent {
           label: 'Configuración',
           icon: Settings,
           matchPrefix: ['/configuracion'],
-          children: [{ to: '/configuracion/campos', label: 'Configuración Campos', icon: Sliders }],
+          children: [
+            { to: '/configuracion/campos', label: 'Configuración Campos', icon: Sliders },
+            { to: '/configuracion/reglas', label: 'Configuración Reglas', icon: Wrench },
+          ],
         },
       ];
     }

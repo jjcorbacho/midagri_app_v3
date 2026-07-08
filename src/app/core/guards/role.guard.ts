@@ -24,6 +24,8 @@ function isAllowed(path: string, perfil: Perfil): boolean {
   if (perfil === 'Administrador Unidad Organizacional') {
     if (path.startsWith('/seguimiento/aprobacion')) return true;
     if (path.startsWith('/configuracion/campos')) return true;
+    if (path.startsWith('/configuracion/reglas')) return true;
+    if (path.startsWith('/configuracion')) return true; // redirect interno → reglas
     if (path.startsWith('/usuarios')) return true;
     if (path.startsWith('/reportes')) return true;
     if (path.startsWith('/capacitaciones-n1/')) return true;
