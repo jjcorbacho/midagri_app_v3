@@ -93,6 +93,20 @@ export const routes: Routes = [
         ],
       },
       {
+        path: 'administracion',
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'listas' },
+          {
+            path: 'listas',
+            loadComponent: () =>
+              import('./features/administracion/listas/listas.component').then(
+                (m) => m.ListasComponent,
+              ),
+            title: 'Administración de Listas — SODEGA',
+          },
+        ],
+      },
+      {
         path: 'usuarios',
         children: [
           {

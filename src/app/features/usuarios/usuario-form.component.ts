@@ -8,6 +8,8 @@ import {
 } from 'lucide-angular';
 import { AuthService } from '../../core/services/auth.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
+import { ListasAdminService } from '../../core/services/listas-admin.service';
+import { PermisosMenuService } from '../../core/services/permisos-menu.service';
 import {
   AmbitoTerritorial,
   Perfil,
@@ -16,6 +18,8 @@ import {
   perfilSoloRegion,
   toTitleCase,
 } from '../../core/models/usuario-sodega.model';
+import { PermisosMenu, combinarPermisos } from '../../core/models/permisos-menu.model';
+import { PermisosMenuFormComponent } from './permisos-menu-form.component';
 import {
   CATEGORIAS_PRESUPUESTALES,
   FUENTES_FINANCIAMIENTO,
@@ -31,9 +35,10 @@ import { ModalComponent } from '../../shared/components/modal/modal.component';
 
 type ModoForm = 'nuevo' | 'editar' | 'presupuesto';
 
-const INP_MANDATORY = 'w-full bg-amber-50 border-[1.5px] border-amber-200 p-2 rounded-lg text-xs font-bold outline-none focus:bg-white focus:border-[#007287] focus:ring-2 focus:ring-[#007287]/15 text-slate-700 transition';
-const INP_DISABLED = 'w-full bg-slate-100 text-slate-500 border border-slate-200 p-2 rounded-lg text-xs font-semibold outline-none cursor-not-allowed opacity-80';
-const INP_NORMAL = 'w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-bold outline-none focus:ring-1 focus:ring-teal-500';
+/* Estilos de input alineados al design system N1 (ver curso-form.component.ts) */
+const INP_MANDATORY = 'w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none transition-colors';
+const INP_DISABLED = 'w-full bg-muted/40 ring-1 ring-border rounded-lg px-3 py-2 text-sm text-muted-foreground cursor-not-allowed';
+const INP_NORMAL = 'w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none transition-colors';
 
 /**
  * Formulario multi-pestaña de Gestión de Usuarios (Datos del usuario / Permisos).
@@ -42,23 +47,23 @@ const INP_NORMAL = 'w-full p-2 bg-white border border-slate-300 rounded-lg text-
 @Component({
   selector: 'app-usuario-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, LucideAngularModule, ModalComponent],
+  imports: [ReactiveFormsModule, LucideAngularModule, ModalComponent, PermisosMenuFormComponent],
   template: `
-    <section class="p-5 lg:p-6 max-w-[1200px] mx-auto">
-      <h1 class="text-lg font-bold text-slate-800 uppercase border-b border-slate-200 pb-2 mb-3">{{ titulo() }}</h1>
+    <section class="p-6 lg:p-8 max-w-[1200px] mx-auto space-y-5">
+      <h1 class="text-base font-bold tracking-wider uppercase text-foreground">{{ titulo() }}</h1>
 
-      <div class="flex border-b border-slate-200 mb-4 text-xs font-bold uppercase">
+      <div class="inline-flex p-1 bg-card ring-1 ring-border rounded-lg">
         <button
           (click)="irAPestana('datos')"
-          class="py-2.5 px-5 transition duration-150 cursor-pointer flex items-center gap-2 rounded-t-lg"
-          [class]="tab() === 'datos' ? 'bg-[#007287] text-white shadow' : 'bg-slate-200 text-slate-600 hover:bg-slate-300 hover:text-slate-900'"
+          class="h-8 px-3 rounded-md text-xs font-bold transition-colors flex items-center gap-2"
+          [class]="tab() === 'datos' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'"
         >
           <lucide-angular [img]="IdCardIcon" class="size-4" /> Datos del usuario
         </button>
         <button
           (click)="irAPestana('permisos')"
-          class="py-2.5 px-5 transition duration-150 cursor-pointer flex items-center gap-2 rounded-t-lg"
-          [class]="tab() === 'permisos' ? 'bg-[#007287] text-white shadow' : 'bg-slate-200 text-slate-600 hover:bg-slate-300 hover:text-slate-900'"
+          class="h-8 px-3 rounded-md text-xs font-bold transition-colors flex items-center gap-2"
+          [class]="tab() === 'permisos' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'"
         >
           <lucide-angular [img]="KeyRoundIcon" class="size-4" /> Permisos
         </button>
@@ -66,17 +71,18 @@ const INP_NORMAL = 'w-full p-2 bg-white border border-slate-300 rounded-lg text-
 
       <!-- ================= PESTAÑA A: DATOS DEL USUARIO ================= -->
       @if (tab() === 'datos') {
-        <div class="space-y-4" [formGroup]="form">
+        <div class="space-y-5" [formGroup]="form">
           <!-- Datos personales -->
-          <div class="border border-slate-200 rounded-xl p-5 bg-white shadow-sm space-y-4">
-            <h3 class="text-xs font-bold text-[#007287] flex items-center gap-2">
-              <lucide-angular [img]="UserCheckIcon" class="size-4" /> Datos Personales
-            </h3>
+          <div class="bg-card rounded-xl ring-1 ring-black/5 shadow-sm p-5 space-y-4">
+            <div class="flex items-center gap-2 border-b border-border pb-2 text-teal-700">
+              <lucide-angular [img]="UserCheckIcon" class="size-4" />
+              <h3 class="text-[11px] font-semibold uppercase tracking-wider">Datos Personales</h3>
+            </div>
 
-            <div class="grid grid-cols-12 gap-3.5">
+            <div class="grid grid-cols-12 gap-3">
               <div class="col-span-4">
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">Nro DNI <span class="text-red-500">*</span></label>
-                <div class="flex gap-1.5 font-bold">
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Nro DNI <span class="text-rose-600">*</span></label>
+                <div class="flex gap-1.5">
                   <input
                     type="text" maxlength="8" placeholder="Ingrese DNI"
                     formControlName="dni"
@@ -87,131 +93,133 @@ const INP_NORMAL = 'w-full p-2 bg-white border border-slate-300 rounded-lg text-
                     type="button"
                     (click)="consultarReniec()"
                     [disabled]="!reniecEditable() || buscandoReniec()"
-                    class="w-1/3 bg-[#0b0f19] hover:bg-[#1a2035] text-white rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="w-1/3 bg-foreground hover:bg-foreground/85 text-background rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span>{{ buscandoReniec() ? 'Buscando...' : 'Buscar' }}</span>
-                    <lucide-angular [img]="buscandoReniec() ? LoaderIcon : SearchIcon" class="size-2.5 ml-1" [class.animate-spin]="buscandoReniec()" />
+                    <lucide-angular [img]="buscandoReniec() ? LoaderIcon : SearchIcon" class="size-3 ml-1" [class.animate-spin]="buscandoReniec()" />
                   </button>
                 </div>
               </div>
             </div>
 
-            <div class="grid grid-cols-12 gap-3.5">
+            <div class="grid grid-cols-12 gap-3">
               <div class="col-span-4">
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">Apellido paterno</label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Apellido paterno</label>
                 <input formControlName="apePat" readonly placeholder="Apellido paterno" [class]="inpDisabled" />
               </div>
               <div class="col-span-4">
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">Apellido materno</label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Apellido materno</label>
                 <input formControlName="apeMat" readonly placeholder="Apellido materno" [class]="inpDisabled" />
               </div>
               <div class="col-span-4">
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">Nombre(s)</label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Nombre(s)</label>
                 <input formControlName="nombres" readonly placeholder="Nombre(s)" [class]="inpDisabled" />
               </div>
             </div>
 
-            <div class="grid grid-cols-12 gap-3.5">
+            <div class="grid grid-cols-12 gap-3">
               <div class="col-span-3">
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">Estado civil</label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Estado civil</label>
                 <input formControlName="estCivil" readonly placeholder="Estado civil" [class]="inpDisabled" />
               </div>
               <div class="col-span-3">
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">Profesión - especialidad <span class="text-red-500">*</span></label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Profesión - especialidad <span class="text-rose-600">*</span></label>
                 <select formControlName="profesion" [class]="reniecEditable() ? inpMandatory : inpDisabled">
                   <option value="">--Seleccione--</option>
-                  @for (p of profesiones; track p) {
+                  @for (p of profesiones(); track p) {
                     <option [value]="p">{{ p }}</option>
                   }
                 </select>
               </div>
               <div class="col-span-3">
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">Dirección domiciliaria</label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Dirección domiciliaria</label>
                 <input formControlName="direccion" readonly placeholder="Dirección domiciliaria" [class]="inpDisabled" />
               </div>
               <div class="col-span-3">
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">Ubigeo RENIEC</label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Ubigeo RENIEC</label>
                 <input formControlName="ubigeo" readonly placeholder="UBIGEO" [class]="inpDisabled" />
               </div>
             </div>
 
-            <div class="grid grid-cols-12 gap-3.5">
+            <div class="grid grid-cols-12 gap-3">
               <div class="col-span-3">
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">Restricciones</label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Restricciones</label>
                 <input formControlName="restricciones" readonly placeholder="Restricciones" [class]="inpDisabled" />
               </div>
               <div class="col-span-3">
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">Sexo <span class="text-red-500">*</span></label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Sexo <span class="text-rose-600">*</span></label>
                 <select formControlName="sexo" [class]="reniecEditable() ? inpMandatory : inpDisabled">
                   <option value="">--Seleccione--</option>
-                  <option value="Masculino">Masculino</option>
-                  <option value="Femenino">Femenino</option>
+                  @for (s of sexos(); track s) {
+                    <option [value]="s">{{ s }}</option>
+                  }
                 </select>
               </div>
               <div class="col-span-3">
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">Fecha nac. (RENIEC)</label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Fecha nac. (RENIEC)</label>
                 <input formControlName="fechaNac" readonly placeholder="dd/mm/aaaa" [class]="inpDisabled" />
               </div>
               <div class="col-span-3">
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">Edad calculada</label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Edad calculada</label>
                 <input formControlName="edad" readonly placeholder="Edad calculada" [class]="inpDisabled" />
               </div>
             </div>
 
             <div class="grid grid-cols-12">
               <div class="col-span-3">
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">Celular de contacto</label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Celular de contacto</label>
                 <input formControlName="celular" placeholder="999 999 999" [class]="inpNormal" />
               </div>
             </div>
           </div>
 
           <!-- Datos presupuestales -->
-          <div class="border border-slate-200 rounded-xl p-5 bg-white shadow-sm space-y-4">
-            <h3 class="text-xs font-bold text-[#007287] flex items-center gap-2">
-              <lucide-angular [img]="WalletIcon" class="size-4" /> Datos Presupuestales
-            </h3>
+          <div class="bg-card rounded-xl ring-1 ring-black/5 shadow-sm p-5 space-y-4">
+            <div class="flex items-center gap-2 border-b border-border pb-2 text-teal-700">
+              <lucide-angular [img]="WalletIcon" class="size-4" />
+              <h3 class="text-[11px] font-semibold uppercase tracking-wider">Datos Presupuestales</h3>
+            </div>
             <div>
-              <label class="block text-[10px] font-bold text-slate-500 mb-1">Unidad Responsable <span class="text-red-500">*</span></label>
+              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Unidad Responsable <span class="text-rose-600">*</span></label>
               <select formControlName="unidad" [class]="unidadBloqueada() ? inpDisabled : inpMandatory">
                 <option value="">--Seleccione--</option>
-                @for (u of unidadesResponsables; track u) {
+                @for (u of unidadesResponsables(); track u) {
                   <option [value]="u">{{ u }}</option>
                 }
               </select>
             </div>
 
             @if (mostrarPresupuesto()) {
-              <div class="grid grid-cols-4 gap-4 border-t border-slate-100 pt-4">
+              <div class="grid grid-cols-4 gap-3 border-t border-border pt-4">
                 <div>
-                  <label class="block text-[10px] font-bold text-slate-500 mb-1">Fuente de financ. <span class="text-red-500">*</span></label>
+                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">Fuente de financ. <span class="text-rose-600">*</span></label>
                   <select formControlName="fuenteFinanc" [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory">
                     <option value="">Seleccione</option>
-                    @for (f of fuentes; track f) {
+                    @for (f of fuentes(); track f) {
                       <option [value]="f">{{ f }}</option>
                     }
                   </select>
                 </div>
                 <div>
-                  <label class="block text-[10px] font-bold text-slate-500 mb-1">Categoría presup. <span class="text-red-500">*</span></label>
+                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">Categoría presup. <span class="text-rose-600">*</span></label>
                   <select formControlName="categoriaPresup" (change)="onCategoriaChange()" [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory">
                     <option value="">Seleccione</option>
-                    @for (c of categorias; track c) {
+                    @for (c of categorias(); track c) {
                       <option [value]="c">{{ c }}</option>
                     }
                   </select>
                 </div>
                 <div>
-                  <label class="block text-[10px] font-bold text-slate-500 mb-1">Programa presupuestal <span class="text-red-500">*</span></label>
+                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">Programa presupuestal <span class="text-rose-600">*</span></label>
                   <select formControlName="programaPresup" (change)="onProgramaChange()" [class]="presupuestoBloqueado() || !programaHabilitado() ? inpDisabled : inpMandatory">
                     <option value="">Seleccione</option>
-                    @for (p of programas; track p) {
+                    @for (p of programas(); track p) {
                       <option [value]="p">{{ p }}</option>
                     }
                   </select>
                 </div>
                 <div>
-                  <label class="block text-[10px] font-bold text-[#007287] mb-1">Unidad funcional (Opas) <span class="text-red-500">*</span></label>
+                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">Unidad funcional (Opas) <span class="text-rose-600">*</span></label>
                   <select formControlName="unidadFuncional" [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory">
                     <option value="">Seleccione</option>
                     @for (u of unidadesFuncionales(); track u) {
@@ -224,10 +232,10 @@ const INP_NORMAL = 'w-full p-2 bg-white border border-slate-300 rounded-lg text-
           </div>
 
           <div class="flex justify-end gap-2 pt-2">
-            <button (click)="cancelar()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition">
+            <button (click)="cancelar()" class="px-4 py-2 text-sm rounded-lg hover:bg-secondary ring-1 ring-border transition-colors">
               Cancelar
             </button>
-            <button (click)="guardarYContinuar()" class="px-6 py-2.5 bg-[#007287] hover:bg-teal-800 text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5">
+            <button (click)="guardarYContinuar()" class="px-5 py-2 text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium transition-colors flex items-center gap-1.5">
               <span>Siguiente</span> <lucide-angular [img]="ArrowRightIcon" class="size-3.5" />
             </button>
           </div>
@@ -236,23 +244,24 @@ const INP_NORMAL = 'w-full p-2 bg-white border border-slate-300 rounded-lg text-
 
       <!-- ================= PESTAÑA B: PERMISOS ================= -->
       @if (tab() === 'permisos') {
-        <div class="space-y-4" [formGroup]="form">
-          <div class="border border-slate-200 rounded-xl p-5 bg-white shadow-sm space-y-4">
-            <h3 class="text-xs font-bold text-[#007287] flex items-center gap-2">
-              <lucide-angular [img]="ShieldHalfIcon" class="size-4" /> Cuenta de acceso institucional
-            </h3>
+        <div class="space-y-5" [formGroup]="form">
+          <div class="bg-card rounded-xl ring-1 ring-black/5 shadow-sm p-5 space-y-4">
+            <div class="flex items-center gap-2 border-b border-border pb-2 text-teal-700">
+              <lucide-angular [img]="ShieldHalfIcon" class="size-4" />
+              <h3 class="text-[11px] font-semibold uppercase tracking-wider">Cuenta de acceso institucional</h3>
+            </div>
 
-            <div class="grid grid-cols-12 gap-4">
+            <div class="grid grid-cols-12 gap-3">
               <div class="col-span-3">
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">Usuario generado</label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Usuario generado</label>
                 <input formControlName="userGen" readonly placeholder="Usuario Automático" [class]="inpDisabled" />
               </div>
               <div class="col-span-3">
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">Correo Personal <span class="text-red-500">*</span></label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Correo Personal <span class="text-rose-600">*</span></label>
                 <input formControlName="correo" placeholder="correo@midagri.gob.pe" [class]="inpMandatory" />
               </div>
               <div class="col-span-3">
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">Régimen laboral <span class="text-red-500">*</span></label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Régimen laboral <span class="text-rose-600">*</span></label>
                 <select formControlName="regimen" (change)="formTick.set(formTick() + 1)" [class]="inpMandatory">
                   <option value="">--Seleccione--</option>
                   @for (r of regimenes; track r) {
@@ -261,7 +270,7 @@ const INP_NORMAL = 'w-full p-2 bg-white border border-slate-300 rounded-lg text-
                 </select>
               </div>
               <div class="col-span-3">
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">Estado de cuenta</label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Estado de cuenta</label>
                 <select formControlName="estado" [class]="inpNormal">
                   <option value="HABILITADO">Habilitado</option>
                   <option value="INHABILITADO">Inhabilitado</option>
@@ -271,28 +280,28 @@ const INP_NORMAL = 'w-full p-2 bg-white border border-slate-300 rounded-lg text-
 
             <!-- Fechas de contrato / Nro de orden (OS y CAS Temporal) -->
             @if (regimenTemporal()) {
-              <div class="grid grid-cols-12 gap-4 p-4 bg-teal-50/55 rounded-xl border border-teal-100 font-bold">
+              <div class="grid grid-cols-12 gap-3 p-4 bg-brand-soft/50 rounded-xl ring-1 ring-brand/20">
                 <div [class]="esLocador() ? 'col-span-4' : 'col-span-6'">
-                  <label class="block text-[10px] font-bold text-[#007287] mb-1">Fecha de inicio <span class="text-red-500">*</span></label>
-                  <input type="date" formControlName="fechaIni" class="w-full p-2 bg-white border border-[#007287]/30 rounded-lg text-xs font-bold outline-none" />
+                  <label class="block text-[11px] font-medium text-teal-700 mb-1">Fecha de inicio <span class="text-rose-600">*</span></label>
+                  <input type="date" formControlName="fechaIni" [class]="inpMandatory" />
                 </div>
                 <div [class]="esLocador() ? 'col-span-4' : 'col-span-6'">
-                  <label class="block text-[10px] font-bold text-[#007287] mb-1">Fecha fin <span class="text-red-500">*</span></label>
-                  <input type="date" formControlName="fechaFin" class="w-full p-2 bg-white border border-[#007287]/30 rounded-lg text-xs font-bold outline-none" />
+                  <label class="block text-[11px] font-medium text-teal-700 mb-1">Fecha fin <span class="text-rose-600">*</span></label>
+                  <input type="date" formControlName="fechaFin" [class]="inpMandatory" />
                 </div>
                 @if (esLocador()) {
                   <div class="col-span-4">
-                    <label class="block text-[10px] font-bold text-[#007287] mb-1">Nro. de Orden (O.S.) <span class="text-red-500">*</span></label>
-                    <input formControlName="nroOrden" placeholder="Ejem: O.S. N° 00421-2026" class="w-full p-2 bg-white border border-[#007287]/30 rounded-lg text-xs font-bold outline-none uppercase" />
+                    <label class="block text-[11px] font-medium text-teal-700 mb-1">Nro. de Orden (O.S.) <span class="text-rose-600">*</span></label>
+                    <input formControlName="nroOrden" placeholder="Ejem: O.S. N° 00421-2026" [class]="inpMandatory + ' uppercase'" />
                   </div>
                 }
               </div>
             }
 
             <!-- Perfil autorizado + Ámbito asignado -->
-            <div class="grid grid-cols-12 gap-6 items-start border-t border-slate-100 pt-5">
+            <div class="grid grid-cols-12 gap-6 items-start border-t border-border pt-5">
               <div class="col-span-5 space-y-1">
-                <label class="block text-[10px] font-bold text-[#007287] mb-1">Perfil autorizado <span class="text-red-500">*</span></label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Perfil autorizado <span class="text-rose-600">*</span></label>
                 <select formControlName="perfil" (change)="onPerfilChange()" [class]="inpMandatory">
                   <option value="">--Seleccione--</option>
                   @for (p of perfilesRegistrables(); track p) {
@@ -305,11 +314,11 @@ const INP_NORMAL = 'w-full p-2 bg-white border border-slate-300 rounded-lg text-
                 <div class="col-span-7 space-y-4">
                   <div class="grid grid-cols-3 gap-3">
                     <div>
-                      <label class="block text-[10px] font-bold text-slate-500 mb-1">Región</label>
+                      <label class="block text-[11px] font-medium text-muted-foreground mb-1">Región</label>
                       <select
                         [value]="ambitoRegion()"
                         (change)="ambitoRegion.set($any($event.target).value); ambitoProvincia.set(''); ambitoDistrito.set('')"
-                        class="w-full border border-slate-200 p-2 rounded-lg text-xs font-bold bg-white text-slate-700 outline-none focus:ring-1 focus:ring-teal-500"
+                        class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none transition-colors"
                       >
                         <option value="">Seleccione</option>
                         @for (r of regiones; track r) {
@@ -318,12 +327,12 @@ const INP_NORMAL = 'w-full p-2 bg-white border border-slate-300 rounded-lg text-
                       </select>
                     </div>
                     <div>
-                      <label class="block text-[10px] font-bold text-slate-500 mb-1">Provincia</label>
+                      <label class="block text-[11px] font-medium text-muted-foreground mb-1">Provincia</label>
                       <select
                         [value]="ambitoProvincia()"
                         (change)="ambitoProvincia.set($any($event.target).value); ambitoDistrito.set('')"
                         [disabled]="soloRegion() || !ambitoRegion()"
-                        class="w-full border border-slate-200 p-2 rounded-lg text-xs font-bold bg-white text-slate-700 outline-none focus:ring-1 focus:ring-teal-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                        class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none transition-colors disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
                       >
                         <option value="">Seleccione</option>
                         @for (p of provinciasDisponibles(); track p) {
@@ -332,12 +341,12 @@ const INP_NORMAL = 'w-full p-2 bg-white border border-slate-300 rounded-lg text-
                       </select>
                     </div>
                     <div>
-                      <label class="block text-[10px] font-bold text-slate-500 mb-1">Distrito</label>
+                      <label class="block text-[11px] font-medium text-muted-foreground mb-1">Distrito</label>
                       <select
                         [value]="ambitoDistrito()"
                         (change)="ambitoDistrito.set($any($event.target).value)"
                         [disabled]="soloRegion() || !ambitoProvincia()"
-                        class="w-full border border-slate-200 p-2 rounded-lg text-xs font-bold bg-white text-slate-700 outline-none focus:ring-1 focus:ring-teal-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                        class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none transition-colors disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
                       >
                         <option value="">Seleccione</option>
                         @for (d of distritosDisponibles(); track d) {
@@ -351,36 +360,36 @@ const INP_NORMAL = 'w-full p-2 bg-white border border-slate-300 rounded-lg text-
                     <button
                       type="button"
                       (click)="agregarAmbito()"
-                      class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-extrabold px-5 py-2 rounded-full text-xs flex items-center gap-1.5 shadow-sm transition"
+                      class="inline-flex items-center gap-2 h-9 px-4 rounded-md bg-card ring-1 ring-border text-sm font-medium text-foreground hover:bg-secondary transition-colors"
                     >
                       <span>Agregar</span>
-                      <lucide-angular [img]="SquarePlusIcon" class="size-4 text-slate-700" />
+                      <lucide-angular [img]="SquarePlusIcon" class="size-4 text-muted-foreground" />
                     </button>
                   </div>
 
-                  <div class="mt-2 border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
-                    <table class="w-full text-left text-[11px] border-collapse">
-                      <thead>
-                        <tr class="bg-slate-200 text-slate-700 font-bold border-b border-slate-300">
-                          <th class="p-2.5 w-1/3 text-center">Región</th>
-                          <th class="p-2.5 w-1/3 text-center">Provincia</th>
-                          <th class="p-2.5 w-1/3 text-center">Distrito</th>
-                          <th class="p-2.5 w-12 text-center"></th>
+                  <div class="mt-2 bg-card rounded-xl ring-1 ring-black/5 shadow-sm overflow-hidden">
+                    <table class="w-full text-left">
+                      <thead class="bg-secondary">
+                        <tr class="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
+                          <th class="px-4 py-3 w-1/3 text-center">Región</th>
+                          <th class="px-4 py-3 w-1/3 text-center">Provincia</th>
+                          <th class="px-4 py-3 w-1/3 text-center">Distrito</th>
+                          <th class="px-4 py-3 w-12 text-center"></th>
                         </tr>
                       </thead>
-                      <tbody class="divide-y divide-slate-100 font-bold text-slate-600">
+                      <tbody class="divide-y divide-border">
                         @if (ambitos().length === 0) {
                           <tr>
-                            <td colspan="4" class="p-3 text-center text-slate-400 font-bold">Sin ámbitos territoriales asignados.</td>
+                            <td colspan="4" class="px-4 py-4 text-center text-sm text-muted-foreground italic">Sin ámbitos territoriales asignados.</td>
                           </tr>
                         }
                         @for (amb of ambitos(); track $index; let i = $index) {
-                          <tr class="hover:bg-slate-50 transition-colors divide-x divide-slate-100">
-                            <td class="p-2.5 text-slate-700 text-center">{{ amb.region }}</td>
-                            <td class="p-2.5 text-slate-700 text-center">{{ amb.provincia }}</td>
-                            <td class="p-2.5 text-slate-700 text-center">{{ amb.distrito }}</td>
-                            <td class="p-2 text-center">
-                              <button type="button" (click)="eliminarAmbito(i)" class="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition" title="Eliminar ámbito">
+                          <tr class="hover:bg-secondary/40 transition-colors">
+                            <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ amb.region }}</td>
+                            <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ amb.provincia }}</td>
+                            <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ amb.distrito }}</td>
+                            <td class="px-2 py-3 text-center">
+                              <button type="button" (click)="eliminarAmbito(i)" class="p-2 rounded-lg transition-all bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground" title="Eliminar ámbito">
                                 <lucide-angular [img]="Trash2Icon" class="size-3.5" />
                               </button>
                             </td>
@@ -392,13 +401,18 @@ const INP_NORMAL = 'w-full p-2 bg-white border border-slate-300 rounded-lg text-
                 </div>
               }
             </div>
+
+            <!-- Permisos de menú por usuario (esquema según perfil seleccionado) -->
+            @if (esquemaPermisos(); as esquema) {
+              <app-permisos-menu-form [esquema]="esquema" [(permisos)]="permisosMenuEdit" />
+            }
           </div>
 
           <div class="flex justify-end gap-2 pt-2">
-            <button (click)="irAPestana('datos')" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+            <button (click)="irAPestana('datos')" class="px-4 py-2 text-sm rounded-lg hover:bg-secondary ring-1 ring-border transition-colors flex items-center gap-1.5">
               <lucide-angular [img]="ArrowLeftIcon" class="size-3.5" /> Atrás
             </button>
-            <button (click)="guardarRegistroCompleto()" class="px-6 py-2.5 bg-[#7bb31a] hover:bg-[#689914] text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5">
+            <button (click)="guardarRegistroCompleto()" class="px-5 py-2 text-sm bg-brand-accent hover:bg-brand-accent/90 text-white rounded-lg font-medium transition-colors flex items-center gap-1.5">
               <lucide-angular [img]="SaveIcon" class="size-3.5" />
               <span>{{ modo() === 'editar' ? 'Guardar Cambios' : 'Guardar Registro' }}</span>
             </button>
@@ -409,9 +423,9 @@ const INP_NORMAL = 'w-full p-2 bg-white border border-slate-300 rounded-lg text-
       <!-- Modal de alerta -->
       @if (alerta(); as a) {
         <app-modal [title]="a.titulo" maxWidth="max-w-md" (closed)="cerrarAlerta()">
-          <p class="text-xs text-slate-600 leading-relaxed font-semibold">{{ a.mensaje }}</p>
+          <p class="text-sm text-foreground leading-relaxed">{{ a.mensaje }}</p>
           <div class="flex justify-center mt-5">
-            <button (click)="cerrarAlerta()" class="px-6 py-2.5 bg-[#007287] hover:bg-teal-800 text-white font-bold rounded-xl text-xs transition min-w-[120px]">
+            <button (click)="cerrarAlerta()" class="inline-flex items-center justify-center h-9 px-6 min-w-[120px] rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
               Aceptar
             </button>
           </div>
@@ -426,6 +440,8 @@ export class UsuarioFormComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
   private readonly usuariosService = inject(UsuariosService);
+  private readonly listasAdmin = inject(ListasAdminService);
+  private readonly permisosService = inject(PermisosMenuService);
 
   readonly IdCardIcon = IdCard;
   readonly KeyRoundIcon = KeyRound;
@@ -444,12 +460,14 @@ export class UsuarioFormComponent implements OnInit {
   readonly inpDisabled = INP_DISABLED;
   readonly inpNormal = INP_NORMAL;
 
-  readonly profesiones = PROFESIONES;
+  /* Catálogos reactivos: base del proyecto ⊕ opciones de Administración de Listas */
+  readonly profesiones = computed(() => this.listasAdmin.opcionesFormulario('Profesión - Especialidad', PROFESIONES));
   readonly regimenes = REGIMENES_LABORALES;
-  readonly fuentes = FUENTES_FINANCIAMIENTO;
-  readonly categorias = CATEGORIAS_PRESUPUESTALES;
-  readonly programas = PROGRAMAS_MAESTROS;
-  readonly unidadesResponsables = UNIDADES_RESPONSABLES;
+  readonly fuentes = computed(() => this.listasAdmin.opcionesFormulario('Fuente de Financiamiento', FUENTES_FINANCIAMIENTO));
+  readonly categorias = computed(() => this.listasAdmin.opcionesFormulario('Categoría Presupuestal', CATEGORIAS_PRESUPUESTALES));
+  readonly programas = computed(() => this.listasAdmin.opcionesFormulario('Programas Presupuestales', PROGRAMAS_MAESTROS));
+  readonly unidadesResponsables = computed(() => this.listasAdmin.opcionesFormulario('Unidad Responsable', UNIDADES_RESPONSABLES));
+  readonly sexos = computed(() => this.listasAdmin.opcionesFormulario('Sexo', ['Masculino', 'Femenino']));
   readonly regiones = Object.keys(UBIGEO_SODEGA);
 
   readonly modo = signal<ModoForm>('nuevo');
@@ -462,6 +480,8 @@ export class UsuarioFormComponent implements OnInit {
   readonly ambitoDistrito = signal('');
   readonly alerta = signal<{ titulo: string; mensaje: string; cerrarYSalir?: boolean } | null>(null);
   readonly formTick = signal(0);
+  /** Permisos de menú en edición (esquema del perfil seleccionado). */
+  readonly permisosMenuEdit = signal<PermisosMenu>({});
 
   private usuarioBase: UsuarioSodega | null = null;
 
@@ -540,6 +560,7 @@ export class UsuarioFormComponent implements OnInit {
       perfil: u.perfil,
     });
     this.ambitos.set([...(u.ambitos ?? [])]);
+    this.sincronizarPermisosMenu();
     // En edición el DNI no cambia; en modo presupuesto la sección RENIEC queda bloqueada.
     this.reniecEditable.set(!esPresupuesto && false ? true : !esPresupuesto);
     if (this.modo() === 'editar') this.form.controls.dni.disable();
@@ -617,10 +638,18 @@ export class UsuarioFormComponent implements OnInit {
     this.formTick();
     const cat = this.form.controls.categoriaPresup.value;
     const prog = this.form.controls.programaPresup.value;
-    if (cat === 'Programa Presupuestal' && prog) {
-      return UNIDADES_POR_PROGRAMA[prog] ?? UNIDADES_FUNCIONALES_MAESTRAS;
-    }
-    return UNIDADES_FUNCIONALES_MAESTRAS;
+    const base =
+      cat === 'Programa Presupuestal' && prog
+        ? UNIDADES_POR_PROGRAMA[prog] ?? UNIDADES_FUNCIONALES_MAESTRAS
+        : UNIDADES_FUNCIONALES_MAESTRAS;
+    return this.listasAdmin.opcionesFormulario('Unidad Funcional (OPAS)', base);
+  });
+
+  /** Esquema de permisos del perfil seleccionado (solo lo configura el Admin General). */
+  readonly esquemaPermisos = computed(() => {
+    this.formTick();
+    if (this.auth.session()?.perfil !== 'Administrador General') return undefined;
+    return this.permisosService.esquemaPara(this.form.controls.perfil.value);
   });
 
   readonly regimenTemporal = computed(() => {
@@ -667,6 +696,19 @@ export class UsuarioFormComponent implements OnInit {
 
   onPerfilChange(): void {
     if (!this.mostrarAmbito()) this.ambitos.set([]);
+    this.sincronizarPermisosMenu();
+  }
+
+  /**
+   * Carga los permisos a editar: los guardados del usuario si el perfil
+   * coincide, o los defaults del esquema del perfil seleccionado.
+   */
+  private sincronizarPermisosMenu(): void {
+    const perfil = this.form.controls.perfil.value;
+    const guardados =
+      this.usuarioBase && this.usuarioBase.perfil === perfil ? this.usuarioBase.permisosMenu : undefined;
+    const esquema = this.permisosService.esquemaPara(perfil);
+    this.permisosMenuEdit.set(esquema ? combinarPermisos(esquema, guardados) : {});
   }
 
   /** Consulta simulada al Web Service de RENIEC (GET /reniec/{dni}). */
@@ -888,6 +930,11 @@ export class UsuarioFormComponent implements OnInit {
       unidadFuncional: esAdminGeneral ? '' : v.unidadFuncional,
       creadoPor: s.userGen,
       ambitos: perfilRequiereAmbito(v.perfil) ? [...this.ambitos()] : [],
+      // Permisos de menú: editados por el Admin General; si la sección no es
+      // visible se preservan los del registro original.
+      permisosMenu: this.esquemaPermisos()
+        ? this.permisosMenuEdit()
+        : this.usuarioBase?.permisosMenu,
       inhabilitadoPorVencimiento: false,
     };
 

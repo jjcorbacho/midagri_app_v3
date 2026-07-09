@@ -14,6 +14,10 @@ import { ModalComponent } from '../../shared/components/modal/modal.component';
 
 type FiltroKpi = 'TOTAL' | 'HABILITADO' | 'INHABILITADO' | 'PERMANENTE' | 'CRITICOS' | 'VENCIDOS';
 
+/** Badge pill base (mismo patrón que EstadoBadge de la bandeja N1). */
+const BADGE_PILL =
+  'inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 whitespace-nowrap tracking-wide';
+
 /**
  * Gestión Integral de Usuarios (módulo base SODEGA).
  * Administra usuarios, perfiles, vigencias laborales, ámbitos presupuestales y permisos.
@@ -23,33 +27,33 @@ type FiltroKpi = 'TOTAL' | 'HABILITADO' | 'INHABILITADO' | 'PERMANENTE' | 'CRITI
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule, ModalComponent],
   template: `
-    <section class="p-5 lg:p-6 max-w-[1400px] mx-auto">
-      <div class="flex justify-between items-center mb-4 border-b border-slate-200 pb-2">
+    <section class="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h1 class="text-xl font-extrabold text-slate-800 uppercase tracking-wide">Gestión Integral de Usuarios</h1>
-          <p class="text-xs text-slate-500 mt-0.5">
+          <h1 class="text-base font-bold tracking-wider uppercase text-foreground">Gestión Integral de Usuarios</h1>
+          <p class="text-sm text-muted-foreground mt-1 max-w-[70ch]">
             Administra usuarios, perfiles, vigencias laborales, ámbitos presupuestales y permisos de acceso del sistema SODEGA.
           </p>
         </div>
-        <div class="text-[11px] bg-sky-100 text-sky-800 px-3 py-1 rounded-full font-bold border border-sky-200">
+        <div class="text-[11px] px-2.5 py-1 rounded-full bg-brand-soft text-brand ring-1 ring-brand/30 font-bold whitespace-nowrap">
           Año Fiscal: <span class="font-black">2026</span>
         </div>
       </div>
 
       <!-- PANEL DE 6 TARJETAS KPI -->
-      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
+      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
         @for (k of kpiDefs; track k.filtro) {
           <button
             (click)="setFiltro(k.filtro)"
-            class="bg-white p-3 rounded-xl flex items-center justify-between shadow-sm border text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg cursor-pointer"
-            [class]="filtro() === k.filtro ? 'border-2 border-[#007287] bg-teal-50/40' : 'border-slate-200'"
+            class="bg-card p-5 rounded-xl flex justify-between items-center text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
+            [class]="filtro() === k.filtro ? 'ring-2 ring-brand shadow-md' : 'ring-1 ring-black/5 shadow-sm'"
           >
             <div>
-              <p class="text-2xl font-extrabold mb-0.5" [class]="k.numCls">{{ kpis()[k.filtro] }}</p>
-              <p class="text-[9px] font-bold uppercase tracking-wide" [class]="k.labelCls">{{ k.label }}</p>
+              <p class="text-[10px] font-bold uppercase tracking-wider mb-1" [class]="k.labelCls">{{ k.label }}</p>
+              <p class="text-3xl font-bold tabular-nums" [class]="k.numCls">{{ kpis()[k.filtro] }}</p>
             </div>
-            <div class="text-xl w-8 h-8 rounded-lg flex items-center justify-center" [class]="k.iconBg">
-              <lucide-angular [img]="k.icon" class="size-4" />
+            <div class="size-12 rounded-xl flex items-center justify-center shrink-0" [class]="k.iconBg">
+              <lucide-angular [img]="k.icon" class="size-6" />
             </div>
           </button>
         }
@@ -57,176 +61,177 @@ type FiltroKpi = 'TOTAL' | 'HABILITADO' | 'INHABILITADO' | 'PERMANENTE' | 'CRITI
 
       <!-- BANNER EXCEL -->
       @if (toastExcel()) {
-        <div class="mb-4 bg-emerald-50 border border-emerald-300 text-emerald-800 p-2.5 rounded-xl text-xs font-semibold flex items-center justify-between">
+        <div class="bg-state-aprobado-soft ring-1 ring-state-aprobado/30 text-state-aprobado-foreground p-3 rounded-xl text-sm font-medium flex items-center justify-between transition-all">
           <div class="flex items-center gap-2">
-            <lucide-angular [img]="FileSpreadsheetIcon" class="size-4 text-emerald-600 animate-bounce" />
+            <lucide-angular [img]="FileSpreadsheetIcon" class="size-4" />
             <span>{{ toastExcel() }}</span>
           </div>
-          <button (click)="toastExcel.set('')" class="text-emerald-900 hover:text-black font-bold text-sm px-1.5 cursor-pointer">×</button>
+          <button (click)="toastExcel.set('')" class="hover:opacity-70 font-bold text-sm px-1.5 cursor-pointer transition-opacity">×</button>
         </div>
       }
 
-      <!-- Barra de búsqueda y acciones -->
-      <div class="flex justify-between items-center mb-4 bg-white p-3 rounded-xl border border-slate-200/80 shadow-sm">
-        <div class="flex items-center gap-1.5 text-xs text-slate-700">
-          <span class="font-semibold text-slate-500">Buscar:</span>
-          <div class="relative">
-            <input
-              type="text"
-              [value]="q()"
-              (input)="q.set($any($event.target).value); page.set(1)"
-              placeholder="Buscar por DNI, Nombre, Rol..."
-              class="border border-slate-200 p-1.5 pl-7 rounded-lg outline-none focus:ring-1 focus:ring-teal-500 w-60 bg-white text-xs font-semibold"
-            />
-            <lucide-angular [img]="SearchIcon" class="absolute left-2.5 top-2 size-3 text-slate-400" />
+      <!-- Panel principal: búsqueda + grilla + paginación -->
+      <div class="bg-card rounded-xl ring-1 ring-black/5 shadow-sm overflow-hidden">
+        <!-- Barra de búsqueda y acciones -->
+        <div class="p-4 bg-secondary/40 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div class="flex items-center gap-2 flex-1">
+            <span class="text-sm font-medium text-muted-foreground shrink-0">Buscar:</span>
+            <div class="relative flex-1 min-w-[200px] max-w-md">
+              <lucide-angular [img]="SearchIcon" class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <input
+                type="text"
+                [value]="q()"
+                (input)="q.set($any($event.target).value); page.set(1)"
+                placeholder="Buscar por DNI, Nombre, Rol..."
+                class="w-full pl-10 pr-4 py-2 bg-card ring-1 ring-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
+              />
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button
+              (click)="exportarExcel()"
+              class="inline-flex items-center gap-2 h-9 px-3 rounded-md bg-card ring-1 ring-border text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+            >
+              <lucide-angular [img]="FileSpreadsheetIcon" class="size-4 text-emerald-600" />
+              <span>Exportar excel</span>
+            </button>
+            <button
+              (click)="nuevoUsuario()"
+              class="inline-flex items-center gap-2 h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              <lucide-angular [img]="UserPlusIcon" class="size-4" />
+              <span>Nuevo usuario</span>
+            </button>
           </div>
         </div>
 
-        <div class="flex items-center gap-2">
-          <button
-            (click)="exportarExcel()"
-            class="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
-          >
-            <lucide-angular [img]="FileSpreadsheetIcon" class="size-4 text-emerald-600" />
-            <span>Exportar excel</span>
-          </button>
-          <button
-            (click)="nuevoUsuario()"
-            class="bg-[#007287] hover:bg-teal-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
-          >
-            <lucide-angular [img]="UserPlusIcon" class="size-4 text-emerald-300" />
-            <span>Nuevo usuario</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- GRILLA DE DATOS -->
-      <div class="border border-slate-200 rounded-xl shadow-sm bg-white overflow-hidden">
-        <div class="overflow-x-auto max-w-full">
-          <table class="w-full text-left text-[11px] border-collapse min-w-[1300px]">
-            <thead class="bg-[#007287] text-white">
-              <tr class="divide-x divide-teal-800/40">
-                <th class="p-3 text-center w-24 font-bold">Acciones</th>
-                <th class="p-3 w-56 font-bold">Empleado</th>
-                <th class="p-3 text-center w-28 font-bold">Estado</th>
-                <th class="p-3 w-28 font-bold">Usuario</th>
-                <th class="p-3 w-24 font-bold">DNI</th>
-                <th class="p-3 w-48 font-bold">Perfil</th>
-                <th class="p-3 w-64 font-bold">OPAS</th>
-                <th class="p-3 w-48 font-bold">Vigencia</th>
-                <th class="p-3 w-28 font-bold">Vencimiento</th>
-                <th class="p-3 w-64 font-bold">Prog. presupuestal</th>
-                <th class="p-3 w-24 font-bold">Ubigeo</th>
+        <!-- GRILLA DE DATOS -->
+        <div class="overflow-auto max-h-[60vh]">
+          <table class="w-full text-left min-w-[1300px]">
+            <thead class="bg-secondary sticky top-0 z-10 shadow-sm">
+              <tr class="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
+                <th class="px-4 py-4 text-center w-24">Acciones</th>
+                <th class="px-4 py-4 w-56">Empleado</th>
+                <th class="px-4 py-4 text-center w-28">Estado</th>
+                <th class="px-4 py-4 w-28">Usuario</th>
+                <th class="px-4 py-4 w-24">DNI</th>
+                <th class="px-4 py-4 w-48">Perfil</th>
+                <th class="px-4 py-4 w-64">OPAS</th>
+                <th class="px-4 py-4 w-48">Vigencia</th>
+                <th class="px-4 py-4 w-28">Vencimiento</th>
+                <th class="px-4 py-4 w-64">Prog. presupuestal</th>
+                <th class="px-4 py-4 w-24">Ubigeo</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody class="divide-y divide-border">
               @if (pageRows().length === 0) {
                 <tr>
-                  <td colspan="11" class="p-8 text-center text-slate-400 font-bold">
+                  <td colspan="11" class="px-6 py-12 text-center text-sm text-muted-foreground italic">
                     No se encontraron registros de usuarios con los criterios establecidos.
                   </td>
                 </tr>
               }
               @for (u of pageRows(); track u.id) {
-                <tr class="hover:bg-slate-50/80 transition-colors divide-x divide-slate-100 text-slate-700 font-bold">
-                  <td class="p-3 text-center relative">
+                <tr class="hover:bg-secondary/40 transition-colors">
+                  <td class="px-4 py-4 text-center relative">
                     <button
                       (click)="toggleDropdown($event, u.id)"
-                      class="p-1 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-950 rounded-lg transition-all text-xs focus:ring-1 focus:ring-teal-500 font-bold"
+                      title="Acciones"
+                      aria-label="Acciones"
+                      class="p-2 rounded-lg transition-all bg-muted text-muted-foreground hover:bg-foreground hover:text-background"
                     >
-                      <lucide-angular [img]="EllipsisIcon" class="size-3.5" />
+                      <lucide-angular [img]="EllipsisIcon" class="size-4" />
                     </button>
                     @if (dropdownDe() === u.id) {
                       <div class="fixed inset-0 z-40" (click)="dropdownDe.set(null)"></div>
-                      <div class="absolute left-3 mt-1.5 w-44 bg-white border border-slate-200 rounded-xl shadow-xl z-50 text-left overflow-hidden">
-                        <button (click)="accion('EDITAR', u)" class="w-full px-3 py-2 text-[10px] text-slate-700 hover:bg-teal-50 hover:text-[#007287] font-bold flex items-center gap-2 border-b border-slate-100 transition">
-                          <lucide-angular [img]="UserPenIcon" class="size-3.5 text-slate-400" /> Editar Datos
+                      <div class="absolute left-4 mt-1.5 w-48 bg-popover ring-1 ring-black/5 rounded-xl shadow-lg z-50 text-left overflow-hidden">
+                        <button (click)="accion('EDITAR', u)" class="w-full px-3 py-2 text-xs text-foreground hover:bg-secondary font-medium flex items-center gap-2 border-b border-border transition-colors">
+                          <lucide-angular [img]="UserPenIcon" class="size-3.5 text-muted-foreground" /> Editar Datos
                         </button>
-                        <button (click)="accion('PRESUPUESTO', u)" class="w-full px-3 py-2 text-[10px] text-slate-700 hover:bg-teal-50 hover:text-[#007287] font-bold flex items-center gap-2 border-b border-slate-100 transition">
-                          <lucide-angular [img]="FilePlus2Icon" class="size-3.5 text-slate-400" /> Agregar nueva Presup.
+                        <button (click)="accion('PRESUPUESTO', u)" class="w-full px-3 py-2 text-xs text-foreground hover:bg-secondary font-medium flex items-center gap-2 border-b border-border transition-colors">
+                          <lucide-angular [img]="FilePlus2Icon" class="size-3.5 text-muted-foreground" /> Agregar nueva Presup.
                         </button>
-                        <button (click)="accion('CLAVE', u)" class="w-full px-3 py-2 text-[10px] text-slate-700 hover:bg-teal-50 hover:text-[#007287] font-bold flex items-center gap-2 border-b border-slate-100 transition">
-                          <lucide-angular [img]="KeyRoundIcon" class="size-3.5 text-slate-400" /> Restablecer clave
+                        <button (click)="accion('CLAVE', u)" class="w-full px-3 py-2 text-xs text-foreground hover:bg-secondary font-medium flex items-center gap-2 border-b border-border transition-colors">
+                          <lucide-angular [img]="KeyRoundIcon" class="size-3.5 text-muted-foreground" /> Restablecer clave
                         </button>
-                        <button (click)="accion('REASIGNAR', u)" class="w-full px-3 py-2 text-[10px] text-slate-700 hover:bg-teal-50 hover:text-[#007287] font-bold flex items-center gap-2 border-b border-slate-100 transition">
-                          <lucide-angular [img]="MapPinnedIcon" class="size-3.5 text-slate-400" /> Reasignar OPA
+                        <button (click)="accion('REASIGNAR', u)" class="w-full px-3 py-2 text-xs text-foreground hover:bg-secondary font-medium flex items-center gap-2 border-b border-border transition-colors">
+                          <lucide-angular [img]="MapPinnedIcon" class="size-3.5 text-muted-foreground" /> Reasignar OPA
                         </button>
-                        <button (click)="accion('ESTADO', u)" class="w-full px-3 py-2 text-[10px] text-slate-700 hover:bg-teal-50 hover:text-[#007287] font-bold flex items-center gap-2 transition">
-                          <lucide-angular [img]="WorkflowIcon" class="size-3.5 text-slate-400" /> Cambiar Estado
+                        <button (click)="accion('ESTADO', u)" class="w-full px-3 py-2 text-xs text-foreground hover:bg-secondary font-medium flex items-center gap-2 transition-colors">
+                          <lucide-angular [img]="WorkflowIcon" class="size-3.5 text-muted-foreground" /> Cambiar Estado
                         </button>
                       </div>
                     }
                   </td>
-                  <td class="p-3 text-slate-900 font-bold">{{ nombreFila(u) }}</td>
-                  <td class="p-3 text-center">
+                  <td class="px-4 py-4 text-sm font-semibold text-foreground leading-tight">{{ nombreFila(u) }}</td>
+                  <td class="px-4 py-4 text-center whitespace-nowrap">
                     <span
-                      class="px-2 py-0.5 rounded-full text-[9px] font-black border"
-                      [class]="u.estado === 'HABILITADO' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'"
+                      class="${BADGE_PILL}"
+                      [class]="u.estado === 'HABILITADO'
+                        ? 'bg-state-aprobado-soft text-state-aprobado-foreground ring-state-aprobado/30'
+                        : 'bg-state-observado-soft text-state-observado-foreground ring-state-observado/30'"
                     >{{ u.estado }}</span>
                   </td>
-                  <td class="p-3 text-slate-500 font-medium">{{ u.userGen }}</td>
-                  <td class="p-3 font-mono font-bold">{{ u.dni }}</td>
-                  <td class="p-3 text-slate-800 font-bold">{{ u.perfil }}</td>
-                  <td class="p-3 text-slate-700 font-bold">{{ opasDe(u) }}</td>
-                  <td class="p-3"><span [class]="vigenciaCls(u)">{{ u.vigenciaCalculada }}</span></td>
-                  <td class="p-3 font-mono font-bold"><span [class]="vencimientoCls(u)">{{ vencimientoDe(u) }}</span></td>
-                  <td class="p-3 text-slate-500 truncate max-w-[150px] font-bold" [title]="progPresupDe(u)">{{ progPresupDe(u) }}</td>
-                  <td class="p-3 font-mono font-bold">{{ u.ubigeo }}</td>
+                  <td class="px-4 py-4 text-sm text-muted-foreground font-medium">{{ u.userGen }}</td>
+                  <td class="px-4 py-4 text-sm font-mono tabular-nums text-foreground/80">{{ u.dni }}</td>
+                  <td class="px-4 py-4 text-sm font-semibold text-foreground">{{ u.perfil }}</td>
+                  <td class="px-4 py-4 text-sm text-muted-foreground">{{ opasDe(u) }}</td>
+                  <td class="px-4 py-4 whitespace-nowrap"><span [class]="vigenciaCls(u)">{{ u.vigenciaCalculada }}</span></td>
+                  <td class="px-4 py-4 whitespace-nowrap"><span [class]="vencimientoCls(u)">{{ vencimientoDe(u) }}</span></td>
+                  <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[180px]" [title]="progPresupDe(u)">{{ progPresupDe(u) }}</td>
+                  <td class="px-4 py-4 text-sm font-mono tabular-nums text-foreground/80">{{ u.ubigeo }}</td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
-      </div>
 
-      <!-- Paginación -->
-      <div class="flex justify-between items-center mt-3 text-[10px] text-slate-500 font-bold">
-        <div class="flex items-center gap-4">
-          <div class="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-sm">
-            <span class="font-bold text-slate-500">Mostrar:</span>
+        <!-- Paginación -->
+        <div class="p-4 border-t border-border bg-card flex flex-col md:flex-row justify-between items-center gap-3">
+          <div class="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Mostrar</span>
             <select
               [value]="pageSize()"
               (change)="pageSize.set(+$any($event.target).value); page.set(1)"
-              class="bg-transparent text-[10px] font-extrabold text-[#007287] outline-none cursor-pointer"
+              class="px-2 py-1 ring-1 ring-border rounded text-xs font-medium bg-card"
             >
               @for (n of [5, 10, 20, 50]; track n) {
                 <option [value]="n">{{ n }}</option>
               }
             </select>
+            <span>registros · del {{ rangoDesde() }} al {{ rangoHasta() }} de un total de {{ filtered().length }}</span>
           </div>
-          <p>Mostrando registros del {{ rangoDesde() }} al {{ rangoHasta() }} de un total de {{ filtered().length }}</p>
-        </div>
-        <div class="flex gap-1 border border-slate-300 rounded-lg overflow-hidden font-bold">
-          <button
-            (click)="page.set(page() - 1)"
-            [disabled]="page() === 1"
-            class="px-3 py-1.5"
-            [class]="page() === 1 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'"
-          >Anterior</button>
-          @for (p of paginas(); track p) {
+          <div class="flex gap-1 items-center">
             <button
-              (click)="page.set(p)"
-              class="px-3 py-1.5 border-x"
-              [class]="page() === p ? 'bg-[#007287] text-white font-bold' : 'bg-white text-slate-600 hover:bg-slate-50'"
-            >{{ p }}</button>
-          }
-          <button
-            (click)="page.set(page() + 1)"
-            [disabled]="page() === totalPages()"
-            class="px-3 py-1.5"
-            [class]="page() === totalPages() ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-50 hover:bg-slate-100 text-slate-600'"
-          >Siguiente</button>
+              (click)="page.set(page() - 1)"
+              [disabled]="page() === 1"
+              class="px-3 py-1 ring-1 ring-border rounded text-[11px] font-bold text-foreground/80 disabled:opacity-40 hover:bg-secondary transition-colors"
+            >Anterior</button>
+            @for (p of paginas(); track p) {
+              <button
+                (click)="page.set(p)"
+                class="px-3 py-1 rounded text-[11px] font-bold transition-colors"
+                [class]="page() === p ? 'bg-teal-50 ring-1 ring-teal-200 text-teal-700' : 'ring-1 ring-border text-foreground/80 hover:bg-secondary'"
+              >{{ p }}</button>
+            }
+            <button
+              (click)="page.set(page() + 1)"
+              [disabled]="page() === totalPages()"
+              class="px-3 py-1 ring-1 ring-border rounded text-[11px] font-bold text-foreground/80 disabled:opacity-40 hover:bg-secondary transition-colors"
+            >Siguiente</button>
+          </div>
         </div>
       </div>
 
       <!-- Modal alerta (equivalente a la alerta personalizada del prototipo) -->
       @if (alerta(); as a) {
         <app-modal [title]="a.titulo" maxWidth="max-w-md" (closed)="alerta.set(null)">
-          <p class="text-xs text-slate-600 leading-relaxed font-semibold">{{ a.mensaje }}</p>
+          <p class="text-sm text-foreground leading-relaxed">{{ a.mensaje }}</p>
           <div class="flex justify-center mt-5">
             <button
               (click)="alerta.set(null)"
-              class="px-6 py-2.5 bg-[#007287] hover:bg-teal-800 text-white font-bold rounded-xl text-xs transition min-w-[120px]"
+              class="inline-flex items-center justify-center h-9 px-6 min-w-[120px] rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
             >Aceptar</button>
           </div>
         </app-modal>
@@ -251,12 +256,12 @@ export class GestionUsuariosComponent {
   readonly WorkflowIcon = Workflow;
 
   readonly kpiDefs = [
-    { filtro: 'TOTAL' as FiltroKpi, label: 'Total usuarios', icon: Users, numCls: 'text-slate-800', labelCls: 'text-[#007287]', iconBg: 'bg-slate-50 text-[#007287]' },
-    { filtro: 'HABILITADO' as FiltroKpi, label: 'Habilitados', icon: UserCheck, numCls: 'text-slate-800', labelCls: 'text-emerald-600', iconBg: 'bg-emerald-50 text-emerald-500' },
-    { filtro: 'INHABILITADO' as FiltroKpi, label: 'Inhabilitados', icon: UserX, numCls: 'text-slate-800', labelCls: 'text-red-600', iconBg: 'bg-red-50 text-red-500' },
-    { filtro: 'PERMANENTE' as FiltroKpi, label: 'Permanente', icon: InfinityIcon, numCls: 'text-emerald-600', labelCls: 'text-emerald-600', iconBg: 'bg-emerald-50 text-emerald-500' },
-    { filtro: 'CRITICOS' as FiltroKpi, label: 'Por vencer (30 días)', icon: Clock, numCls: 'text-amber-600', labelCls: 'text-amber-600', iconBg: 'bg-amber-50 text-amber-500' },
-    { filtro: 'VENCIDOS' as FiltroKpi, label: 'Vencidos', icon: TriangleAlert, numCls: 'text-red-700', labelCls: 'text-red-700', iconBg: 'bg-red-50 text-red-600 animate-pulse' },
+    { filtro: 'TOTAL' as FiltroKpi, label: 'Total usuarios', icon: Users, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-blue-50 text-blue-600' },
+    { filtro: 'HABILITADO' as FiltroKpi, label: 'Habilitados', icon: UserCheck, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-emerald-50 text-emerald-600' },
+    { filtro: 'INHABILITADO' as FiltroKpi, label: 'Inhabilitados', icon: UserX, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-destructive/10 text-destructive' },
+    { filtro: 'PERMANENTE' as FiltroKpi, label: 'Permanente', icon: InfinityIcon, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-teal-50 text-teal-600' },
+    { filtro: 'CRITICOS' as FiltroKpi, label: 'Por vencer (30 días)', icon: Clock, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-amber-50 text-amber-600' },
+    { filtro: 'VENCIDOS' as FiltroKpi, label: 'Vencidos', icon: TriangleAlert, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-destructive/10 text-destructive' },
   ];
 
   readonly filtro = signal<FiltroKpi>('TOTAL');
@@ -374,15 +379,15 @@ export class GestionUsuariosComponent {
   }
 
   private badgeVigencia(u: UsuarioSodega, inline: boolean): string {
-    const sufijo = inline ? ' inline-block' : '';
+    const base = BADGE_PILL + (inline ? ' font-mono tabular-nums' : '');
     if (esUsuarioPermanente(u)) {
-      return 'text-emerald-700 font-extrabold bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200' + sufijo;
+      return `${base} bg-state-aprobado-soft text-state-aprobado-foreground ring-state-aprobado/30`;
     }
     const d = u.diasRestantes ?? 0;
-    if (d < 0) return 'text-white font-black bg-red-700 px-2 py-1 rounded-lg border border-red-800 animate-pulse' + sufijo;
-    if (d === 0) return 'text-amber-950 font-black bg-amber-300 px-2 py-1 rounded-lg border border-amber-500 animate-pulse' + sufijo;
-    if (d <= 30) return 'text-amber-800 font-black bg-amber-100 px-2 py-1 rounded-lg border border-amber-300' + sufijo;
-    return 'text-sky-800 font-extrabold bg-sky-50 px-2 py-1 rounded-lg border border-sky-200' + sufijo;
+    if (d < 0) return `${base} bg-state-observado-soft text-state-observado-foreground ring-state-observado/30`;
+    if (d === 0) return `${base} bg-state-enviado-soft text-state-enviado-foreground ring-state-enviado/30`;
+    if (d <= 30) return `${base} bg-state-subsanado-soft text-state-subsanado-foreground ring-state-subsanado/30`;
+    return `${base} bg-state-validado-soft text-state-validado-foreground ring-state-validado/30`;
   }
 
   /* ===== Acciones ===== */

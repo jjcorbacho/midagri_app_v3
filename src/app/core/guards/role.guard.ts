@@ -1,7 +1,9 @@
 import { inject } from '@angular/core';
 import { CanActivateChildFn, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { PermisosMenuService } from '../services/permisos-menu.service';
 import { Perfil } from '../models/usuario-sodega.model';
+import { GRUPO_ADMINISTRACION, PERMISO_ADMIN_LISTAS } from '../constants/permisos-menu.const';
 
 /**
  * Matriz de acceso por perfil SODEGA.
@@ -9,10 +11,14 @@ import { Perfil } from '../models/usuario-sodega.model';
  *  - Técnico registra capacitaciones/AT → Admin DZ evalúa técnicos →
  *    Admin UO evalúa a los DZ → Jefe de Área aprueba a las UO.
  *  - Gestión de Usuarios: todos los perfiles administrativos (no el Técnico).
+ *  - Administración → Listas: Admin General siempre; Jefe de Área y Admin DZ
+ *    solo si su permiso de menú `administracion.listas` está activo.
  */
-function isAllowed(path: string, perfil: Perfil): boolean {
+function isAllowed(path: string, perfil: Perfil, puedeVerListas: boolean): boolean {
   if (perfil === 'Administrador General') return true;
   if (path.startsWith('/perfil') || path.startsWith('/dashboard')) return true;
+
+  if (path.startsWith('/administracion')) return puedeVerListas;
 
   if (perfil === 'Jefe de Área') {
     if (path.startsWith('/seguimiento/aprobacion')) return true;
@@ -57,9 +63,11 @@ function fallbackFor(perfil: Perfil): string {
 
 export const roleGuard: CanActivateChildFn = (_route, state) => {
   const auth = inject(AuthService);
+  const permisosMenu = inject(PermisosMenuService);
   const router = inject(Router);
   const perfil = auth.perfil();
   if (!perfil) return router.createUrlTree(['/auth']);
-  if (isAllowed(state.url, perfil)) return true;
+  const puedeVerListas = permisosMenu.sesionTiene(GRUPO_ADMINISTRACION, PERMISO_ADMIN_LISTAS);
+  if (isAllowed(state.url, perfil, puedeVerListas)) return true;
   return router.createUrlTree([fallbackFor(perfil)]);
 };
