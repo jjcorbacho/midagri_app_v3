@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import {
   LucideAngularModule,
   Users, UserCheck, UserX, Infinity as InfinityIcon, Clock, TriangleAlert,
-  FileSpreadsheet, UserPlus, Search, EllipsisVertical, UserPen, FilePlus2,
+  FileSpreadsheet, UserPlus, Search, UserPen, FilePlus2,
   KeyRound, MapPinned, Workflow,
 } from 'lucide-angular';
 import { AuthService } from '../../core/services/auth.service';
@@ -17,6 +17,15 @@ type FiltroKpi = 'TOTAL' | 'HABILITADO' | 'INHABILITADO' | 'PERMANENTE' | 'CRITI
 /** Badge pill base (mismo patrón que EstadoBadge de la bandeja N1). */
 const BADGE_PILL =
   'inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 whitespace-nowrap tracking-wide';
+
+/** Tonos de los iconos de acción (mismo patrón ICON_TONES de la bandeja N1). */
+const ICON_TONES: Record<string, string> = {
+  teal: 'bg-brand-soft text-brand hover:bg-brand hover:text-brand-foreground',
+  blue: 'bg-state-validado-soft text-state-validado-foreground hover:bg-state-validado hover:text-white',
+  red: 'bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground',
+  amber: 'bg-state-subsanado-soft text-state-subsanado-foreground hover:bg-state-subsanado hover:text-white',
+  slate: 'bg-muted text-muted-foreground hover:bg-foreground hover:text-background',
+};
 
 /**
  * Gestión Integral de Usuarios (módulo base SODEGA).
@@ -108,10 +117,10 @@ const BADGE_PILL =
 
         <!-- GRILLA DE DATOS -->
         <div class="overflow-auto max-h-[60vh]">
-          <table class="w-full text-left min-w-[1300px]">
+          <table class="w-full text-left min-w-[1400px]">
             <thead class="bg-secondary sticky top-0 z-10 shadow-sm">
               <tr class="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                <th class="px-4 py-4 text-center w-24">Acciones</th>
+                <th class="px-4 py-4 text-center min-w-[220px]">Acciones</th>
                 <th class="px-4 py-4 w-56">Empleado</th>
                 <th class="px-4 py-4 text-center w-28">Estado</th>
                 <th class="px-4 py-4 w-28">Usuario</th>
@@ -134,35 +143,29 @@ const BADGE_PILL =
               }
               @for (u of pageRows(); track u.id) {
                 <tr class="hover:bg-secondary/40 transition-colors">
-                  <td class="px-4 py-4 text-center relative">
-                    <button
-                      (click)="toggleDropdown($event, u.id)"
-                      title="Acciones"
-                      aria-label="Acciones"
-                      class="p-2 rounded-lg transition-all bg-muted text-muted-foreground hover:bg-foreground hover:text-background"
-                    >
-                      <lucide-angular [img]="EllipsisIcon" class="size-4" />
-                    </button>
-                    @if (dropdownDe() === u.id) {
-                      <div class="fixed inset-0 z-40" (click)="dropdownDe.set(null)"></div>
-                      <div class="absolute left-4 mt-1.5 w-48 bg-popover ring-1 ring-black/5 rounded-xl shadow-lg z-50 text-left overflow-hidden">
-                        <button (click)="accion('EDITAR', u)" class="w-full px-3 py-2 text-xs text-foreground hover:bg-secondary font-medium flex items-center gap-2 border-b border-border transition-colors">
-                          <lucide-angular [img]="UserPenIcon" class="size-3.5 text-muted-foreground" /> Editar Datos
-                        </button>
-                        <button (click)="accion('PRESUPUESTO', u)" class="w-full px-3 py-2 text-xs text-foreground hover:bg-secondary font-medium flex items-center gap-2 border-b border-border transition-colors">
-                          <lucide-angular [img]="FilePlus2Icon" class="size-3.5 text-muted-foreground" /> Agregar nueva Presup.
-                        </button>
-                        <button (click)="accion('CLAVE', u)" class="w-full px-3 py-2 text-xs text-foreground hover:bg-secondary font-medium flex items-center gap-2 border-b border-border transition-colors">
-                          <lucide-angular [img]="KeyRoundIcon" class="size-3.5 text-muted-foreground" /> Restablecer clave
-                        </button>
-                        <button (click)="accion('REASIGNAR', u)" class="w-full px-3 py-2 text-xs text-foreground hover:bg-secondary font-medium flex items-center gap-2 border-b border-border transition-colors">
-                          <lucide-angular [img]="MapPinnedIcon" class="size-3.5 text-muted-foreground" /> Reasignar OPA
-                        </button>
-                        <button (click)="accion('ESTADO', u)" class="w-full px-3 py-2 text-xs text-foreground hover:bg-secondary font-medium flex items-center gap-2 transition-colors">
-                          <lucide-angular [img]="WorkflowIcon" class="size-3.5 text-muted-foreground" /> Cambiar Estado
-                        </button>
-                      </div>
-                    }
+                  <td class="px-4 py-4">
+                    <div class="flex items-center justify-center gap-1 flex-wrap">
+                      <button title="Editar Datos" aria-label="Editar Datos" (click)="accion('EDITAR', u)"
+                        class="p-2 rounded-lg transition-all" [class]="tone('slate')">
+                        <lucide-angular [img]="UserPenIcon" class="size-4" />
+                      </button>
+                      <button title="Agregar nueva Presup." aria-label="Agregar nueva Presupuestal" (click)="accion('PRESUPUESTO', u)"
+                        class="p-2 rounded-lg transition-all" [class]="tone('teal')">
+                        <lucide-angular [img]="FilePlus2Icon" class="size-4" />
+                      </button>
+                      <button title="Restablecer clave" aria-label="Restablecer clave" (click)="accion('CLAVE', u)"
+                        class="p-2 rounded-lg transition-all" [class]="tone('amber')">
+                        <lucide-angular [img]="KeyRoundIcon" class="size-4" />
+                      </button>
+                      <button title="Reasignar OPA" aria-label="Reasignar OPA" (click)="accion('REASIGNAR', u)"
+                        class="p-2 rounded-lg transition-all" [class]="tone('blue')">
+                        <lucide-angular [img]="MapPinnedIcon" class="size-4" />
+                      </button>
+                      <button title="Cambiar Estado" aria-label="Cambiar Estado" (click)="accion('ESTADO', u)"
+                        class="p-2 rounded-lg transition-all" [class]="tone('red')">
+                        <lucide-angular [img]="WorkflowIcon" class="size-4" />
+                      </button>
+                    </div>
                   </td>
                   <td class="px-4 py-4 text-sm font-semibold text-foreground leading-tight">{{ nombreFila(u) }}</td>
                   <td class="px-4 py-4 text-center whitespace-nowrap">
@@ -248,7 +251,6 @@ export class GestionUsuariosComponent {
   readonly FileSpreadsheetIcon = FileSpreadsheet;
   readonly UserPlusIcon = UserPlus;
   readonly SearchIcon = Search;
-  readonly EllipsisIcon = EllipsisVertical;
   readonly UserPenIcon = UserPen;
   readonly FilePlus2Icon = FilePlus2;
   readonly KeyRoundIcon = KeyRound;
@@ -268,7 +270,6 @@ export class GestionUsuariosComponent {
   readonly q = signal('');
   readonly page = signal(1);
   readonly pageSize = signal(5);
-  readonly dropdownDe = signal<string | null>(null);
   readonly toastExcel = signal('');
   readonly alerta = signal<{ titulo: string; mensaje: string } | null>(null);
 
@@ -337,9 +338,8 @@ export class GestionUsuariosComponent {
     this.page.set(1);
   }
 
-  toggleDropdown(e: Event, id: string): void {
-    e.stopPropagation();
-    this.dropdownDe.update((actual) => (actual === id ? null : id));
+  tone(t: string): string {
+    return ICON_TONES[t] ?? '';
   }
 
   /* ===== Formato de fila (idéntico al prototipo) ===== */
@@ -396,7 +396,6 @@ export class GestionUsuariosComponent {
   }
 
   accion(tipo: 'EDITAR' | 'PRESUPUESTO' | 'CLAVE' | 'REASIGNAR' | 'ESTADO', u: UsuarioSodega): void {
-    this.dropdownDe.set(null);
     switch (tipo) {
       case 'EDITAR':
         this.router.navigate(['/usuarios', u.id], { queryParams: { modo: 'editar' } });
