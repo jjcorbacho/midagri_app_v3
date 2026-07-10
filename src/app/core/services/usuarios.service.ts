@@ -9,6 +9,11 @@ import {
   esUsuarioPermanente,
   toTitleCase,
 } from '../models/usuario-sodega.model';
+import { permisosCompletos } from '../models/permisos-menu.model';
+import { ESQUEMAS_PERMISOS_MENU } from '../constants/permisos-menu.const';
+
+/** Cuenta master: ingresa con todos los permisos de menú activos. */
+const PERMISOS_MASTER = permisosCompletos(ESQUEMAS_PERMISOS_MENU['Administrador General']!);
 
 /**
  * Gestión Integral de Usuarios SODEGA.
@@ -56,6 +61,7 @@ export class UsuariosService {
       programaPresup: '',
       unidadFuncional: '',
       ambitos: [],
+      permisosMenu: PERMISOS_MASTER,
     },
   ]);
 
