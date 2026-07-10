@@ -2,13 +2,16 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import {
   LucideAngularModule,
   Save, RotateCcw, GraduationCap, Headset, Users, Clock, Target,
-  AlertTriangle, Info, Lock, CheckCircle2,
+  AlertTriangle, Info, Lock, CheckCircle2, Sprout,
 } from 'lucide-angular';
 import { AreaService } from '../../../core/services/area.service';
 import { ReglasService } from '../../../core/services/reglas.service';
 import { ToastService } from '../../../core/services/toast.service';
-import { AreaConfig, CriterioExito, PeriodoMedicion } from '../../../core/models/area-config.model';
+import { AreaConfig, CriterioExito, MetaGeneral, PeriodoMedicion } from '../../../core/models/area-config.model';
 import { getArea } from '../../../core/constants/areas.const';
+
+/** Título de la sección de meta global (modificable a futuro sin tocar el template). */
+const TITULO_META_GENERAL = 'Meta General';
 
 function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito): CriterioExito {
   if (!cap && !at) return 'none';
@@ -84,10 +87,13 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                       </div>
                     </div>
                   </button>
-                  <button
-                    type="button"
+                  <div
+                    role="button"
+                    tabindex="0"
+                    [attr.aria-pressed]="draft().asistenciaActiva"
                     (click)="setAtActiva(!draft().asistenciaActiva)"
-                    class="text-left rounded-lg border p-3 transition-all"
+                    (keydown.enter)="setAtActiva(!draft().asistenciaActiva)"
+                    class="text-left rounded-lg border p-3 transition-all cursor-pointer"
                     [class]="draft().asistenciaActiva ? 'border-brand bg-brand/5' : 'border-border bg-background hover:bg-muted/40'"
                   >
                     <div class="flex items-start gap-3">
@@ -110,35 +116,39 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                           </span>
                         </div>
                         <p class="text-[11px] text-muted-foreground mt-0.5">Intervenciones individuales o grupales en campo.</p>
+
+                        <!-- Subtipos de AT (misma lógica; reubicados dentro de la tarjeta) -->
+                        <div
+                          class="mt-2.5 pt-2.5 border-t border-border/60 flex flex-wrap gap-4 transition-opacity"
+                          [class]="draft().asistenciaActiva ? 'opacity-100' : 'opacity-40 pointer-events-none'"
+                          (click)="$event.stopPropagation()"
+                          (keydown.enter)="$event.stopPropagation()"
+                        >
+                          <label class="flex items-center gap-2 cursor-pointer text-xs text-foreground/80 select-none">
+                            <input
+                              type="checkbox"
+                              class="size-3.5 accent-brand cursor-pointer"
+                              [checked]="draft().atIndividualActiva"
+                              (change)="update({ atIndividualActiva: $any($event.target).checked })"
+                            />
+                            AT Individual
+                          </label>
+                          <label class="flex items-center gap-2 cursor-pointer text-xs text-foreground/80 select-none">
+                            <input
+                              type="checkbox"
+                              class="size-3.5 accent-brand cursor-pointer"
+                              [checked]="draft().atGrupalActiva"
+                              (change)="update({ atGrupalActiva: $any($event.target).checked })"
+                            />
+                            AT Grupal
+                          </label>
+                          @if (draft().asistenciaActiva && !draft().atIndividualActiva && !draft().atGrupalActiva) {
+                            <span class="text-[11px] text-destructive">Elige al menos un subtipo de AT.</span>
+                          }
+                        </div>
                       </div>
                     </div>
-                  </button>
-                </div>
-                <div
-                  class="mt-3 pl-1 flex flex-wrap gap-4 transition-opacity"
-                  [class]="draft().asistenciaActiva ? 'opacity-100' : 'opacity-40 pointer-events-none'"
-                >
-                  <label class="flex items-center gap-2 cursor-pointer text-xs text-foreground/80 select-none">
-                    <input
-                      type="checkbox"
-                      class="size-3.5 accent-brand cursor-pointer"
-                      [checked]="draft().atIndividualActiva"
-                      (change)="update({ atIndividualActiva: $any($event.target).checked })"
-                    />
-                    AT Individual
-                  </label>
-                  <label class="flex items-center gap-2 cursor-pointer text-xs text-foreground/80 select-none">
-                    <input
-                      type="checkbox"
-                      class="size-3.5 accent-brand cursor-pointer"
-                      [checked]="draft().atGrupalActiva"
-                      (change)="update({ atGrupalActiva: $any($event.target).checked })"
-                    />
-                    AT Grupal
-                  </label>
-                  @if (draft().asistenciaActiva && !draft().atIndividualActiva && !draft().atGrupalActiva) {
-                    <span class="text-[11px] text-destructive">Elige al menos un subtipo de AT.</span>
-                  }
+                  </div>
                 </div>
               </div>
             </section>
@@ -154,7 +164,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                 @if (!capOn() && !atOn()) {
                   <p class="text-xs text-muted-foreground italic">Activa al menos una actividad para configurar sus aforos.</p>
                 }
-                <div class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                   @if (capOn()) {
                     <div class="rounded-lg border bg-background p-4 space-y-3" [class]="capInvalid() ? 'border-destructive/40' : 'border-border'">
                       <div class="flex items-center gap-2">
@@ -264,10 +274,55 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
               </div>
             </section>
 
-            <!-- 3. Criterio de éxito -->
+            <!-- 3. Meta General -->
             <section class="space-y-3">
               <div class="flex items-center gap-2">
                 <span class="flex items-center justify-center size-5 rounded-full bg-brand text-brand-foreground text-[10px] font-bold">3</span>
+                <h3 class="text-sm font-semibold text-foreground">{{ tituloMetaGeneral }}</h3>
+              </div>
+              <p class="text-xs text-muted-foreground -mt-1.5 pl-7">Meta global que deberá cumplir un participante durante el periodo.</p>
+              <div class="pt-1">
+                <div class="rounded-lg border border-border bg-background p-4 space-y-3">
+                  <div class="flex items-center gap-2">
+                    <span class="size-7 rounded-md grid place-items-center bg-brand/10 text-brand shrink-0">
+                      <lucide-angular [img]="TargetIcon" class="size-4" />
+                    </span>
+                    <p class="text-sm font-semibold text-foreground">Criterio: {{ tituloMetaGeneral }}</p>
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label for="meta-general-cap" class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                        <lucide-angular [img]="GraduationCapIcon" class="size-3" /> Cantidad de Capacitaciones
+                      </label>
+                      <input id="meta-general-cap" type="number" min="0" [value]="draft().metaGeneral.capacitaciones"
+                        (input)="updateMetaGeneral('capacitaciones', $event)"
+                        class="w-full h-9 bg-background border border-input rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand" />
+                    </div>
+                    <div>
+                      <label for="meta-general-at" class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                        <lucide-angular [img]="HeadsetIcon" class="size-3" /> Cantidad de Asistencia Técnica
+                      </label>
+                      <input id="meta-general-at" type="number" min="0" [value]="draft().metaGeneral.asistenciasTecnicas"
+                        (input)="updateMetaGeneral('asistenciasTecnicas', $event)"
+                        class="w-full h-9 bg-background border border-input rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand" />
+                    </div>
+                    <div>
+                      <label for="meta-general-ha" class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                        <lucide-angular [img]="SproutIcon" class="size-3" /> Cantidad de Hectáreas
+                      </label>
+                      <input id="meta-general-ha" type="number" min="0" [value]="draft().metaGeneral.hectareas"
+                        (input)="updateMetaGeneral('hectareas', $event)"
+                        class="w-full h-9 bg-background border border-input rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- 4. Criterio de éxito -->
+            <section class="space-y-3">
+              <div class="flex items-center gap-2">
+                <span class="flex items-center justify-center size-5 rounded-full bg-brand text-brand-foreground text-[10px] font-bold">4</span>
                 <h3 class="text-sm font-semibold text-foreground">Criterio de éxito por periodo del participante</h3>
               </div>
               <p class="text-xs text-muted-foreground -mt-1.5 pl-7">Fórmula bajo la cual un participante completa el periodo.</p>
@@ -416,10 +471,10 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
               </div>
             </section>
 
-            <!-- 4. Periodo y cierre -->
+            <!-- 5. Periodo y cierre -->
             <section class="space-y-3">
               <div class="flex items-center gap-2">
-                <span class="flex items-center justify-center size-5 rounded-full bg-brand text-brand-foreground text-[10px] font-bold">4</span>
+                <span class="flex items-center justify-center size-5 rounded-full bg-brand text-brand-foreground text-[10px] font-bold">5</span>
                 <h3 class="text-sm font-semibold text-foreground">Periodo de medición y cierre</h3>
               </div>
               <p class="text-xs text-muted-foreground -mt-1.5 pl-7">Frecuencia de evaluación y política de reinicio.</p>
@@ -499,6 +554,9 @@ export class ReglasComponent {
   readonly InfoIcon = Info;
   readonly LockIcon = Lock;
   readonly CheckCircle2Icon = CheckCircle2;
+  readonly SproutIcon = Sprout;
+
+  readonly tituloMetaGeneral = TITULO_META_GENERAL;
 
   readonly area = computed(() => getArea(this.areaService.currentArea()));
   readonly saved = computed(() => this.reglasService.configs()[this.areaService.currentArea()]);
@@ -551,6 +609,11 @@ export class ReglasComponent {
   updateMeta(key: 'metaCapacitaciones' | 'metaAT', e: Event): void {
     const v = Number((e.target as HTMLInputElement).value) || 0;
     this.update({ [key]: v } as Partial<AreaConfig>);
+  }
+
+  updateMetaGeneral(key: keyof MetaGeneral, e: Event): void {
+    const v = Math.max(0, Number((e.target as HTMLInputElement).value) || 0);
+    this.draft.update((d) => ({ ...d, metaGeneral: { ...d.metaGeneral, [key]: v } }));
   }
 
   setCapActiva(v: boolean): void {

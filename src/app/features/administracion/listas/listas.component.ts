@@ -9,9 +9,10 @@ import { ListasAdminService } from '../../../core/services/listas-admin.service'
 import { ToastService } from '../../../core/services/toast.service';
 import { OpcionLista, generarCodigoOpcion } from '../../../core/models/lista-admin.model';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
+import { INPUT_BASE, INPUT_REQUIRED } from '../../../shared/utils/input-styles.const';
 
-const INP =
-  'w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none transition-colors';
+const INP = INPUT_BASE;
+const INP_REQ = INPUT_REQUIRED;
 
 /**
  * Administración de Listas (Administración → Listas).
@@ -214,7 +215,7 @@ const INP =
                 [value]="modalCodigo()"
                 (input)="modalCodigo.set($any($event.target).value)"
                 [readOnly]="opcionEnEdicion() !== null"
-                class="${INP} uppercase"
+                class="${INP_REQ} uppercase"
                 [class.opacity-70]="opcionEnEdicion() !== null"
                 [class.cursor-not-allowed]="opcionEnEdicion() !== null"
               />
@@ -229,7 +230,7 @@ const INP =
                 [value]="modalNombre()"
                 (input)="modalNombre.set($any($event.target).value)"
                 (keyup.enter)="guardarOpcion()"
-                class="${INP}"
+                class="${INP_REQ}"
               />
             </div>
             <div class="flex justify-end gap-2 pt-2 border-t border-border">

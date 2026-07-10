@@ -35,6 +35,8 @@ export interface ParticipanteFormSubmit {
 
 const LOCKED_INPUT = 'w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-slate-500 text-sm cursor-not-allowed';
 const ACTIVE_INPUT = 'w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm bg-white transition';
+/** Campo obligatorio: resaltado ámbar hasta recibir foco (convención del sistema). */
+const REQUIRED_INPUT = 'w-full px-3 py-2 bg-amber-50 border border-amber-300 rounded-md focus:bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm transition';
 
 @Component({
   selector: 'app-participante-form',
@@ -57,7 +59,7 @@ const ACTIVE_INPUT = 'w-full px-3 py-2 border border-slate-300 rounded-md focus:
                   type="text" inputmode="numeric" maxlength="8" placeholder="Ingrese DNI"
                   formControlName="dni"
                   (input)="soloDigitos()"
-                  [class]="dniLocked() ? lockedInput : 'w-full px-3 py-2 bg-white border border-teal-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-mono'"
+                  [class]="(dniLocked() ? lockedInput : requiredCls(false)) + ' font-mono'"
                 />
                 @if (errors()['dni']) {
                   <p class="text-[11px] text-rose-600 mt-1">{{ errors()['dni'] }}</p>
@@ -104,15 +106,15 @@ const ACTIVE_INPUT = 'w-full px-3 py-2 border border-slate-300 rounded-md focus:
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label class="block">
-              <span class="block text-xs font-semibold text-slate-700 mb-1">Apellidos</span>
-              <input formControlName="apellidos" [class]="inputCls(demoLocked())" />
+              <span class="block text-xs font-semibold text-slate-700 mb-1">Apellidos <span class="text-rose-500">*</span></span>
+              <input formControlName="apellidos" [class]="requiredCls(demoLocked())" />
               @if (errors()['apellidos']) {
                 <p class="text-[11px] text-rose-600 mt-1">{{ errors()['apellidos'] }}</p>
               }
             </label>
             <label class="block">
-              <span class="block text-xs font-semibold text-slate-700 mb-1">Nombres</span>
-              <input formControlName="nombres" [class]="inputCls(demoLocked())" />
+              <span class="block text-xs font-semibold text-slate-700 mb-1">Nombres <span class="text-rose-500">*</span></span>
+              <input formControlName="nombres" [class]="requiredCls(demoLocked())" />
               @if (errors()['nombres']) {
                 <p class="text-[11px] text-rose-600 mt-1">{{ errors()['nombres'] }}</p>
               }
@@ -132,8 +134,8 @@ const ACTIVE_INPUT = 'w-full px-3 py-2 border border-slate-300 rounded-md focus:
               <input disabled [value]="edad() ? edad() + ' años' : ''" [class]="lockedInput" />
             </label>
             <label class="block">
-              <span class="block text-xs font-semibold text-slate-700 mb-1">Fecha Nacimiento</span>
-              <input type="date" formControlName="fechaNacimiento" [class]="inputCls(demoLocked())" />
+              <span class="block text-xs font-semibold text-slate-700 mb-1">Fecha Nacimiento <span class="text-rose-500">*</span></span>
+              <input type="date" formControlName="fechaNacimiento" [class]="requiredCls(demoLocked())" />
               @if (errors()['fecha']) {
                 <p class="text-[11px] text-rose-600 mt-1">{{ errors()['fecha'] }}</p>
               }
@@ -390,6 +392,11 @@ export class ParticipanteFormComponent {
 
   inputCls(locked: boolean): string {
     return locked || this.mode() === 'ver' ? LOCKED_INPUT : ACTIVE_INPUT;
+  }
+
+  /** Campos obligatorios: ámbar cuando son editables, neutro cuando están bloqueados. */
+  requiredCls(locked: boolean): string {
+    return locked || this.mode() === 'ver' ? LOCKED_INPUT : REQUIRED_INPUT;
   }
 
   soloDigitos(): void {

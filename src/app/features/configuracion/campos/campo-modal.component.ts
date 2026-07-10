@@ -39,7 +39,7 @@ export type CampoModalResult = Omit<CampoPersonalizado, 'id' | 'area' | 'formula
             <input
               formControlName="nombre"
               placeholder="p. ej. Tipo de cultivo"
-              class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-100 outline-none"
+              class="w-full bg-amber-50 border border-amber-300 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-teal-100 outline-none transition"
             />
           </div>
           <div>
@@ -51,7 +51,7 @@ export type CampoModalResult = Omit<CampoPersonalizado, 'id' | 'area' | 'formula
             </label>
             <select
               formControlName="tipo"
-              class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-100 outline-none disabled:bg-slate-50 disabled:cursor-not-allowed"
+              class="w-full bg-amber-50 border border-amber-300 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-teal-100 outline-none transition disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
             >
               @for (t of tipos; track t.value) {
                 <option [value]="t.value">{{ t.label }}</option>

@@ -20,6 +20,7 @@ import {
 } from '../../core/models/usuario-sodega.model';
 import { PermisosMenu, combinarPermisos } from '../../core/models/permisos-menu.model';
 import { PermisosMenuFormComponent } from './permisos-menu-form.component';
+import { INPUT_BASE, INPUT_DISABLED, INPUT_REQUIRED } from '../../shared/utils/input-styles.const';
 import {
   CATEGORIAS_PRESUPUESTALES,
   FUENTES_FINANCIAMIENTO,
@@ -35,10 +36,10 @@ import { ModalComponent } from '../../shared/components/modal/modal.component';
 
 type ModoForm = 'nuevo' | 'editar' | 'presupuesto';
 
-/* Estilos de input alineados al design system N1 (ver curso-form.component.ts) */
-const INP_MANDATORY = 'w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none transition-colors';
-const INP_DISABLED = 'w-full bg-muted/40 ring-1 ring-border rounded-lg px-3 py-2 text-sm text-muted-foreground cursor-not-allowed';
-const INP_NORMAL = 'w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none transition-colors';
+/* Estilos de input compartidos del design system N1 (obligatorios en ámbar). */
+const INP_MANDATORY = INPUT_REQUIRED;
+const INP_DISABLED = INPUT_DISABLED;
+const INP_NORMAL = INPUT_BASE;
 
 /**
  * Formulario multi-pestaña de Gestión de Usuarios (Datos del usuario / Permisos).
@@ -618,7 +619,12 @@ export class UsuarioFormComponent implements OnInit {
     return !!s && ['Administrador Unidad Organizacional', 'Administrador DZ_Cap_Asit.'].includes(s.perfil);
   }
 
-  /** Sección presupuestal visible salvo Admin General o Jefe de Área creado por Admin General. */
+  /**
+   * Detalle presupuestal (fuente, categoría, programa y unidad funcional)
+   * visible solo para perfiles de gestión: para el Administrador General
+   * (como objetivo, o registrando sin perfil elegido aún) se muestra
+   * únicamente la Unidad Responsable, igual que el prototipo.
+   */
   readonly mostrarPresupuesto = computed(() => {
     this.formTick();
     const target = this.form.controls.perfil.value;
@@ -626,7 +632,7 @@ export class UsuarioFormComponent implements OnInit {
     if (target === 'Administrador General') return false;
     if (s?.perfil === 'Administrador General' && target === 'Jefe de Área') return false;
     const perfilesGestion = ['Jefe de Área', 'Administrador Unidad Organizacional', 'Administrador DZ_Cap_Asit.', 'Técnico Capacitación y Asistencia Técnica'];
-    return perfilesGestion.includes(s?.perfil ?? '') || perfilesGestion.includes(target) || target === '';
+    return perfilesGestion.includes(s?.perfil ?? '') || perfilesGestion.includes(target);
   });
 
   readonly programaHabilitado = computed(() => {
