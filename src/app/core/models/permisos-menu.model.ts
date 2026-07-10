@@ -61,17 +61,24 @@ export function permisosCompletos(esquema: EsquemaPermisosMenu): PermisosMenu {
   return permisos;
 }
 
-/** Combina permisos guardados sobre los defaults del esquema (tolerante a datos parciales). */
+/**
+ * Combina permisos guardados sobre los defaults del esquema (tolerante a
+ * datos parciales). Solo conserva las claves definidas en el esquema: los
+ * permisos guardados que ya no existan para el perfil se descartan al cargar.
+ */
 export function combinarPermisos(
   esquema: EsquemaPermisosMenu,
   guardados?: PermisosMenu | null,
 ): PermisosMenu {
-  const base = permisosPorDefecto(esquema);
-  if (!guardados) return base;
+  if (!guardados) return permisosPorDefecto(esquema);
+  const permisos: PermisosMenu = {};
   for (const grupo of esquema.grupos) {
-    base[grupo.key] = { ...base[grupo.key], ...(guardados[grupo.key] ?? {}) };
+    const guardadosGrupo = guardados[grupo.key] ?? {};
+    permisos[grupo.key] = Object.fromEntries(
+      grupo.items.map((i) => [i.key, guardadosGrupo[i.key] ?? i.defecto]),
+    );
   }
-  return base;
+  return permisos;
 }
 
 /** Consulta segura de un permiso individual. */
