@@ -2,7 +2,7 @@
 // Migrados del prototipo: PERMISOS_MENU_TECNICO_DEFAULT, PERMISOS_MENU_DZ_DEFAULT
 // y PERMISOS_MENU_JEFE_DEFAULT + las secciones de checkboxes correspondientes.
 
-import { EsquemaPermisosMenu } from '../models/permisos-menu.model';
+import { EsquemaPermisosMenu, PermisosGrupoDef } from '../models/permisos-menu.model';
 import { Perfil } from '../models/usuario-sodega.model';
 
 /** Claves de grupo compartidas por los esquemas. */
@@ -70,12 +70,12 @@ const ESQUEMA_TECNICO: EsquemaPermisosMenu = {
   ],
 };
 
-const ESQUEMA_ADMIN_DZ: EsquemaPermisosMenu = {
-  perfil: 'Administrador DZ_Cap_Asit.',
-  titulo: 'Permisos de menú para Administrador DZ_Cap_Asit.',
-  descripcion: 'Seleccione las opciones que visualizará el Administrador DZ al ingresar al sistema.',
-  columnas: 3,
-  grupos: [
+/**
+ * Grupos compartidos por los perfiles de gestión: el prototipo usa la misma
+ * sección de checkboxes (con los mismos defaults) para el Administrador DZ y
+ * el Administrador Unidad Organizacional.
+ */
+const GRUPOS_GESTION: PermisosGrupoDef[] = [
     {
       key: GRUPO_EVALUACION,
       label: 'Registrar Evaluación de Técnico',
@@ -131,15 +131,26 @@ const ESQUEMA_ADMIN_DZ: EsquemaPermisosMenu = {
       icono: 'ayuda',
       items: [{ key: 'videoInformativo', label: 'Video Informativo', defecto: true }],
     },
-  ],
+];
+
+const ESQUEMA_ADMIN_DZ: EsquemaPermisosMenu = {
+  perfil: 'Administrador DZ_Cap_Asit.',
+  titulo: 'Permisos de menú para Administrador DZ_Cap_Asit.',
+  descripcion: 'Seleccione las opciones que visualizará el Administrador DZ al ingresar al sistema.',
+  columnas: 3,
+  grupos: GRUPOS_GESTION,
 };
 
-const ESQUEMA_JEFE_AREA: EsquemaPermisosMenu = {
-  perfil: 'Jefe de Área',
-  titulo: 'Permisos de menú para Jefe de Área',
-  descripcion: 'Seleccione las opciones que visualizará el Jefe de Área al ingresar al sistema.',
+const ESQUEMA_ADMIN_UO: EsquemaPermisosMenu = {
+  perfil: 'Administrador Unidad Organizacional',
+  titulo: 'Permisos de menú para Administrador Unidad Organizacional',
+  descripcion: 'Seleccione las opciones que visualizará el Administrador Unidad Organizacional al ingresar al sistema.',
   columnas: 3,
-  grupos: [
+  grupos: GRUPOS_GESTION,
+};
+
+/** Grupos del Jefe de Área (el Administrador General reutiliza los mismos con otros defaults). */
+const GRUPOS_JEFE: PermisosGrupoDef[] = [
     {
       key: GRUPO_REGISTRAR,
       label: 'Registrar',
@@ -203,12 +214,46 @@ const ESQUEMA_JEFE_AREA: EsquemaPermisosMenu = {
       icono: 'ayuda',
       items: [{ key: 'videoInformativo', label: 'Video Informativo', defecto: true }],
     },
-  ],
+];
+
+/** Clona grupos sobreescribiendo defaults puntuales (grupo → ítem → valor). */
+function conDefectos(
+  grupos: PermisosGrupoDef[],
+  overrides: Record<string, Record<string, boolean>>,
+): PermisosGrupoDef[] {
+  return grupos.map((g) => ({
+    ...g,
+    items: g.items.map((i) => ({ ...i, defecto: overrides[g.key]?.[i.key] ?? i.defecto })),
+  }));
+}
+
+const ESQUEMA_JEFE_AREA: EsquemaPermisosMenu = {
+  perfil: 'Jefe de Área',
+  titulo: 'Permisos de menú para Jefe de Área',
+  descripcion: 'Seleccione las opciones que visualizará el Jefe de Área al ingresar al sistema.',
+  columnas: 3,
+  grupos: GRUPOS_JEFE,
+};
+
+/**
+ * El Administrador General usa los grupos del Jefe de Área con `listas`
+ * habilitada por defecto (PERMISOS_MENU_ADMIN_DEFAULT del prototipo).
+ */
+const ESQUEMA_ADMIN_GENERAL: EsquemaPermisosMenu = {
+  perfil: 'Administrador General',
+  titulo: 'Permisos de menú para Administrador General',
+  descripcion: 'Seleccione las opciones que visualizará el Administrador General al ingresar al sistema.',
+  columnas: 3,
+  grupos: conDefectos(GRUPOS_JEFE, {
+    [GRUPO_ADMINISTRACION]: { [PERMISO_ADMIN_LISTAS]: true },
+  }),
 };
 
 /** Esquemas disponibles, indexados por perfil (los demás perfiles no tienen permisos de menú configurables). */
 export const ESQUEMAS_PERMISOS_MENU: Partial<Record<Perfil, EsquemaPermisosMenu>> = {
   'Técnico Capacitación y Asistencia Técnica': ESQUEMA_TECNICO,
   'Administrador DZ_Cap_Asit.': ESQUEMA_ADMIN_DZ,
+  'Administrador Unidad Organizacional': ESQUEMA_ADMIN_UO,
   'Jefe de Área': ESQUEMA_JEFE_AREA,
+  'Administrador General': ESQUEMA_ADMIN_GENERAL,
 };

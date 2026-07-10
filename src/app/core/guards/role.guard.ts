@@ -11,8 +11,8 @@ import { GRUPO_ADMINISTRACION, PERMISO_ADMIN_LISTAS } from '../constants/permiso
  *  - Técnico registra capacitaciones/AT → Admin DZ evalúa técnicos →
  *    Admin UO evalúa a los DZ → Jefe de Área aprueba a las UO.
  *  - Gestión de Usuarios: todos los perfiles administrativos (no el Técnico).
- *  - Administración → Listas: Admin General siempre; Jefe de Área y Admin DZ
- *    solo si su permiso de menú `administracion.listas` está activo.
+ *  - Administración → Listas: Admin General siempre; Jefe de Área, Admin UO y
+ *    Admin DZ solo si su permiso de menú `administracion.listas` está activo.
  */
 function isAllowed(path: string, perfil: Perfil, puedeVerListas: boolean): boolean {
   if (perfil === 'Administrador General') return true;

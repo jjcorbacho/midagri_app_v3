@@ -114,7 +114,8 @@ export class UsuariosService {
   /** Perfiles que el perfil activo puede registrar (jerarquía del prototipo). */
   perfilesRegistrables(perfilActivo: Perfil): Perfil[] {
     return PERFILES.filter((p) => {
-      if (p === perfilActivo) return false;
+      // El Admin General puede registrar otro Admin General; el resto no registra su propio perfil.
+      if (p === perfilActivo && perfilActivo !== 'Administrador General') return false;
       if (perfilActivo === 'Jefe de Área' && p === 'Administrador General') return false;
       if (
         perfilActivo === 'Administrador Unidad Organizacional' &&
