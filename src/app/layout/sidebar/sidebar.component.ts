@@ -13,6 +13,8 @@ import {
   Sliders,
   Wrench,
   UsersRound,
+  Cog,
+  ListChecks,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -20,6 +22,16 @@ import {
 } from 'lucide-angular';
 import type { LucideIconData } from 'lucide-angular';
 import { AuthService } from '../../core/services/auth.service';
+import { PermisosMenuService } from '../../core/services/permisos-menu.service';
+import {
+  GRUPO_ADMINISTRACION,
+  GRUPO_CONSULTA,
+  GRUPO_EVALUACION,
+  GRUPO_REGISTRAR,
+  GRUPO_REPORTES,
+  PERMISO_ADMIN_LISTAS,
+  PERMISO_ADMIN_USUARIOS,
+} from '../../core/constants/permisos-menu.const';
 
 interface NavChild {
   to: string;
@@ -35,6 +47,20 @@ interface NavItem {
   children?: NavChild[];
 }
 
+const CHILD_USUARIOS: NavChild = { to: '/usuarios', label: 'Gestión de Usuarios', icon: UsersRound };
+const CHILD_LISTAS: NavChild = { to: '/administracion/listas', label: 'Listas', icon: ListChecks };
+
+/** Grupo Administración (Gestión de Usuarios + Listas, según permisos). */
+function grupoAdministracion(children: NavChild[]): NavItem {
+  return {
+    to: children[0]?.to ?? '/usuarios',
+    label: 'Administración',
+    icon: Cog,
+    matchPrefix: ['/usuarios', '/administracion'],
+    children,
+  };
+}
+
 const NAV_FULL: NavItem[] = [
   { to: '/dashboard', label: 'Inicio', icon: Home },
   {
@@ -46,7 +72,7 @@ const NAV_FULL: NavItem[] = [
   { to: '/seguimiento/revision', label: 'Seguimiento y revisión', icon: ClipboardCheck },
   { to: '/seguimiento/aprobacion', label: 'Seguimiento y aprobación', icon: ShieldCheck },
   { to: '/reportes', label: 'Reportes', icon: FileText },
-  { to: '/usuarios', label: 'Gestión de Usuarios', icon: UsersRound, matchPrefix: ['/usuarios'] },
+  grupoAdministracion([CHILD_USUARIOS, CHILD_LISTAS]),
   {
     to: '/configuracion',
     label: 'Configuración',
@@ -95,21 +121,21 @@ const COLLAPSE_KEY = 'midagri.sidebar.collapsed';
           @if (item.children?.length && !collapsed()) {
             <div class="flex flex-col">
               <button
-                (click)="configOpen.set(!configOpen())"
+                (click)="toggleGroup(item.to)"
                 class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors w-full text-left"
                 [class]="isActive(item) ? 'bg-brand text-white' : 'text-sidebar-muted hover:text-white hover:bg-white/10'"
               >
                 <lucide-angular [img]="item.icon" class="size-5 shrink-0" [strokeWidth]="1.75" />
                 <span class="text-sm flex-1">{{ item.label }}</span>
-                <lucide-angular [img]="ChevronDownIcon" class="size-4 transition-transform" [class.rotate-180]="configOpen()" />
+                <lucide-angular [img]="ChevronDownIcon" class="size-4 transition-transform" [class.rotate-180]="isGroupOpen(item.to)" />
               </button>
-              @if (configOpen()) {
+              @if (isGroupOpen(item.to)) {
                 <div class="ml-7 flex flex-col gap-0.5 mt-0.5 mb-1">
                   @for (sub of item.children; track sub.to) {
                     <a
                       [routerLink]="sub.to"
                       class="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs transition-colors"
-                      [class]="pathname() === sub.to ? 'bg-white/15 text-white' : 'text-sidebar-muted hover:text-white hover:bg-white/5'"
+                      [class]="isChildActive(sub) ? 'bg-white/15 text-white' : 'text-sidebar-muted hover:text-white hover:bg-white/5'"
                     >
                       <lucide-angular [img]="sub.icon" class="size-4" [strokeWidth]="1.75" />
                       <span>{{ sub.label }}</span>
@@ -159,6 +185,7 @@ const COLLAPSE_KEY = 'midagri.sidebar.collapsed';
 })
 export class SidebarComponent {
   private readonly auth = inject(AuthService);
+  private readonly permisosMenu = inject(PermisosMenuService);
   private readonly router = inject(Router);
 
   readonly ChevronLeftIcon = ChevronLeft;
@@ -167,7 +194,7 @@ export class SidebarComponent {
   readonly LogOutIcon = LogOut;
 
   readonly collapsed = signal(this.restoreCollapsed());
-  readonly configOpen = signal(false);
+  private readonly openGroups = signal<Set<string>>(new Set());
 
   readonly pathname = toSignal(
     this.router.events.pipe(
@@ -178,59 +205,142 @@ export class SidebarComponent {
     { initialValue: this.router.url.split('?')[0] },
   );
 
-  /** Menú filtrado por perfil SODEGA. */
+  /** Menú filtrado por perfil SODEGA + permisos de menú del usuario. */
   readonly nav = computed<NavItem[]>(() => {
     if (this.auth.isJefeArea()) {
-      return [
-        { to: '/dashboard', label: 'Inicio', icon: Home },
-        { to: '/seguimiento/aprobacion', label: 'Aprobación de Evaluaciones UO', icon: ShieldCheck },
-        { to: '/reportes', label: 'Reportes', icon: FileText },
-        { to: '/usuarios', label: 'Gestión de Usuarios', icon: UsersRound, matchPrefix: ['/usuarios'] },
-      ];
+      const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
+      if (
+        this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, 'aprobacionCapacitacion') ||
+        this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, 'aprobacionAsistenciaTecnica')
+      ) {
+        items.push({ to: '/seguimiento/aprobacion', label: 'Aprobación de Evaluaciones UO', icon: ShieldCheck });
+      }
+      if (this.permisosMenu.sesionTieneGrupo(GRUPO_REPORTES)) {
+        items.push({ to: '/reportes', label: 'Reportes', icon: FileText });
+      }
+      const admin = this.childrenAdministracion();
+      if (admin.length) items.push(grupoAdministracion(admin));
+      return items;
     }
     if (this.auth.isAdminDZ()) {
-      return [
-        { to: '/dashboard', label: 'Inicio', icon: Home },
-        { to: '/seguimiento/revision', label: 'Evaluación de Técnicos', icon: ClipboardCheck },
-        { to: '/usuarios', label: 'Gestión de Usuarios', icon: UsersRound, matchPrefix: ['/usuarios'] },
-      ];
+      const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
+      if (
+        this.permisosMenu.sesionTiene(GRUPO_EVALUACION, 'capacitacion') ||
+        this.permisosMenu.sesionTiene(GRUPO_EVALUACION, 'asistenciaTecnica')
+      ) {
+        items.push({ to: '/seguimiento/revision', label: 'Evaluación de Técnicos', icon: ClipboardCheck });
+      }
+      const admin = this.childrenAdministracion();
+      if (admin.length) items.push(grupoAdministracion(admin));
+      return items;
     }
     if (this.auth.isAdminUE()) {
-      return [
-        { to: '/dashboard', label: 'Inicio', icon: Home },
-        { to: '/seguimiento/aprobacion', label: 'Evaluación de Administrador DZ', icon: ShieldCheck },
-        { to: '/reportes', label: 'Reportes', icon: FileText },
-        { to: '/usuarios', label: 'Gestión de Usuarios', icon: UsersRound, matchPrefix: ['/usuarios'] },
-        {
-          to: '/configuracion',
-          label: 'Configuración',
-          icon: Settings,
-          matchPrefix: ['/configuracion'],
-          children: [
-            { to: '/configuracion/campos', label: 'Configuración Campos', icon: Sliders },
-            { to: '/configuracion/reglas', label: 'Configuración Reglas', icon: Wrench },
-          ],
-        },
-      ];
+      const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
+      if (
+        this.permisosMenu.sesionTiene(GRUPO_EVALUACION, 'capacitacion') ||
+        this.permisosMenu.sesionTiene(GRUPO_EVALUACION, 'asistenciaTecnica')
+      ) {
+        items.push({ to: '/seguimiento/aprobacion', label: 'Evaluación de Administrador DZ', icon: ShieldCheck });
+      }
+      if (this.permisosMenu.sesionTieneGrupo(GRUPO_REPORTES)) {
+        items.push({ to: '/reportes', label: 'Reportes', icon: FileText });
+      }
+      const admin = this.childrenAdministracion();
+      if (admin.length) items.push(grupoAdministracion(admin));
+      // Configuración (campos/reglas) es funcionalidad propia del Admin UO en
+      // este proyecto; no forma parte del esquema de permisos del prototipo.
+      items.push({
+        to: '/configuracion',
+        label: 'Configuración',
+        icon: Settings,
+        matchPrefix: ['/configuracion'],
+        children: [
+          { to: '/configuracion/campos', label: 'Configuración Campos', icon: Sliders },
+          { to: '/configuracion/reglas', label: 'Configuración Reglas', icon: Wrench },
+        ],
+      });
+      return items;
     }
     if (this.auth.isTecnico1()) {
-      return [
-        { to: '/dashboard', label: 'Inicio', icon: Home },
-        {
+      const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
+      if (
+        this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, 'capacitaciones') ||
+        this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, 'asistenciaTecnica') ||
+        this.permisosMenu.sesionTieneGrupo(GRUPO_CONSULTA)
+      ) {
+        items.push({
           to: '/capacitaciones-n1',
           label: 'Capacitaciones / Asist. Técnica N1',
           icon: GraduationCap,
           matchPrefix: ['/capacitaciones-n1'],
-        },
-      ];
+        });
+      }
+      return items;
+    }
+    if (this.auth.isAdministrador()) {
+      const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
+      if (
+        this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, 'capacitaciones') ||
+        this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, 'asistenciaTecnica')
+      ) {
+        items.push({
+          to: '/capacitaciones-n1',
+          label: 'Capacitaciones / Asist. Técnica N1',
+          icon: GraduationCap,
+          matchPrefix: ['/capacitaciones-n1'],
+        });
+      }
+      if (
+        this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, 'aprobacionCapacitacion') ||
+        this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, 'aprobacionAsistenciaTecnica')
+      ) {
+        items.push({ to: '/seguimiento/revision', label: 'Seguimiento y revisión', icon: ClipboardCheck });
+        items.push({ to: '/seguimiento/aprobacion', label: 'Seguimiento y aprobación', icon: ShieldCheck });
+      }
+      if (this.permisosMenu.sesionTieneGrupo(GRUPO_REPORTES)) {
+        items.push({ to: '/reportes', label: 'Reportes', icon: FileText });
+      }
+      const admin = this.childrenAdministracion();
+      if (admin.length) items.push(grupoAdministracion(admin));
+      // Configuración (campos/reglas) no forma parte del esquema del prototipo.
+      items.push({
+        to: '/configuracion',
+        label: 'Configuración',
+        icon: Settings,
+        matchPrefix: ['/configuracion'],
+        children: [
+          { to: '/configuracion/campos', label: 'Configuración Campos', icon: Sliders },
+          { to: '/configuracion/reglas', label: 'Configuración Reglas', icon: Wrench },
+        ],
+      });
+      return items;
     }
     return NAV_FULL;
   });
 
+  /** Hijos del grupo Administración según los permisos del registro activo. */
+  private childrenAdministracion(): NavChild[] {
+    const children: NavChild[] = [];
+    if (this.permisosMenu.sesionTiene(GRUPO_ADMINISTRACION, PERMISO_ADMIN_USUARIOS)) {
+      children.push(CHILD_USUARIOS);
+    }
+    if (this.permisosMenu.sesionTiene(GRUPO_ADMINISTRACION, PERMISO_ADMIN_LISTAS)) {
+      children.push(CHILD_LISTAS);
+    }
+    return children;
+  }
+
   constructor() {
-    // Abre el grupo Configuración al navegar dentro de él
+    // Abre el grupo correspondiente al navegar dentro de sus rutas
     effect(() => {
-      if (this.pathname().startsWith('/configuracion')) this.configOpen.set(true);
+      const path = this.pathname();
+      for (const item of this.nav()) {
+        if (!item.children?.length) continue;
+        const dentro =
+          item.matchPrefix?.some((p) => path.startsWith(p)) ||
+          item.children.some((c) => path.startsWith(c.to));
+        if (dentro) this.openGroup(item.to);
+      }
     });
   }
 
@@ -250,10 +360,36 @@ export class SidebarComponent {
     });
   }
 
+  isGroupOpen(key: string): boolean {
+    return this.openGroups().has(key);
+  }
+
+  toggleGroup(key: string): void {
+    this.openGroups.update((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  private openGroup(key: string): void {
+    this.openGroups.update((prev) => {
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+  }
+
   isActive(item: NavItem): boolean {
     const path = this.pathname();
     if (path === item.to) return true;
     return item.matchPrefix?.some((p) => path.startsWith(p)) ?? false;
+  }
+
+  isChildActive(sub: NavChild): boolean {
+    return this.pathname().startsWith(sub.to);
   }
 
   logout(): void {

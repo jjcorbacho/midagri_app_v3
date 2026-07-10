@@ -16,6 +16,13 @@ export interface ActivityRules {
   paraConsiderado: number; // legacy — eventos en el periodo para considerar al participante
 }
 
+/** Meta global que debe cumplir un participante durante el periodo (sección "Meta General"). */
+export interface MetaGeneral {
+  capacitaciones: number;
+  asistenciasTecnicas: number;
+  hectareas: number;
+}
+
 export interface AreaConfig {
   // Legacy (mantenido para compatibilidad con lectores existentes)
   tipoActividad: TipoActividadArea;
@@ -35,6 +42,7 @@ export interface AreaConfig {
   criterioExito: CriterioExito;
   metaCapacitaciones: number;
   metaAT: number;
+  metaGeneral: MetaGeneral;
 }
 
 const defaultCapRules: ActivityRules = {
@@ -66,4 +74,5 @@ export const DEFAULT_AREA_CONFIG: AreaConfig = {
   criterioExito: 'combinada_paralela',
   metaCapacitaciones: 2,
   metaAT: 2,
+  metaGeneral: { capacitaciones: 0, asistenciasTecnicas: 0, hectareas: 0 },
 };

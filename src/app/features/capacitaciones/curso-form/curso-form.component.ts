@@ -59,6 +59,8 @@ const EMPTY: CursoFormState = {
 
 const INP = 'w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none';
 const INP_DISABLED = 'w-full bg-muted/40 ring-1 ring-border rounded-lg px-3 py-2 text-sm text-muted-foreground';
+/** Campo obligatorio: resaltado ámbar (misma convención que INPUT_REQUIRED compartido). */
+const INP_REQ = 'w-full bg-amber-50 ring-1 ring-amber-300 rounded-lg px-3 py-2 text-sm focus:bg-card focus:ring-2 focus:ring-teal-500 focus:outline-none';
 
 @Component({
   selector: 'app-curso-form',
@@ -100,7 +102,7 @@ const INP_DISABLED = 'w-full bg-muted/40 ring-1 ring-border rounded-lg px-3 py-2
             </div>
             <div>
               <label class="block text-[11px] font-medium text-muted-foreground mb-1">Temática *</label>
-              <select formControlName="tematica" [class]="inp">
+              <select formControlName="tematica" [class]="inpReq()">
                 <option value="">— Seleccione —</option>
                 @for (t of tematicas; track t) {
                   <option [value]="t">{{ t }}</option>
@@ -121,7 +123,7 @@ const INP_DISABLED = 'w-full bg-muted/40 ring-1 ring-border rounded-lg px-3 py-2
             @if (tipo() === 'asistencia') {
               <div>
                 <label class="block text-[11px] font-medium text-muted-foreground mb-1">Modalidad *</label>
-                <select formControlName="modalidadAT" [class]="inp">
+                <select formControlName="modalidadAT" [class]="inpReq()">
                   @for (m of modalidadesAt(); track m) {
                     <option [value]="m">{{ m }}</option>
                   }
@@ -130,28 +132,28 @@ const INP_DISABLED = 'w-full bg-muted/40 ring-1 ring-border rounded-lg px-3 py-2
             }
             <div>
               <label class="block text-[11px] font-medium text-muted-foreground mb-1">Fecha *</label>
-              <input type="date" formControlName="fecha" [class]="inp" />
+              <input type="date" formControlName="fecha" [class]="inpReq()" />
               @if (errores()['fecha']) {
                 <p class="text-[11px] text-rose-600 mt-1">{{ errores()['fecha'] }}</p>
               }
             </div>
             <div>
               <label class="block text-[11px] font-medium text-muted-foreground mb-1">Nro. Horas *</label>
-              <input type="number" [min]="cfg().horasMin" [max]="cfg().horasMax" formControlName="horas" [class]="inp" />
+              <input type="number" [min]="cfg().horasMin" [max]="cfg().horasMax" formControlName="horas" [class]="inpReq()" />
               @if (errores()['horas']) {
                 <p class="text-[11px] text-rose-600 mt-1">{{ errores()['horas'] }}</p>
               }
             </div>
             <div class="md:col-span-2">
               <label class="block text-[11px] font-medium text-muted-foreground mb-1">Nombre *</label>
-              <input formControlName="nombre" maxlength="200" [class]="inp" />
+              <input formControlName="nombre" maxlength="200" [class]="inpReq()" />
               @if (errores()['nombre']) {
                 <p class="text-[11px] text-rose-600 mt-1">{{ errores()['nombre'] }}</p>
               }
             </div>
             <div class="md:col-span-2">
               <label class="block text-[11px] font-medium text-muted-foreground mb-1">Extensionista *</label>
-              <input formControlName="extensionista" maxlength="120" [class]="inp" />
+              <input formControlName="extensionista" maxlength="120" [class]="inpReq()" />
               @if (errores()['extensionista']) {
                 <p class="text-[11px] text-rose-600 mt-1">{{ errores()['extensionista'] }}</p>
               }
@@ -186,7 +188,7 @@ const INP_DISABLED = 'w-full bg-muted/40 ring-1 ring-border rounded-lg px-3 py-2
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3" [formGroup]="form">
             <div>
               <label class="block text-[11px] font-medium text-muted-foreground mb-1">Región *</label>
-              <select formControlName="region" (change)="onRegionChange()" [class]="inp">
+              <select formControlName="region" (change)="onRegionChange()" [class]="inpReq()">
                 <option value="">— Seleccione —</option>
                 @for (r of ubigeo; track r.nombre) {
                   <option [value]="r.nombre">{{ r.nombre }}</option>
@@ -198,7 +200,7 @@ const INP_DISABLED = 'w-full bg-muted/40 ring-1 ring-border rounded-lg px-3 py-2
             </div>
             <div>
               <label class="block text-[11px] font-medium text-muted-foreground mb-1">Provincia *</label>
-              <select formControlName="provincia" (change)="onProvinciaChange()" [class]="inp">
+              <select formControlName="provincia" (change)="onProvinciaChange()" [class]="inpReq()">
                 <option value="">— Seleccione —</option>
                 @for (p of provincias(); track p.nombre) {
                   <option [value]="p.nombre">{{ p.nombre }}</option>
@@ -210,7 +212,7 @@ const INP_DISABLED = 'w-full bg-muted/40 ring-1 ring-border rounded-lg px-3 py-2
             </div>
             <div>
               <label class="block text-[11px] font-medium text-muted-foreground mb-1">Distrito *</label>
-              <select formControlName="distrito" (change)="onDistritoChange()" [class]="inp">
+              <select formControlName="distrito" (change)="onDistritoChange()" [class]="inpReq()">
                 <option value="">— Seleccione —</option>
                 @for (d of distritos(); track d.nombre) {
                   <option [value]="d.nombre">{{ d.nombre }}</option>
@@ -318,10 +320,10 @@ const INP_DISABLED = 'w-full bg-muted/40 ring-1 ring-border rounded-lg px-3 py-2
                   </label>
                   @switch (c.tipo) {
                     @case ('textarea') {
-                      <textarea rows="2" [value]="customValue(c.id)" (input)="setCustom(c.id, $any($event.target).value)" [class]="inp"></textarea>
+                      <textarea rows="2" [value]="customValue(c.id)" (input)="setCustom(c.id, $any($event.target).value)" [class]="c.requerido ? inpReq() : inp"></textarea>
                     }
                     @case ('select') {
-                      <select [value]="customValue(c.id)" (change)="setCustom(c.id, $any($event.target).value)" [class]="inp">
+                      <select [value]="customValue(c.id)" (change)="setCustom(c.id, $any($event.target).value)" [class]="c.requerido ? inpReq() : inp">
                         <option value="">— Seleccione —</option>
                         @for (o of c.opciones ?? []; track o) {
                           <option [value]="o">{{ o }}</option>
@@ -356,7 +358,7 @@ const INP_DISABLED = 'w-full bg-muted/40 ring-1 ring-border rounded-lg px-3 py-2
                       </div>
                     }
                     @default {
-                      <input [type]="c.tipo" [value]="customValue(c.id)" (input)="setCustom(c.id, $any($event.target).value)" [class]="inp" />
+                      <input [type]="c.tipo" [value]="customValue(c.id)" (input)="setCustom(c.id, $any($event.target).value)" [class]="c.requerido ? inpReq() : inp" />
                     }
                   }
                   @if (errores()['c_' + c.id]) {
@@ -408,6 +410,8 @@ export class CursoFormComponent implements OnInit {
   readonly InfoIcon = Info;
 
   readonly inp = INP;
+  /** Obligatorios en ámbar solo en edición; en modo lectura mantienen el estilo neutro. */
+  readonly inpReq = computed(() => (this.readOnly() ? INP : INP_REQ));
   readonly inpDisabled = INP_DISABLED;
   readonly tematicas = TEMATICAS;
   readonly tiposEvento = TIPOS_EVENTO;

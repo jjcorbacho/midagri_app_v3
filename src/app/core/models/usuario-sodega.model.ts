@@ -2,6 +2,7 @@
  * Modelo de usuarios y perfiles de la Plataforma SODEGA.
  * Migrado del prototipo base (docs/referencia/sodega-login-permisos.html).
  */
+import type { PermisosMenu } from './permisos-menu.model';
 
 /** Perfiles oficiales del sistema (jerarquía descendente). */
 export type Perfil =
@@ -66,6 +67,8 @@ export interface UsuarioSodega {
   unidadFuncional: string;
   creadoPor?: string;
   ambitos: AmbitoTerritorial[];
+  /** Permisos de menú del usuario (solo perfiles con esquema configurable). */
+  permisosMenu?: PermisosMenu;
   inhabilitadoPorVencimiento?: boolean;
   // Derivados (recalculados por el servicio)
   diasRestantes?: number | null;

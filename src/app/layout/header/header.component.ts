@@ -5,6 +5,13 @@ import { AuthService } from '../../core/services/auth.service';
 import { AreaService } from '../../core/services/area.service';
 import { AREAS } from '../../core/constants/areas.const';
 
+/**
+ * Selector "ÁREA ACTIVA" del header: oculto para todos los perfiles por
+ * requerimiento. El área activa sigue operando internamente (AreaService);
+ * para volver a mostrar el selector basta poner esta bandera en true.
+ */
+const MOSTRAR_SELECTOR_AREA = false;
+
 @Component({
   selector: 'app-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -16,23 +23,25 @@ import { AREAS } from '../../core/constants/areas.const';
           <span class="text-[10px] uppercase tracking-wider font-semibold text-brand">MIDAGRI</span>
           <span class="text-sm font-medium text-muted-foreground">Sistema de Capacitaciones</span>
         </div>
-        <div class="h-8 w-px bg-border"></div>
+        @if (mostrarSelectorArea) {
+          <div class="h-8 w-px bg-border"></div>
 
-        <div class="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-full ring-1 ring-black/5">
-          <span class="text-[11px] font-semibold text-muted-foreground">ÁREA ACTIVA:</span>
-          <select
-            [value]="areaService.currentArea()"
-            (change)="onAreaChange($event)"
-            class="bg-transparent text-sm font-semibold text-brand focus:outline-none cursor-pointer max-w-[280px]"
-          >
-            @for (a of areas; track a.code) {
-              <option [value]="a.code">{{ a.code }}</option>
-            }
-          </select>
-        </div>
-        <span class="hidden md:inline text-xs text-muted-foreground truncate max-w-xs">
-          {{ areaService.area().name }}
-        </span>
+          <div class="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-full ring-1 ring-black/5">
+            <span class="text-[11px] font-semibold text-muted-foreground">ÁREA ACTIVA:</span>
+            <select
+              [value]="areaService.currentArea()"
+              (change)="onAreaChange($event)"
+              class="bg-transparent text-sm font-semibold text-brand focus:outline-none cursor-pointer max-w-[280px]"
+            >
+              @for (a of areas; track a.code) {
+                <option [value]="a.code">{{ a.code }}</option>
+              }
+            </select>
+          </div>
+          <span class="hidden md:inline text-xs text-muted-foreground truncate max-w-xs">
+            {{ areaService.area().name }}
+          </span>
+        }
       </div>
 
       <div class="flex items-center gap-3 relative">
@@ -129,6 +138,7 @@ export class HeaderComponent {
   readonly LogOutIcon = LogOut;
 
   readonly areas = AREAS;
+  readonly mostrarSelectorArea = MOSTRAR_SELECTOR_AREA;
   readonly menuOpen = signal(false);
   readonly pwdOpen = signal(false);
 
