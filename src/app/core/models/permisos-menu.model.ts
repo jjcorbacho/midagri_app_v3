@@ -17,14 +17,7 @@ export type PermisosGrupo = Record<string, boolean>;
 export type PermisosMenu = Record<string, PermisosGrupo>;
 
 /** Iconografía semántica de los grupos (el componente la mapea a Lucide). */
-export type IconoGrupoPermiso =
-  | 'registrar'
-  | 'evaluacion'
-  | 'consulta'
-  | 'reportes'
-  | 'administracion'
-  | 'ejecutivo'
-  | 'ayuda';
+export type IconoGrupoPermiso = 'registrar' | 'visualizar';
 
 /** Definición de un permiso individual (checkbox). */
 export interface PermisoItemDef {
@@ -47,8 +40,6 @@ export interface EsquemaPermisosMenu {
   perfil: Perfil;
   titulo: string;
   descripcion: string;
-  /** Columnas de la grilla de tarjetas (3 o 4, según el prototipo). */
-  columnas: 3 | 4;
   grupos: PermisosGrupoDef[];
 }
 
@@ -57,6 +48,15 @@ export function permisosPorDefecto(esquema: EsquemaPermisosMenu): PermisosMenu {
   const permisos: PermisosMenu = {};
   for (const grupo of esquema.grupos) {
     permisos[grupo.key] = Object.fromEntries(grupo.items.map((i) => [i.key, i.defecto]));
+  }
+  return permisos;
+}
+
+/** Todos los permisos del esquema activados (cuentas master). */
+export function permisosCompletos(esquema: EsquemaPermisosMenu): PermisosMenu {
+  const permisos: PermisosMenu = {};
+  for (const grupo of esquema.grupos) {
+    permisos[grupo.key] = Object.fromEntries(grupo.items.map((i) => [i.key, true]));
   }
   return permisos;
 }

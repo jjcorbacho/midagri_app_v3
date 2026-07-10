@@ -24,13 +24,21 @@ import type { LucideIconData } from 'lucide-angular';
 import { AuthService } from '../../core/services/auth.service';
 import { PermisosMenuService } from '../../core/services/permisos-menu.service';
 import {
-  GRUPO_ADMINISTRACION,
-  GRUPO_CONSULTA,
-  GRUPO_EVALUACION,
   GRUPO_REGISTRAR,
-  GRUPO_REPORTES,
-  PERMISO_ADMIN_LISTAS,
-  PERMISO_ADMIN_USUARIOS,
+  GRUPO_VISUALIZAR,
+  PERMISO_APROBACION_EVALUACION_UO,
+  PERMISO_ASISTENCIA_TECNICA,
+  PERMISO_CAPACITACION,
+  PERMISO_CONFIG_CAMPOS,
+  PERMISO_CONFIG_REGLAS,
+  PERMISO_EVALUACION_ADMIN_DZ,
+  PERMISO_EVALUACION_TECNICOS,
+  PERMISO_GESTION_USUARIOS,
+  PERMISO_LISTAS,
+  PERMISO_REPORTE_ASISTENCIA,
+  PERMISO_REPORTE_CAPACITACIONES,
+  PERMISO_SEGUIMIENTO_APROBACION,
+  PERMISO_SEGUIMIENTO_REVISION,
 } from '../../core/constants/permisos-menu.const';
 
 interface NavChild {
@@ -49,6 +57,8 @@ interface NavItem {
 
 const CHILD_USUARIOS: NavChild = { to: '/usuarios', label: 'Gestión de Usuarios', icon: UsersRound };
 const CHILD_LISTAS: NavChild = { to: '/administracion/listas', label: 'Listas', icon: ListChecks };
+const CHILD_CONFIG_CAMPOS: NavChild = { to: '/configuracion/campos', label: 'Configuración Campos', icon: Sliders };
+const CHILD_CONFIG_REGLAS: NavChild = { to: '/configuracion/reglas', label: 'Configuración Reglas', icon: Wrench };
 
 /** Grupo Administración (Gestión de Usuarios + Listas, según permisos). */
 function grupoAdministracion(children: NavChild[]): NavItem {
@@ -57,6 +67,17 @@ function grupoAdministracion(children: NavChild[]): NavItem {
     label: 'Administración',
     icon: Cog,
     matchPrefix: ['/usuarios', '/administracion'],
+    children,
+  };
+}
+
+/** Grupo Configuración (Campos + Reglas, según permisos). */
+function grupoConfiguracion(children: NavChild[]): NavItem {
+  return {
+    to: children[0]?.to ?? '/configuracion',
+    label: 'Configuración',
+    icon: Settings,
+    matchPrefix: ['/configuracion'],
     children,
   };
 }
@@ -205,17 +226,14 @@ export class SidebarComponent {
     { initialValue: this.router.url.split('?')[0] },
   );
 
-  /** Menú filtrado por perfil SODEGA + permisos de menú del usuario. */
+  /** Menú filtrado por perfil SODEGA + permisos de menú del usuario (matriz permisos.xlsx). */
   readonly nav = computed<NavItem[]>(() => {
     if (this.auth.isJefeArea()) {
       const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
-      if (
-        this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, 'aprobacionCapacitacion') ||
-        this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, 'aprobacionAsistenciaTecnica')
-      ) {
+      if (this.registra(PERMISO_APROBACION_EVALUACION_UO)) {
         items.push({ to: '/seguimiento/aprobacion', label: 'Aprobación de Evaluaciones UO', icon: ShieldCheck });
       }
-      if (this.permisosMenu.sesionTieneGrupo(GRUPO_REPORTES)) {
+      if (this.puedeVerReportes()) {
         items.push({ to: '/reportes', label: 'Reportes', icon: FileText });
       }
       const admin = this.childrenAdministracion();
@@ -224,11 +242,11 @@ export class SidebarComponent {
     }
     if (this.auth.isAdminDZ()) {
       const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
-      if (
-        this.permisosMenu.sesionTiene(GRUPO_EVALUACION, 'capacitacion') ||
-        this.permisosMenu.sesionTiene(GRUPO_EVALUACION, 'asistenciaTecnica')
-      ) {
+      if (this.registra(PERMISO_EVALUACION_TECNICOS)) {
         items.push({ to: '/seguimiento/revision', label: 'Evaluación de Técnicos', icon: ClipboardCheck });
+      }
+      if (this.puedeVerReportes()) {
+        items.push({ to: '/reportes', label: 'Reportes', icon: FileText });
       }
       const admin = this.childrenAdministracion();
       if (admin.length) items.push(grupoAdministracion(admin));
@@ -236,38 +254,21 @@ export class SidebarComponent {
     }
     if (this.auth.isAdminUE()) {
       const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
-      if (
-        this.permisosMenu.sesionTiene(GRUPO_EVALUACION, 'capacitacion') ||
-        this.permisosMenu.sesionTiene(GRUPO_EVALUACION, 'asistenciaTecnica')
-      ) {
+      if (this.registra(PERMISO_EVALUACION_ADMIN_DZ)) {
         items.push({ to: '/seguimiento/aprobacion', label: 'Evaluación de Administrador DZ', icon: ShieldCheck });
       }
-      if (this.permisosMenu.sesionTieneGrupo(GRUPO_REPORTES)) {
+      if (this.puedeVerReportes()) {
         items.push({ to: '/reportes', label: 'Reportes', icon: FileText });
       }
       const admin = this.childrenAdministracion();
       if (admin.length) items.push(grupoAdministracion(admin));
-      // Configuración (campos/reglas) es funcionalidad propia del Admin UO en
-      // este proyecto; no forma parte del esquema de permisos del prototipo.
-      items.push({
-        to: '/configuracion',
-        label: 'Configuración',
-        icon: Settings,
-        matchPrefix: ['/configuracion'],
-        children: [
-          { to: '/configuracion/campos', label: 'Configuración Campos', icon: Sliders },
-          { to: '/configuracion/reglas', label: 'Configuración Reglas', icon: Wrench },
-        ],
-      });
+      const config = this.childrenConfiguracion();
+      if (config.length) items.push(grupoConfiguracion(config));
       return items;
     }
     if (this.auth.isTecnico1()) {
       const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
-      if (
-        this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, 'capacitaciones') ||
-        this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, 'asistenciaTecnica') ||
-        this.permisosMenu.sesionTieneGrupo(GRUPO_CONSULTA)
-      ) {
+      if (this.registra(PERMISO_CAPACITACION) || this.registra(PERMISO_ASISTENCIA_TECNICA)) {
         items.push({
           to: '/capacitaciones-n1',
           label: 'Capacitaciones / Asist. Técnica N1',
@@ -279,10 +280,7 @@ export class SidebarComponent {
     }
     if (this.auth.isAdministrador()) {
       const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
-      if (
-        this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, 'capacitaciones') ||
-        this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, 'asistenciaTecnica')
-      ) {
+      if (this.registra(PERMISO_CAPACITACION) || this.registra(PERMISO_ASISTENCIA_TECNICA)) {
         items.push({
           to: '/capacitaciones-n1',
           label: 'Capacitaciones / Asist. Técnica N1',
@@ -290,43 +288,50 @@ export class SidebarComponent {
           matchPrefix: ['/capacitaciones-n1'],
         });
       }
-      if (
-        this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, 'aprobacionCapacitacion') ||
-        this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, 'aprobacionAsistenciaTecnica')
-      ) {
+      if (this.registra(PERMISO_SEGUIMIENTO_REVISION)) {
         items.push({ to: '/seguimiento/revision', label: 'Seguimiento y revisión', icon: ClipboardCheck });
+      }
+      if (this.registra(PERMISO_SEGUIMIENTO_APROBACION)) {
         items.push({ to: '/seguimiento/aprobacion', label: 'Seguimiento y aprobación', icon: ShieldCheck });
       }
-      if (this.permisosMenu.sesionTieneGrupo(GRUPO_REPORTES)) {
+      if (this.puedeVerReportes()) {
         items.push({ to: '/reportes', label: 'Reportes', icon: FileText });
       }
       const admin = this.childrenAdministracion();
       if (admin.length) items.push(grupoAdministracion(admin));
-      // Configuración (campos/reglas) no forma parte del esquema del prototipo.
-      items.push({
-        to: '/configuracion',
-        label: 'Configuración',
-        icon: Settings,
-        matchPrefix: ['/configuracion'],
-        children: [
-          { to: '/configuracion/campos', label: 'Configuración Campos', icon: Sliders },
-          { to: '/configuracion/reglas', label: 'Configuración Reglas', icon: Wrench },
-        ],
-      });
+      const config = this.childrenConfiguracion();
+      if (config.length) items.push(grupoConfiguracion(config));
       return items;
     }
     return NAV_FULL;
   });
 
+  /* ===== Helpers de permisos (grupos Registrar / Visualizar del Excel) ===== */
+
+  private registra(permiso: string): boolean {
+    return this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, permiso);
+  }
+
+  private puedeVerReportes(): boolean {
+    return (
+      this.permisosMenu.sesionTiene(GRUPO_VISUALIZAR, PERMISO_REPORTE_CAPACITACIONES) ||
+      this.permisosMenu.sesionTiene(GRUPO_VISUALIZAR, PERMISO_REPORTE_ASISTENCIA)
+    );
+  }
+
   /** Hijos del grupo Administración según los permisos del registro activo. */
   private childrenAdministracion(): NavChild[] {
     const children: NavChild[] = [];
-    if (this.permisosMenu.sesionTiene(GRUPO_ADMINISTRACION, PERMISO_ADMIN_USUARIOS)) {
-      children.push(CHILD_USUARIOS);
-    }
-    if (this.permisosMenu.sesionTiene(GRUPO_ADMINISTRACION, PERMISO_ADMIN_LISTAS)) {
-      children.push(CHILD_LISTAS);
-    }
+    if (this.registra(PERMISO_GESTION_USUARIOS)) children.push(CHILD_USUARIOS);
+    if (this.registra(PERMISO_LISTAS)) children.push(CHILD_LISTAS);
+    return children;
+  }
+
+  /** Hijos del grupo Configuración según los permisos del registro activo. */
+  private childrenConfiguracion(): NavChild[] {
+    const children: NavChild[] = [];
+    if (this.registra(PERMISO_CONFIG_CAMPOS)) children.push(CHILD_CONFIG_CAMPOS);
+    if (this.registra(PERMISO_CONFIG_REGLAS)) children.push(CHILD_CONFIG_REGLAS);
     return children;
   }
 
