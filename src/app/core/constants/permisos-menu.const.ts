@@ -73,11 +73,12 @@ const ESQUEMA_ADMIN_GENERAL = esquema(
   [...VISUALIZAR_ADMINISTRATIVO],
 );
 
+// Nota: "Asistencia técnica" fue retirado de Jefe de Área y Admin UO por
+// requerimiento (no disponible ni asignable para estos dos perfiles).
 const ESQUEMA_JEFE_AREA = esquema(
   'Jefe de Área',
   [
     item(PERMISO_APROBACION_EVALUACION_UO, 'Aprobación de Evaluación UO', true),
-    item(PERMISO_ASISTENCIA_TECNICA, 'Asistencia técnica', true),
     item(PERMISO_GESTION_USUARIOS, 'Gestión de usuarios', true),
   ],
   [...VISUALIZAR_ADMINISTRATIVO],
@@ -87,7 +88,6 @@ const ESQUEMA_ADMIN_UO = esquema(
   'Administrador Unidad Organizacional',
   [
     item(PERMISO_EVALUACION_ADMIN_DZ, 'Evaluación de administrador DZ', true),
-    item(PERMISO_ASISTENCIA_TECNICA, 'Asistencia técnica', true),
     item(PERMISO_GESTION_USUARIOS, 'Gestión de usuarios', true),
     item(PERMISO_CONFIG_REGLAS, 'Configuración de reglas', false),
     item(PERMISO_CONFIG_CAMPOS, 'Configuración de campos', true),
