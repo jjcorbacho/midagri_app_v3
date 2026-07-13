@@ -63,6 +63,46 @@ export class CursosService {
     this._cursos.update((prev) => prev.filter((c) => c.id !== id));
   }
 
+  /**
+   * POST /usuarios/{idOrigen}/reasignar-registros — transfiere TODAS las
+   * capacitaciones y asistencias técnicas de un técnico hacia otro.
+   *
+   * Solo cambia el responsable (`extensionista`): los registros, participantes
+   * (vinculados por cursoId), evidencias y el historial de observaciones se
+   * conservan intactos; no se elimina ni duplica ningún registro.
+   * Devuelve el total de registros transferidos por tipo.
+   */
+  reasignarResponsable(
+    nombreOrigen: string,
+    nombreDestino: string,
+  ): { capacitaciones: number; asistencias: number } {
+    const clave = this.normalizarNombre(nombreOrigen);
+    const resultado = { capacitaciones: 0, asistencias: 0 };
+    this._cursos.update((prev) =>
+      prev.map((c) => {
+        if (this.normalizarNombre(c.extensionista) !== clave) return c;
+        if (c.tipo === 'capacitacion') resultado.capacitaciones++;
+        else resultado.asistencias++;
+        return {
+          ...c,
+          extensionista: nombreDestino,
+          detalle: c.detalle ? { ...c.detalle, extensionista: nombreDestino } : c.detalle,
+        };
+      }),
+    );
+    return resultado;
+  }
+
+  /** Comparación tolerante a mayúsculas, tildes y espacios repetidos. */
+  private normalizarNombre(nombre: string): string {
+    return nombre
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/\s+/g, ' ');
+  }
+
   /** Ajuste interno del contador de participantes (denormalizado). */
   adjustParticipantes(cursoId: string, deltaOrFn: number): void {
     this._cursos.update((prev) =>
