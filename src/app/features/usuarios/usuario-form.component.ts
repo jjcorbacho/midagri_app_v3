@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
   LucideAngularModule,
   IdCard, KeyRound, UserCheck, Wallet, ShieldHalf, Search, LoaderCircle,
-  ArrowLeft, ArrowRight, Save, Trash2, SquarePlus,
+  ArrowLeft, ArrowRight, Save, Trash2, SquarePlus, Target,
 } from 'lucide-angular';
 import { AuthService } from '../../core/services/auth.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
@@ -12,8 +12,10 @@ import { ListasAdminService } from '../../core/services/listas-admin.service';
 import { PermisosMenuService } from '../../core/services/permisos-menu.service';
 import {
   AmbitoTerritorial,
+  MetaAmbitoTerritorial,
   Perfil,
   UsuarioSodega,
+  aplicaMetasPorAmbito,
   perfilRequiereAmbito,
   perfilSoloRegion,
   toTitleCase,
@@ -35,6 +37,12 @@ import {
 import { ModalComponent } from '../../shared/components/modal/modal.component';
 
 type ModoForm = 'nuevo' | 'editar' | 'presupuesto';
+
+/** Fila del FormArray de metas por ámbito territorial (cantidades enteras ≥ 0). */
+type MetaAmbitoForm = FormGroup<{
+  cantidadCapacitaciones: FormControl<number>;
+  cantidadAsistenciaTecnica: FormControl<number>;
+}>;
 
 /* Estilos de input compartidos del design system N1 (obligatorios en ámbar). */
 const INP_MANDATORY = INPUT_REQUIRED;
@@ -399,6 +407,58 @@ const INP_NORMAL = INPUT_BASE;
                       </tbody>
                     </table>
                   </div>
+
+                  <!-- Metas asignadas por ámbito territorial (solo Admin DZ → Técnico) -->
+                  @if (mostrarMetas()) {
+                    <div class="space-y-3 pt-1">
+                      <div class="flex items-center gap-2 border-b border-border pb-2 text-brand">
+                        <lucide-angular [img]="TargetIcon" class="size-4" />
+                        <h3 class="text-[11px] font-semibold uppercase tracking-wider">Metas asignadas por ámbito territorial</h3>
+                      </div>
+                      <div class="bg-card rounded-xl ring-1 ring-border shadow-sm overflow-x-auto">
+                        <table class="w-full min-w-[640px] text-left">
+                          <thead class="bg-secondary">
+                            <tr class="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
+                              <th class="px-4 py-3 text-center">Región</th>
+                              <th class="px-4 py-3 text-center">Provincia</th>
+                              <th class="px-4 py-3 text-center">Distrito</th>
+                              <th class="px-4 py-3 text-center">Cantidad de Capacitaciones</th>
+                              <th class="px-4 py-3 text-center">Cantidad de Asistencia Técnica</th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-border">
+                            <!-- track por instancia de FormGroup: al eliminar un ámbito se
+                                 destruye su fila (formGroupName por índice no se re-vincula). -->
+                            @for (grupo of metasAmbito.controls; track grupo; let i = $index) {
+                              <tr [formGroup]="grupo" class="hover:bg-secondary/40 transition-colors">
+                                <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ ambitos()[i]?.region }}</td>
+                                <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ ambitos()[i]?.provincia }}</td>
+                                <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ ambitos()[i]?.distrito }}</td>
+                                <td class="px-4 py-2 text-center">
+                                  <input
+                                    type="number" min="0" step="1" inputmode="numeric"
+                                    formControlName="cantidadCapacitaciones"
+                                    (keydown)="bloquearNoEnteros($event)"
+                                    (blur)="normalizarMeta(i, 'cantidadCapacitaciones')"
+                                    [class]="inpNormal + ' max-w-[110px] mx-auto text-center'"
+                                  />
+                                </td>
+                                <td class="px-4 py-2 text-center">
+                                  <input
+                                    type="number" min="0" step="1" inputmode="numeric"
+                                    formControlName="cantidadAsistenciaTecnica"
+                                    (keydown)="bloquearNoEnteros($event)"
+                                    (blur)="normalizarMeta(i, 'cantidadAsistenciaTecnica')"
+                                    [class]="inpNormal + ' max-w-[110px] mx-auto text-center'"
+                                  />
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  }
                 </div>
               }
             </div>
@@ -456,6 +516,7 @@ export class UsuarioFormComponent implements OnInit {
   readonly SaveIcon = Save;
   readonly Trash2Icon = Trash2;
   readonly SquarePlusIcon = SquarePlus;
+  readonly TargetIcon = Target;
 
   readonly inpMandatory = INP_MANDATORY;
   readonly inpDisabled = INP_DISABLED;
@@ -513,7 +574,13 @@ export class UsuarioFormComponent implements OnInit {
     fechaFin: '',
     nroOrden: '',
     perfil: '' as Perfil | '',
+    metasAmbito: this.fb.array<MetaAmbitoForm>([]),
   });
+
+  /** Metas por ámbito: una fila por cada entrada de `ambitos()` (mismo índice). */
+  get metasAmbito(): FormArray<MetaAmbitoForm> {
+    return this.form.controls.metasAmbito;
+  }
 
   constructor() {
     this.form.valueChanges.subscribe(() => this.formTick.update((t) => t + 1));
@@ -561,6 +628,7 @@ export class UsuarioFormComponent implements OnInit {
       perfil: u.perfil,
     });
     this.ambitos.set([...(u.ambitos ?? [])]);
+    this.reconstruirMetasAmbito(u.ambitos ?? [], u.metasAmbito);
     this.sincronizarPermisosMenu();
     // En edición el DNI no cambia; en modo presupuesto la sección RENIEC queda bloqueada.
     this.reniecEditable.set(!esPresupuesto && false ? true : !esPresupuesto);
@@ -679,6 +747,15 @@ export class UsuarioFormComponent implements OnInit {
     return perfilSoloRegion(this.form.controls.perfil.value);
   });
 
+  /** Metas por ámbito: solo cuando un Admin DZ_Cap_Asit. registra un Técnico. */
+  readonly aplicaMetas = computed(() => {
+    this.formTick();
+    return aplicaMetasPorAmbito(this.auth.session()?.perfil ?? '', this.form.controls.perfil.value);
+  });
+
+  /** La sección de metas aparece únicamente con al menos un ámbito agregado. */
+  readonly mostrarMetas = computed(() => this.aplicaMetas() && this.ambitos().length > 0);
+
   readonly provinciasDisponibles = computed(() => {
     const r = this.ambitoRegion();
     return r ? Object.keys(UBIGEO_SODEGA[r] ?? {}) : [];
@@ -701,7 +778,10 @@ export class UsuarioFormComponent implements OnInit {
   }
 
   onPerfilChange(): void {
-    if (!this.mostrarAmbito()) this.ambitos.set([]);
+    if (!this.mostrarAmbito()) {
+      this.ambitos.set([]);
+      this.metasAmbito.clear();
+    }
     this.sincronizarPermisosMenu();
   }
 
@@ -773,11 +853,61 @@ export class UsuarioFormComponent implements OnInit {
       return;
     }
     this.ambitos.update((prev) => [...prev, { region, provincia, distrito }]);
+    this.metasAmbito.push(this.crearFilaMeta());
     this.ambitoDistrito.set('');
   }
 
   eliminarAmbito(i: number): void {
     this.ambitos.update((prev) => prev.filter((_, idx) => idx !== i));
+    this.metasAmbito.removeAt(i);
+  }
+
+  /* ===== Metas asignadas por ámbito territorial ===== */
+
+  private crearFilaMeta(capacitaciones = 0, asistencias = 0): MetaAmbitoForm {
+    const validadores = [Validators.required, Validators.min(0), Validators.pattern(/^\d+$/)];
+    return this.fb.nonNullable.group({
+      cantidadCapacitaciones: [capacitaciones, validadores],
+      cantidadAsistenciaTecnica: [asistencias, validadores],
+    });
+  }
+
+  /** Reconstruye el FormArray de metas alineado a los ámbitos (edición). */
+  private reconstruirMetasAmbito(ambitos: AmbitoTerritorial[], metas?: MetaAmbitoTerritorial[]): void {
+    this.metasAmbito.clear();
+    for (const amb of ambitos) {
+      const meta = metas?.find(
+        (m) => m.region === amb.region && m.provincia === amb.provincia && m.distrito === amb.distrito,
+      );
+      this.metasAmbito.push(
+        this.crearFilaMeta(meta?.cantidadCapacitaciones ?? 0, meta?.cantidadAsistenciaTecnica ?? 0),
+      );
+    }
+  }
+
+  /** Bloquea signos, exponentes y decimales en los inputs de metas. */
+  bloquearNoEnteros(ev: KeyboardEvent): void {
+    if (['e', 'E', '+', '-', '.', ','].includes(ev.key)) ev.preventDefault();
+  }
+
+  /** Normaliza la meta al salir del campo: entero ≥ 0 (vacío/ inválido → 0). */
+  normalizarMeta(i: number, campo: 'cantidadCapacitaciones' | 'cantidadAsistenciaTecnica'): void {
+    const ctrl = this.metasAmbito.at(i)?.controls[campo];
+    if (!ctrl) return;
+    const v = Number(ctrl.value);
+    ctrl.setValue(Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
+  }
+
+  /** Payload de metas por ámbito para el backend (una fila por ámbito asignado). */
+  private construirMetasAmbito(): MetaAmbitoTerritorial[] {
+    return this.ambitos().map((amb, i) => {
+      const fila = this.metasAmbito.at(i)?.getRawValue();
+      return {
+        ...amb,
+        cantidadCapacitaciones: fila?.cantidadCapacitaciones ?? 0,
+        cantidadAsistenciaTecnica: fila?.cantidadAsistenciaTecnica ?? 0,
+      };
+    });
   }
 
   irAPestana(tab: 'datos' | 'permisos'): void {
@@ -903,6 +1033,14 @@ export class UsuarioFormComponent implements OnInit {
       return;
     }
 
+    if (this.aplicaMetas() && this.metasAmbito.invalid) {
+      this.alerta.set({
+        titulo: 'Metas por Ámbito Inválidas',
+        mensaje: 'Las cantidades de Capacitaciones y Asistencia Técnica deben ser números enteros mayores o iguales a 0.',
+      });
+      return;
+    }
+
     if (!this.validarPresupuesto(v)) return;
 
     const esAdminGeneral = v.perfil === 'Administrador General';
@@ -936,6 +1074,9 @@ export class UsuarioFormComponent implements OnInit {
       unidadFuncional: esAdminGeneral ? '' : v.unidadFuncional,
       creadoPor: s.userGen,
       ambitos: perfilRequiereAmbito(v.perfil) ? [...this.ambitos()] : [],
+      // Metas por ámbito: solo aplica al flujo Admin DZ → Técnico; si la sección
+      // no es visible se preservan las del registro original.
+      metasAmbito: this.aplicaMetas() ? this.construirMetasAmbito() : this.usuarioBase?.metasAmbito,
       // Permisos de menú: editados por el Admin General; si la sección no es
       // visible se preservan los del registro original.
       permisosMenu: this.esquemaPermisos()
