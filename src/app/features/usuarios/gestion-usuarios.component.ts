@@ -11,6 +11,10 @@ import { UsuariosService } from '../../core/services/usuarios.service';
 import { ToastService } from '../../core/services/toast.service';
 import { UsuarioSodega, esUsuarioPermanente, toTitleCase } from '../../core/models/usuario-sodega.model';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
+import {
+  ReasignarRegistroModalComponent,
+  ResultadoReasignacion,
+} from './reasignar-registro-modal.component';
 
 type FiltroKpi = 'TOTAL' | 'HABILITADO' | 'INHABILITADO' | 'PERMANENTE' | 'CRITICOS' | 'VENCIDOS';
 
@@ -34,7 +38,7 @@ const ICON_TONES: Record<string, string> = {
 @Component({
   selector: 'app-gestion-usuarios',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, ModalComponent],
+  imports: [LucideAngularModule, ModalComponent, ReasignarRegistroModalComponent],
   template: `
     <section class="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6 animate-page-in">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -155,7 +159,7 @@ const ICON_TONES: Record<string, string> = {
                         class="p-2 rounded-lg transition-all" [class]="tone('amber')">
                         <lucide-angular [img]="KeyRoundIcon" class="size-4" />
                       </button>
-                      <button title="Reasignar OPA" aria-label="Reasignar OPA" (click)="accion('REASIGNAR', u)"
+                      <button title="Reasignar Registro" aria-label="Reasignar Registro" (click)="accion('REASIGNAR_REGISTRO', u)"
                         class="p-2 rounded-lg transition-all" [class]="tone('blue')">
                         <lucide-angular [img]="MapPinnedIcon" class="size-4" />
                       </button>
@@ -225,6 +229,15 @@ const ICON_TONES: Record<string, string> = {
         </div>
       </div>
 
+      <!-- Modal Reasignar Registro: transferencia de capacitaciones y asistencias -->
+      @if (reasignarOrigen(); as origen) {
+        <app-reasignar-registro-modal
+          [origen]="origen"
+          (closed)="reasignarOrigen.set(null)"
+          (reasignado)="onReasignado($event)"
+        />
+      }
+
       <!-- Modal alerta (equivalente a la alerta personalizada del prototipo) -->
       @if (alerta(); as a) {
         <app-modal [title]="a.titulo" maxWidth="max-w-md" (closed)="alerta.set(null)">
@@ -270,6 +283,8 @@ export class GestionUsuariosComponent {
   readonly pageSize = signal(5);
   readonly toastExcel = signal('');
   readonly alerta = signal<{ titulo: string; mensaje: string } | null>(null);
+  /** Registro de origen del modal "Reasignar Registro" (null = cerrado). */
+  readonly reasignarOrigen = signal<UsuarioSodega | null>(null);
 
   /** Registros visibles según los privilegios del perfil activo. */
   private readonly visibles = computed(() => {
@@ -393,7 +408,7 @@ export class GestionUsuariosComponent {
     this.router.navigate(['/usuarios/nuevo']);
   }
 
-  accion(tipo: 'EDITAR' | 'PRESUPUESTO' | 'CLAVE' | 'REASIGNAR' | 'ESTADO', u: UsuarioSodega): void {
+  accion(tipo: 'EDITAR' | 'PRESUPUESTO' | 'CLAVE' | 'REASIGNAR_REGISTRO' | 'ESTADO', u: UsuarioSodega): void {
     switch (tipo) {
       case 'EDITAR':
         this.router.navigate(['/usuarios', u.id], { queryParams: { modo: 'editar' } });
@@ -410,11 +425,8 @@ export class GestionUsuariosComponent {
         });
         break;
       }
-      case 'REASIGNAR':
-        this.alerta.set({
-          titulo: 'Reasignar Jurisdicción',
-          mensaje: `Simulación de transferencia de ámbito regional. El usuario '${u.userGen}' será trasladado de la OPA '${u.opa}' hacia una nueva zona.`,
-        });
+      case 'REASIGNAR_REGISTRO':
+        this.reasignarOrigen.set(u);
         break;
       case 'ESTADO': {
         const actualizado = this.usuariosService.toggleEstado(u.id);
@@ -425,6 +437,20 @@ export class GestionUsuariosComponent {
         break;
       }
     }
+  }
+
+  /** Cierre exitoso del modal Reasignar Registro: mensaje y refresco reactivo. */
+  onReasignado(r: ResultadoReasignacion): void {
+    const origen = this.reasignarOrigen();
+    this.reasignarOrigen.set(null);
+    const nombreOrigen = origen ? toTitleCase(`${origen.nombres} ${origen.apePat}`) : '';
+    const nombreDestino = toTitleCase(`${r.destino.nombres} ${r.destino.apePat}`);
+    this.alerta.set({
+      titulo: 'Reasignación Completada',
+      mensaje:
+        `Se transfirieron ${r.capacitaciones} capacitación(es) y ${r.asistencias} asistencia(s) técnica(s) ` +
+        `de ${nombreOrigen} hacia ${nombreDestino}. El historial institucional se conserva íntegro bajo el nuevo responsable.`,
+    });
   }
 
   /** Exportación simulada (mensajes progresivos del prototipo). */
