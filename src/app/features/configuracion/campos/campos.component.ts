@@ -35,7 +35,7 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgTemplateOutlet, LucideAngularModule, CampoPreviewComponent, CampoModalComponent, OpcionesModalComponent],
   template: `
-    <section class="p-6 lg:p-8 max-w-7xl mx-auto">
+    <section class="p-6 lg:p-8 max-w-7xl mx-auto animate-page-in">
       <div class="bg-card rounded-xl shadow-xl border border-border overflow-hidden flex flex-col">
         <!-- Header -->
         <header class="p-6 border-b border-border">
@@ -50,7 +50,7 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
                   [class]="isAdmin() ? 'bg-state-aprobado-soft text-state-aprobado-foreground' : 'bg-state-enviado-soft text-state-enviado-foreground'"
                 >{{ isAdmin() ? 'ADMINISTRADOR GENERAL' : 'ADMIN. UNIDAD ORGANIZACIONAL' }}</span>
               </div>
-              <h1 class="text-2xl font-bold text-foreground">Configuración de Formularios — {{ area().code }}</h1>
+              <h1 class="text-h1 text-foreground">Configuración de Formularios — {{ area().code }}</h1>
             </div>
 
             <!-- Filter bar -->
@@ -102,18 +102,18 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
         <!-- Main split -->
         <div class="flex flex-col lg:flex-row min-h-[600px]">
           <!-- Left: structure -->
-          <div class="lg:w-3/5 border-r border-slate-100 bg-slate-50/30 p-6 overflow-y-auto">
+          <div class="lg:w-3/5 border-r border-border/60 bg-surface-2/50 p-6 overflow-y-auto">
             <div class="flex items-center justify-between mb-6 gap-3 flex-wrap">
-              <h2 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+              <h2 class="text-lg font-bold text-foreground flex items-center gap-2">
                 Estructura del formulario
-                <span class="bg-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded-full uppercase font-semibold">
+                <span class="bg-surface-3 text-muted-foreground text-[10px] px-2 py-0.5 rounded-full uppercase font-semibold">
                   {{ totalActivos() }} {{ isAdmin() ? 'campos activos' : 'campos visibles' }}
                 </span>
               </h2>
               @if (isAdmin()) {
                 <button
                   (click)="editing.set(null); showModal.set(true)"
-                  class="flex items-center gap-2 bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm"
+                  class="btn-primary"
                 >
                   <lucide-angular [img]="PlusIcon" class="size-4" />
                   Nuevo campo personalizado
@@ -127,17 +127,17 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
                 <button
                   type="button"
                   (click)="toggleSeccion(grupo.seccion)"
-                  class="w-full flex items-center gap-3 mb-3 pb-2 border-b border-slate-200 text-left hover:border-teal-300 transition-colors"
+                  class="w-full flex items-center gap-3 mb-3 pb-2 border-b border-border text-left hover:border-brand/40 transition-colors"
                   [attr.aria-expanded]="!isCollapsed(grupo.seccion)"
                 >
-                  <div class="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center">
-                    <lucide-angular [img]="sectionIcon(grupo.seccion)" class="size-4 text-teal-700" />
+                  <div class="w-8 h-8 rounded-lg bg-brand-soft flex items-center justify-center">
+                    <lucide-angular [img]="sectionIcon(grupo.seccion)" class="size-4 text-brand" />
                   </div>
-                  <h3 class="text-sm font-bold text-slate-800 uppercase tracking-tight">{{ grupo.seccion }}</h3>
-                  <span class="text-[10px] text-slate-400 ml-auto font-semibold">{{ grupo.campos.length }} campos</span>
+                  <h3 class="text-sm font-bold text-foreground uppercase tracking-tight">{{ grupo.seccion }}</h3>
+                  <span class="text-[10px] text-muted-foreground/70 ml-auto font-semibold">{{ grupo.campos.length }} campos</span>
                   <lucide-angular
                     [img]="ChevronDownIcon"
-                    class="size-4 text-slate-400 transition-transform"
+                    class="size-4 text-muted-foreground/70 transition-transform"
                     [class.-rotate-90]="isCollapsed(grupo.seccion)"
                   />
                 </button>
@@ -145,20 +145,20 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
                   <div class="space-y-2">
                     @for (b of grupo.campos; track b.nombre) {
                       <div
-                        class="group bg-white border border-slate-200 p-3 rounded-xl flex items-center justify-between transition-all hover:shadow-md hover:border-teal-200"
+                        class="group bg-card border border-border p-3 rounded-xl flex items-center justify-between transition-all hover:shadow-md hover:border-brand/25"
                         [class.opacity-60]="isBaseInactive(b)"
                       >
                         <div class="flex items-center gap-4 min-w-0">
-                          <div class="cursor-grab text-slate-300 group-hover:text-teal-400">
+                          <div class="cursor-grab text-muted-foreground/50 group-hover:text-brand-secondary">
                             <lucide-angular [img]="GripVerticalIcon" class="size-5" />
                           </div>
                           <div class="min-w-0">
                             <div class="flex items-center gap-2">
                               <span
-                                class="text-sm font-semibold text-slate-700 truncate"
-                                [class]="isBaseInactive(b) ? 'line-through text-slate-500' : ''"
+                                class="text-sm font-semibold text-foreground truncate"
+                                [class]="isBaseInactive(b) ? 'line-through text-muted-foreground' : ''"
                               >{{ b.nombre }}</span>
-                              <span class="bg-slate-100 text-slate-500 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">
+                              <span class="bg-muted text-muted-foreground text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">
                                 Base
                               </span>
                             </div>
@@ -167,7 +167,7 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
                                 {{ tipoLabel(b.tipo) }}
                               </span>
                               @if (b.requerido) {
-                                <span class="bg-orange-50 text-orange-600 text-[10px] px-2 py-0.5 rounded-full border border-orange-100 font-medium">
+                                <span class="bg-state-observado-soft text-state-observado-foreground text-[10px] px-2 py-0.5 rounded-full border border-state-observado/25 font-medium">
                                   Obligatorio
                                 </span>
                               }
@@ -176,17 +176,17 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
                         </div>
                         @if (isAdmin()) {
                           <div class="flex items-center gap-2">
-                            <span class="text-[10px] font-bold uppercase" [class]="isBaseInactive(b) ? 'text-slate-300' : 'text-slate-400'">
+                            <span class="text-[10px] font-bold uppercase" [class]="isBaseInactive(b) ? 'text-muted-foreground/50' : 'text-muted-foreground/70'">
                               {{ isBaseInactive(b) ? 'Inactivo' : 'Activo' }}
                             </span>
                             <button
                               (click)="toggleBase(b)"
                               class="w-10 h-5 rounded-full relative transition-colors"
-                              [class]="isBaseInactive(b) ? 'bg-slate-200' : 'bg-teal-500'"
+                              [class]="isBaseInactive(b) ? 'bg-surface-3' : 'bg-primary'"
                               aria-label="Activar/Inactivar"
                             >
                               <div
-                                class="absolute top-0.5 bg-white w-4 h-4 rounded-full shadow-sm transition-all"
+                                class="absolute top-0.5 bg-card w-4 h-4 rounded-full shadow-sm transition-all"
                                 [class]="isBaseInactive(b) ? 'left-0.5' : 'right-0.5'"
                               ></div>
                             </button>
@@ -201,17 +201,17 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
 
             <!-- Personalizados -->
             <div class="mb-2">
-              <div class="flex items-center gap-3 mb-3 pb-2 border-b border-teal-200">
-                <div class="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center">
+              <div class="flex items-center gap-3 mb-3 pb-2 border-b border-brand/25">
+                <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                   <lucide-angular [img]="SparklesIcon" class="size-4 text-white" />
                 </div>
-                <h3 class="text-sm font-bold text-teal-800 uppercase tracking-tight">Campos personalizados</h3>
-                <span class="text-[10px] text-teal-600 ml-auto font-semibold">{{ customsVisibles().length }} campos</span>
+                <h3 class="text-sm font-bold text-brand uppercase tracking-tight">Campos personalizados</h3>
+                <span class="text-[10px] text-brand ml-auto font-semibold">{{ customsVisibles().length }} campos</span>
               </div>
 
               @if (customsVisibles().length === 0) {
-                <div class="bg-teal-50/30 border border-dashed border-teal-200 rounded-xl p-6 text-center">
-                  <p class="text-sm text-teal-700/70 italic">
+                <div class="bg-brand-soft/30 border border-dashed border-brand/25 rounded-xl p-6 text-center">
+                  <p class="text-sm text-brand/70 italic">
                     {{ isAdmin()
                       ? 'Sin campos personalizados en este formulario.'
                       : 'El ADMINISTRADOR GENERAL aún no ha publicado campos personalizados activos.' }}
@@ -219,7 +219,7 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
                   @if (isAdmin()) {
                     <button
                       (click)="editing.set(null); showModal.set(true)"
-                      class="mt-2 text-teal-700 text-xs font-bold hover:underline"
+                      class="mt-2 text-brand text-xs font-bold hover:underline"
                     >+ Agregar el primero</button>
                   }
                 </div>
@@ -227,20 +227,20 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
                 <div class="space-y-2">
                   @for (c of customsVisibles(); track c.id) {
                     <div
-                      class="group bg-teal-50/50 border border-teal-200 p-3 rounded-xl flex items-center justify-between shadow-sm"
+                      class="group bg-brand-soft/50 border border-brand/25 p-3 rounded-xl flex items-center justify-between shadow-sm"
                       [class.opacity-60]="isAdmin() && !c.activo"
                     >
                       <div class="flex items-center gap-4 min-w-0">
-                        <div class="cursor-grab text-teal-400">
+                        <div class="cursor-grab text-brand-secondary">
                           <lucide-angular [img]="GripVerticalIcon" class="size-5" />
                         </div>
                         <div class="min-w-0">
                           <div class="flex items-center gap-2">
-                            <span class="text-sm font-semibold text-teal-900 truncate">{{ c.nombre }}</span>
+                            <span class="text-sm font-semibold text-brand truncate">{{ c.nombre }}</span>
                             @if (c.tieneData) {
                               <span
                                 title="Con información registrada"
-                                class="bg-amber-100 text-amber-700 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase"
+                                class="bg-warning-soft text-warning-foreground text-[9px] px-1.5 py-0.5 rounded font-bold uppercase"
                               >Con datos</span>
                             }
                           </div>
@@ -250,7 +250,7 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
                             </span>
                             <span
                               class="text-[10px] px-2 py-0.5 rounded-full border font-medium"
-                              [class]="c.requerido ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-slate-100 text-slate-500 border-slate-200'"
+                              [class]="c.requerido ? 'bg-state-observado-soft text-state-observado-foreground border-state-observado/25' : 'bg-muted text-muted-foreground border-border'"
                             >{{ c.requerido ? 'Obligatorio' : 'Opcional' }}</span>
                           </div>
                         </div>
@@ -258,10 +258,10 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
 
                       @if (isAdmin()) {
                         <div class="flex items-center gap-3">
-                          <div class="flex items-center gap-1 border-r border-teal-200 pr-3">
+                          <div class="flex items-center gap-1 border-r border-brand/25 pr-3">
                             <button
                               (click)="editing.set(c); showModal.set(true)"
-                              class="p-1.5 text-teal-600 hover:text-teal-800 transition-colors"
+                              class="p-1.5 text-brand hover:text-brand transition-colors"
                               title="Editar"
                             >
                               <lucide-angular [img]="PencilIcon" class="size-4" />
@@ -269,23 +269,23 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
                             <button
                               (click)="eliminarCampo(c)"
                               class="p-1.5 transition-colors"
-                              [class]="c.tieneData ? 'text-slate-300 cursor-not-allowed' : 'text-rose-500 hover:text-rose-700'"
+                              [class]="c.tieneData ? 'text-muted-foreground/50 cursor-not-allowed' : 'text-destructive hover:text-destructive'"
                               [title]="c.tieneData ? 'Bloqueado: tiene datos registrados' : 'Eliminar'"
                             >
                               <lucide-angular [img]="Trash2Icon" class="size-4" />
                             </button>
                           </div>
                           <div class="flex items-center gap-2">
-                            <span class="text-[10px] font-bold uppercase" [class]="c.activo ? 'text-teal-600' : 'text-slate-400'">
+                            <span class="text-[10px] font-bold uppercase" [class]="c.activo ? 'text-brand' : 'text-muted-foreground/70'">
                               {{ c.activo ? 'Activo' : 'Inactivo' }}
                             </span>
                             <button
                               (click)="camposService.update(c.id, { activo: !c.activo })"
                               class="w-10 h-5 rounded-full relative transition-colors"
-                              [class]="c.activo ? 'bg-teal-500' : 'bg-slate-200'"
+                              [class]="c.activo ? 'bg-primary' : 'bg-surface-3'"
                             >
                               <div
-                                class="absolute top-0.5 bg-white w-4 h-4 rounded-full shadow-sm transition-all"
+                                class="absolute top-0.5 bg-card w-4 h-4 rounded-full shadow-sm transition-all"
                                 [class]="c.activo ? 'right-0.5' : 'left-0.5'"
                               ></div>
                             </button>
@@ -296,7 +296,7 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
                           @if (c.tipo === 'select' || c.tipo === 'radio' || c.tipo === 'checkbox') {
                             <button
                               (click)="editOptionsOf.set(c)"
-                              class="p-1.5 text-teal-700 hover:text-teal-900"
+                              class="p-1.5 text-brand hover:text-brand"
                               title="Editar valores"
                             >
                               <lucide-angular [img]="Settings2Icon" class="size-4" />
@@ -305,7 +305,7 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
                           <div class="flex items-center gap-2">
                             <span
                               class="text-[10px] font-bold uppercase flex items-center gap-1"
-                              [class]="visibleUE(c) ? 'text-teal-600' : 'text-slate-400'"
+                              [class]="visibleUE(c) ? 'text-brand' : 'text-muted-foreground/70'"
                             >
                               <lucide-angular [img]="visibleUE(c) ? EyeIcon : EyeOffIcon" class="size-3" />
                               {{ visibleUE(c) ? 'Visible' : 'No visible' }}
@@ -313,10 +313,10 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
                             <button
                               (click)="camposService.setVisibilidad(c.id, areaService.currentArea(), !visibleUE(c))"
                               class="w-10 h-5 rounded-full relative transition-colors"
-                              [class]="visibleUE(c) ? 'bg-teal-500' : 'bg-slate-200'"
+                              [class]="visibleUE(c) ? 'bg-primary' : 'bg-surface-3'"
                             >
                               <div
-                                class="absolute top-0.5 bg-white w-4 h-4 rounded-full shadow-sm transition-all"
+                                class="absolute top-0.5 bg-card w-4 h-4 rounded-full shadow-sm transition-all"
                                 [class]="visibleUE(c) ? 'right-0.5' : 'left-0.5'"
                               ></div>
                             </button>
@@ -331,16 +331,16 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
           </div>
 
           <!-- Right: preview -->
-          <div class="lg:flex-1 bg-slate-100 p-8 flex flex-col items-center overflow-y-auto">
+          <div class="lg:flex-1 bg-muted p-8 flex flex-col items-center overflow-y-auto">
             <div class="flex items-center justify-between w-full max-w-sm mb-6">
-              <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+              <h3 class="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
                 <lucide-angular [img]="EyeIcon" class="size-3.5" /> Vista previa
               </h3>
-              <div class="flex bg-white rounded-lg p-1 shadow-sm border border-slate-200">
+              <div class="flex bg-card rounded-lg p-1 shadow-sm border border-border">
                 <button
                   (click)="previewDevice.set('mobile')"
                   class="p-1 rounded"
-                  [class]="previewDevice() === 'mobile' ? 'bg-slate-100 text-slate-700' : 'text-slate-400'"
+                  [class]="previewDevice() === 'mobile' ? 'bg-muted text-foreground' : 'text-muted-foreground/70'"
                   title="Móvil"
                 >
                   <lucide-angular [img]="SmartphoneIcon" class="size-4" />
@@ -348,7 +348,7 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
                 <button
                   (click)="previewDevice.set('desktop')"
                   class="p-1 rounded"
-                  [class]="previewDevice() === 'desktop' ? 'bg-slate-100 text-slate-700' : 'text-slate-400'"
+                  [class]="previewDevice() === 'desktop' ? 'bg-muted text-foreground' : 'text-muted-foreground/70'"
                   title="Escritorio"
                 >
                   <lucide-angular [img]="MonitorIcon" class="size-4" />
@@ -357,11 +357,11 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
             </div>
 
             @if (previewDevice() === 'mobile') {
-              <div class="w-full max-w-[340px] bg-white rounded-[40px] border-[8px] border-slate-800 shadow-2xl h-[600px] overflow-hidden flex flex-col">
+              <div class="w-full max-w-[340px] bg-card rounded-[40px] border-[8px] border-slate-800 shadow-2xl h-[600px] overflow-hidden flex flex-col">
                 <div class="h-6 bg-slate-800 flex justify-center items-end pb-1">
                   <div class="w-12 h-1 bg-slate-700 rounded-full"></div>
                 </div>
-                <div class="bg-teal-700 p-4 text-white">
+                <div class="bg-primary p-4 text-white">
                   <div class="text-[10px] font-medium opacity-80 mb-1">
                     {{ area().code }} › {{ formLabel() }}
                   </div>
@@ -372,7 +372,7 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
                 </div>
               </div>
             } @else {
-              <div class="w-full bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
+              <div class="w-full bg-card rounded-xl border border-border shadow-sm p-6 space-y-4">
                 <ng-container *ngTemplateOutlet="previewBody" />
               </div>
             }
@@ -380,7 +380,7 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
             <ng-template #previewBody>
               @for (grupo of gruposPreview(); track grupo.seccion) {
                 <div class="space-y-3">
-                  <h4 class="text-[10px] font-bold text-teal-600 uppercase tracking-wider border-b border-slate-100 pb-1">
+                  <h4 class="text-[10px] font-bold text-brand uppercase tracking-wider border-b border-border/60 pb-1">
                     {{ grupo.seccion }}
                   </h4>
                   @for (b of grupo.campos; track b.nombre) {
@@ -390,7 +390,7 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
               }
               @if (customsRender().length > 0) {
                 <div class="space-y-3 pt-2">
-                  <h4 class="text-[10px] font-bold text-teal-700 uppercase tracking-wider border-b border-teal-100 pb-1">
+                  <h4 class="text-[10px] font-bold text-brand uppercase tracking-wider border-b border-brand/15 pb-1">
                     Personalizados
                   </h4>
                   @for (c of customsRender(); track c.id) {
@@ -407,8 +407,8 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
         </div>
 
         <!-- Footer -->
-        <div class="px-6 py-4 border-t border-slate-100 bg-white flex items-center justify-between flex-wrap gap-3">
-          <div class="flex items-center gap-2 text-xs text-slate-400 italic">
+        <div class="px-6 py-4 border-t border-border/60 bg-card flex items-center justify-between flex-wrap gap-3">
+          <div class="flex items-center gap-2 text-xs text-muted-foreground/70 italic">
             <lucide-angular [img]="InfoIcon" class="size-4" />
             {{ isAdmin()
               ? 'Los cambios se guardan como catálogo y se reflejan en la vista del Administrador de Unidad Organizacional.'
@@ -416,17 +416,17 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
           </div>
           <div class="flex gap-3">
             @if (isAdmin()) {
-              <button class="px-6 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-50">
+              <button class="btn-secondary px-6">
                 Descartar
               </button>
               <button
                 (click)="toast.success('Configuración guardada')"
-                class="px-8 py-2 bg-slate-800 text-white rounded-lg text-sm font-semibold hover:bg-slate-900 shadow-lg"
+                class="btn-primary px-8 bg-foreground text-background hover:bg-foreground/85"
               >Guardar</button>
             } @else {
               <button
                 (click)="publicar()"
-                class="px-8 py-2 bg-teal-700 text-white rounded-lg text-sm font-semibold hover:bg-teal-800 shadow-lg flex items-center gap-2"
+                class="btn-primary px-8"
               >
                 <lucide-angular [img]="SendIcon" class="size-4" />
                 Publicar formulario

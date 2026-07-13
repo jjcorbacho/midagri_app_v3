@@ -48,7 +48,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
 
       <!-- Panel de acceso -->
       <div class="flex-1 flex items-center justify-center p-6">
-        <form [formGroup]="form" (ngSubmit)="procesarIngreso()" class="w-full max-w-sm space-y-6">
+        <form [formGroup]="form" (ngSubmit)="procesarIngreso()" class="w-full max-w-sm space-y-6 animate-page-in">
           <div>
             <div class="text-[10px] uppercase tracking-widest text-brand font-semibold mb-2">Acceso institucional</div>
             <h2 class="text-2xl font-semibold">Iniciar sesión</h2>
@@ -76,7 +76,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
                 <input
                   formControlName="usuario"
                   required
-                  class="w-full bg-card ring-1 ring-border rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-brand outline-none"
+                  class="w-full bg-card ring-1 ring-border rounded-lg pl-9 pr-3 py-2.5 text-sm placeholder:text-muted-foreground/60 hover:ring-muted-foreground/30 focus:ring-2 focus:ring-ring outline-none transition-[box-shadow] duration-150"
                   placeholder="ccandelaria"
                 />
               </div>
@@ -93,7 +93,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
                   type="password"
                   formControlName="password"
                   required
-                  class="w-full bg-card ring-1 ring-border rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-brand outline-none"
+                  class="w-full bg-card ring-1 ring-border rounded-lg pl-9 pr-3 py-2.5 text-sm placeholder:text-muted-foreground/60 hover:ring-muted-foreground/30 focus:ring-2 focus:ring-ring outline-none transition-[box-shadow] duration-150"
                   placeholder="••••••••"
                 />
               </div>
@@ -101,7 +101,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
             </div>
           </div>
 
-          <button class="w-full bg-brand text-brand-foreground py-2.5 rounded-lg font-medium text-sm hover:bg-brand/90 transition-colors">
+          <button class="btn-primary w-full h-11">
             Ingresar al sistema
           </button>
 
@@ -114,8 +114,8 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
 
     <!-- Modal Selección de ingreso (Acceso Selectivo) -->
     @if (modalOpen()) {
-      <div class="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-        <div class="bg-card rounded-2xl shadow-2xl p-6 w-[520px] max-w-full text-foreground border border-border">
+      <div class="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-foreground/70 backdrop-blur-sm animate-overlay-in">
+        <div class="bg-card rounded-2xl shadow-lg ring-1 ring-border p-6 w-[520px] max-w-full text-foreground animate-modal-in">
           <div class="text-center mb-5">
             <div class="w-16 h-16 bg-brand-soft rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
               <lucide-angular [img]="UserCogIcon" class="size-8 text-brand" />
@@ -125,7 +125,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
                 ? 'Seleccione el Perfil para su ingreso al sistema'
                 : 'Seleccione la Unidad Responsable para el Ingreso al Sistema' }}
             </h3>
-            <p class="text-[11px] text-muted-foreground mt-2 leading-relaxed px-4 text-justify font-medium">
+            <p class="text-[11px] text-muted-foreground mt-2 leading-relaxed px-4 font-medium">
               Se han detectado múltiples registros o privilegios activos vinculados a su cuenta de acceso
               institucional. Por favor, seleccione la Unidad Responsable (OPA) y el perfil con el que desea
               iniciar la presente sesión de trabajo.
@@ -140,7 +140,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
                 <select
                   [value]="opaSeleccionada()"
                   (change)="opaSeleccionada.set($any($event.target).value)"
-                  class="w-full ring-1 ring-border p-3 rounded-xl text-xs outline-none focus:ring-2 focus:ring-brand bg-card font-semibold"
+                  class="w-full ring-1 ring-border p-3 rounded-xl text-xs outline-none focus:ring-2 focus:ring-ring bg-card font-semibold transition-[box-shadow] duration-150"
                 >
                   @for (r of registros(); track r.id) {
                     <option [value]="r.unidad">{{ r.unidad }}</option>
@@ -164,7 +164,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
                 <select
                   [value]="perfilSeleccionado()"
                   (change)="perfilSeleccionado.set($any($event.target).value)"
-                  class="w-full ring-1 ring-border p-3 rounded-xl text-xs outline-none focus:ring-2 focus:ring-brand bg-card font-semibold"
+                  class="w-full ring-1 ring-border p-3 rounded-xl text-xs outline-none focus:ring-2 focus:ring-ring bg-card font-semibold transition-[box-shadow] duration-150"
                 >
                   @for (p of perfiles; track p) {
                     <option [value]="p">{{ p }}</option>
@@ -176,11 +176,11 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
             <div class="flex gap-2">
               <button
                 (click)="modalOpen.set(false)"
-                class="w-1/3 py-3 bg-secondary hover:bg-muted text-secondary-foreground font-bold rounded-xl text-xs transition"
+                class="btn-secondary w-1/3 h-11"
               >Cancelar</button>
               <button
                 (click)="confirmarIngreso()"
-                class="w-2/3 py-3 bg-brand hover:bg-brand/90 text-brand-foreground font-bold rounded-xl text-xs transition"
+                class="btn-primary w-2/3 h-11"
               >Ingresar al Sistema</button>
             </div>
           </div>
@@ -237,7 +237,7 @@ export class LoginComponent {
   readonly validacionClase = computed(() => {
     const u = this.usuarioActual();
     if (!u) return 'text-muted-foreground';
-    return this.auth.usuarioReconocido(u) ? 'text-emerald-600' : 'text-rose-500';
+    return this.auth.usuarioReconocido(u) ? 'text-success' : 'text-destructive';
   });
 
   readonly validacionIcono = computed(() => {

@@ -57,10 +57,10 @@ const EMPTY: CursoFormState = {
   custom: {},
 };
 
-const INP = 'w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none';
-const INP_DISABLED = 'w-full bg-muted/40 ring-1 ring-border rounded-lg px-3 py-2 text-sm text-muted-foreground';
+const INP = 'w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/60 hover:ring-muted-foreground/30 focus:ring-2 focus:ring-ring focus:outline-none transition-[box-shadow,background-color] duration-150';
+const INP_DISABLED = 'w-full bg-muted/40 ring-1 ring-border rounded-lg px-3 py-2 text-sm text-muted-foreground cursor-not-allowed';
 /** Campo obligatorio: resaltado ámbar (misma convención que INPUT_REQUIRED compartido). */
-const INP_REQ = 'w-full bg-amber-50 ring-1 ring-amber-300 rounded-lg px-3 py-2 text-sm focus:bg-card focus:ring-2 focus:ring-teal-500 focus:outline-none';
+const INP_REQ = 'w-full bg-warning-soft ring-1 ring-warning/40 rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus:bg-card focus:ring-2 focus:ring-ring focus:outline-none transition-[box-shadow,background-color] duration-150';
 
 @Component({
   selector: 'app-curso-form',
@@ -90,8 +90,8 @@ const INP_REQ = 'w-full bg-amber-50 ring-1 ring-amber-300 rounded-lg px-3 py-2 t
         </div>
 
         <!-- 1. Datos generales -->
-        <section class="bg-card rounded-xl ring-1 ring-black/5 p-5">
-          <div class="flex items-center gap-2 border-b border-border pb-2 mb-4 text-teal-700">
+        <section class="bg-card rounded-xl ring-1 ring-border p-5">
+          <div class="flex items-center gap-2 border-b border-border pb-2 mb-4 text-brand">
             <lucide-angular [img]="SparklesIcon" class="size-4" />
             <h3 class="text-[11px] font-semibold uppercase tracking-wider">Datos generales</h3>
           </div>
@@ -109,7 +109,7 @@ const INP_REQ = 'w-full bg-amber-50 ring-1 ring-amber-300 rounded-lg px-3 py-2 t
                 }
               </select>
               @if (errores()['tematica']) {
-                <p class="text-[11px] text-rose-600 mt-1">{{ errores()['tematica'] }}</p>
+                <p class="text-[11px] text-destructive mt-1">{{ errores()['tematica'] }}</p>
               }
             </div>
             <div>
@@ -134,28 +134,28 @@ const INP_REQ = 'w-full bg-amber-50 ring-1 ring-amber-300 rounded-lg px-3 py-2 t
               <label class="block text-[11px] font-medium text-muted-foreground mb-1">Fecha *</label>
               <input type="date" formControlName="fecha" [class]="inpReq()" />
               @if (errores()['fecha']) {
-                <p class="text-[11px] text-rose-600 mt-1">{{ errores()['fecha'] }}</p>
+                <p class="text-[11px] text-destructive mt-1">{{ errores()['fecha'] }}</p>
               }
             </div>
             <div>
               <label class="block text-[11px] font-medium text-muted-foreground mb-1">Nro. Horas *</label>
               <input type="number" [min]="cfg().horasMin" [max]="cfg().horasMax" formControlName="horas" [class]="inpReq()" />
               @if (errores()['horas']) {
-                <p class="text-[11px] text-rose-600 mt-1">{{ errores()['horas'] }}</p>
+                <p class="text-[11px] text-destructive mt-1">{{ errores()['horas'] }}</p>
               }
             </div>
             <div class="md:col-span-2">
               <label class="block text-[11px] font-medium text-muted-foreground mb-1">Nombre *</label>
               <input formControlName="nombre" maxlength="200" [class]="inpReq()" />
               @if (errores()['nombre']) {
-                <p class="text-[11px] text-rose-600 mt-1">{{ errores()['nombre'] }}</p>
+                <p class="text-[11px] text-destructive mt-1">{{ errores()['nombre'] }}</p>
               }
             </div>
             <div class="md:col-span-2">
               <label class="block text-[11px] font-medium text-muted-foreground mb-1">Extensionista *</label>
               <input formControlName="extensionista" maxlength="120" [class]="inpReq()" />
               @if (errores()['extensionista']) {
-                <p class="text-[11px] text-rose-600 mt-1">{{ errores()['extensionista'] }}</p>
+                <p class="text-[11px] text-destructive mt-1">{{ errores()['extensionista'] }}</p>
               }
             </div>
             <div class="md:col-span-2">
@@ -180,8 +180,8 @@ const INP_REQ = 'w-full bg-amber-50 ring-1 ring-amber-300 rounded-lg px-3 py-2 t
         </section>
 
         <!-- 2. Ubicación (cascada) -->
-        <section class="bg-card rounded-xl ring-1 ring-black/5 p-5">
-          <div class="flex items-center gap-2 border-b border-border pb-2 mb-4 text-teal-700">
+        <section class="bg-card rounded-xl ring-1 ring-border p-5">
+          <div class="flex items-center gap-2 border-b border-border pb-2 mb-4 text-brand">
             <lucide-angular [img]="MapPinIcon" class="size-4" />
             <h3 class="text-[11px] font-semibold uppercase tracking-wider">Ubicación</h3>
           </div>
@@ -195,7 +195,7 @@ const INP_REQ = 'w-full bg-amber-50 ring-1 ring-amber-300 rounded-lg px-3 py-2 t
                 }
               </select>
               @if (errores()['region']) {
-                <p class="text-[11px] text-rose-600 mt-1">{{ errores()['region'] }}</p>
+                <p class="text-[11px] text-destructive mt-1">{{ errores()['region'] }}</p>
               }
             </div>
             <div>
@@ -207,7 +207,7 @@ const INP_REQ = 'w-full bg-amber-50 ring-1 ring-amber-300 rounded-lg px-3 py-2 t
                 }
               </select>
               @if (errores()['provincia']) {
-                <p class="text-[11px] text-rose-600 mt-1">{{ errores()['provincia'] }}</p>
+                <p class="text-[11px] text-destructive mt-1">{{ errores()['provincia'] }}</p>
               }
             </div>
             <div>
@@ -219,7 +219,7 @@ const INP_REQ = 'w-full bg-amber-50 ring-1 ring-amber-300 rounded-lg px-3 py-2 t
                 }
               </select>
               @if (errores()['distrito']) {
-                <p class="text-[11px] text-rose-600 mt-1">{{ errores()['distrito'] }}</p>
+                <p class="text-[11px] text-destructive mt-1">{{ errores()['distrito'] }}</p>
               }
             </div>
             <div>
@@ -235,8 +235,8 @@ const INP_REQ = 'w-full bg-amber-50 ring-1 ring-amber-300 rounded-lg px-3 py-2 t
         </section>
 
         <!-- 3. Coordenadas -->
-        <section class="bg-card rounded-xl ring-1 ring-black/5 p-5">
-          <div class="flex items-center gap-2 border-b border-border pb-2 mb-4 text-teal-700">
+        <section class="bg-card rounded-xl ring-1 ring-border p-5">
+          <div class="flex items-center gap-2 border-b border-border pb-2 mb-4 text-brand">
             <lucide-angular [img]="CompassIcon" class="size-4" />
             <h3 class="text-[11px] font-semibold uppercase tracking-wider">Coordenadas</h3>
           </div>
@@ -265,14 +265,14 @@ const INP_REQ = 'w-full bg-amber-50 ring-1 ring-amber-300 rounded-lg px-3 py-2 t
                     <label class="block text-[11px] font-medium text-muted-foreground mb-1">Longitud</label>
                     <input formControlName="longitud" placeholder="-72.881" [class]="inp" />
                     @if (errores()['longitud']) {
-                      <p class="text-[11px] text-rose-600 mt-1">{{ errores()['longitud'] }}</p>
+                      <p class="text-[11px] text-destructive mt-1">{{ errores()['longitud'] }}</p>
                     }
                   </div>
                   <div>
                     <label class="block text-[11px] font-medium text-muted-foreground mb-1">Latitud</label>
                     <input formControlName="latitud" placeholder="-13.635" [class]="inp" />
                     @if (errores()['latitud']) {
-                      <p class="text-[11px] text-rose-600 mt-1">{{ errores()['latitud'] }}</p>
+                      <p class="text-[11px] text-destructive mt-1">{{ errores()['latitud'] }}</p>
                     }
                   </div>
                   <div>
@@ -307,8 +307,8 @@ const INP_REQ = 'w-full bg-amber-50 ring-1 ring-amber-300 rounded-lg px-3 py-2 t
 
         <!-- Campos personalizados del área -->
         @if (customs().length > 0) {
-          <section class="bg-card rounded-xl ring-1 ring-black/5 p-5">
-            <div class="flex items-center gap-2 border-b border-border pb-2 mb-4 text-teal-700">
+          <section class="bg-card rounded-xl ring-1 ring-border p-5">
+            <div class="flex items-center gap-2 border-b border-border pb-2 mb-4 text-brand">
               <lucide-angular [img]="SparklesIcon" class="size-4" />
               <h3 class="text-[11px] font-semibold uppercase tracking-wider">Campos adicionales del área</h3>
             </div>
@@ -362,7 +362,7 @@ const INP_REQ = 'w-full bg-amber-50 ring-1 ring-amber-300 rounded-lg px-3 py-2 t
                     }
                   }
                   @if (errores()['c_' + c.id]) {
-                    <p class="text-[11px] text-rose-600 mt-1">{{ errores()['c_' + c.id] }}</p>
+                    <p class="text-[11px] text-destructive mt-1">{{ errores()['c_' + c.id] }}</p>
                   }
                 </div>
               }
@@ -372,14 +372,14 @@ const INP_REQ = 'w-full bg-amber-50 ring-1 ring-amber-300 rounded-lg px-3 py-2 t
       </fieldset>
 
       <div class="flex justify-end gap-2 pt-2">
-        <button type="button" (click)="cancelled.emit()" class="px-4 py-2 text-sm rounded-lg hover:bg-secondary ring-1 ring-border">
+        <button type="button" (click)="cancelled.emit()" class="btn-secondary">
           {{ cancelLabel() ?? (readOnly() ? 'Volver' : 'Cancelar') }}
         </button>
         @if (!readOnly()) {
           <button
             type="button"
             (click)="guardar()"
-            class="px-5 py-2 text-sm bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium"
+            class="btn-primary px-5"
           >
             {{ saveLabel() ?? 'Guardar registro' }}
           </button>

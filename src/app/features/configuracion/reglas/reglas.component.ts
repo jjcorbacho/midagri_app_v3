@@ -28,20 +28,20 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule],
   template: `
-    <div class="min-h-full bg-muted/30 py-6 lg:py-8 px-4 lg:px-8">
+    <div class="min-h-full bg-muted/30 py-6 lg:py-8 px-4 lg:px-8 animate-page-in">
       <div class="max-w-6xl mx-auto bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
 
         <!-- Header -->
         <header class="px-6 py-4 border-b border-border bg-card flex justify-between items-center gap-3">
           <div class="min-w-0">
-            <h1 class="text-lg font-bold text-foreground">Configurador de Reglas — {{ area().code }}</h1>
+            <h1 class="text-h1 text-foreground">Configurador de Reglas — {{ area().code }}</h1>
             <p class="text-xs text-muted-foreground truncate">
               {{ area().name }}. Define actividades, aforos y criterios de éxito del periodo.
             </p>
           </div>
           <span
             class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md border"
-            [class]="dirty() ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-brand/10 text-brand border-brand/20'"
+            [class]="dirty() ? 'bg-warning-soft text-warning-foreground border-warning/30' : 'bg-brand/10 text-brand border-brand/20'"
           >{{ dirty() ? 'Borrador' : 'Publicado' }}</span>
         </header>
 
@@ -512,7 +512,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
         <div class="px-6 py-3 bg-card border-t border-border flex justify-between items-center sticky bottom-0 z-20">
           <div class="text-[11px] text-muted-foreground flex items-center gap-1.5">
             @if (dirty()) {
-              <span class="size-1.5 rounded-full bg-amber-500"></span> Cambios sin guardar
+              <span class="size-1.5 rounded-full bg-warning"></span> Cambios sin guardar
             } @else {
               <lucide-angular [img]="CheckCircle2Icon" class="size-3.5 text-brand" /> Sin cambios pendientes
             }
@@ -521,14 +521,14 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
             <button
               (click)="descartar()"
               [disabled]="!dirty()"
-              class="inline-flex items-center gap-2 h-9 px-4 text-sm font-medium text-muted-foreground hover:text-foreground border border-input rounded-md bg-background hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              class="btn-secondary"
             >
               <lucide-angular [img]="RotateCcwIcon" class="size-4" /> Cancelar
             </button>
             <button
               (click)="guardar()"
               [disabled]="!canSave()"
-              class="inline-flex items-center gap-2 h-9 px-5 text-sm font-semibold text-brand-foreground bg-brand rounded-md hover:bg-brand/90 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-colors"
+              class="btn-primary px-5"
             >
               <lucide-angular [img]="SaveIcon" class="size-4" /> Guardar cambios
             </button>

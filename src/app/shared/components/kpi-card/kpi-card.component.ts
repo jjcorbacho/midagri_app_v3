@@ -6,11 +6,11 @@ export type KpiTone = 'blue' | 'teal' | 'emerald' | 'indigo' | 'slate' | 'amber'
 
 const TONE_MAP: Record<KpiTone, string> = {
   blue: 'bg-blue-50 text-blue-600',
-  teal: 'bg-teal-50 text-teal-600',
-  emerald: 'bg-emerald-50 text-emerald-600',
+  teal: 'bg-brand-soft text-brand',
+  emerald: 'bg-success-soft text-success',
   indigo: 'bg-indigo-50 text-indigo-600',
-  slate: 'bg-slate-100 text-slate-600',
-  amber: 'bg-amber-50 text-amber-600',
+  slate: 'bg-muted text-muted-foreground',
+  amber: 'bg-warning-soft text-warning-foreground',
 };
 
 /** Tarjeta KPI de la bandeja N1 (contador + ícono con tono). */
@@ -19,10 +19,10 @@ const TONE_MAP: Record<KpiTone, string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule],
   template: `
-    <div class="bg-card p-5 rounded-xl ring-1 ring-black/5 shadow-sm flex justify-between items-center">
+    <div class="bg-card p-5 rounded-xl ring-1 ring-border shadow-xs hover:shadow-md transition-shadow duration-200 flex justify-between items-center">
       <div>
-        <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">{{ label() }}</p>
-        <h3 class="text-3xl font-bold text-foreground tabular-nums">{{ value() }}</h3>
+        <p class="text-caption mb-1">{{ label() }}</p>
+        <h3 class="kpi-number text-3xl">{{ value() }}</h3>
       </div>
       <div class="size-12 rounded-xl flex items-center justify-center" [class]="toneCls()">
         <lucide-angular [img]="icon()" class="size-6" />

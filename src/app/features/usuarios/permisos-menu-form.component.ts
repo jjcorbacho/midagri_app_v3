@@ -24,7 +24,7 @@ const ICONOS_GRUPO: Record<IconoGrupoPermiso, LucideIconData> = {
   template: `
     <div class="border-t border-border pt-5 space-y-3">
       <div>
-        <h4 class="text-[11px] font-semibold uppercase tracking-wider text-teal-700 flex items-center gap-2">
+        <h4 class="text-[11px] font-semibold uppercase tracking-wider text-brand flex items-center gap-2">
           <lucide-angular [img]="ListChecksIcon" class="size-4" /> {{ esquema().titulo }}
         </h4>
         <p class="text-xs text-muted-foreground mt-0.5">{{ esquema().descripcion }}</p>
@@ -47,7 +47,7 @@ const ICONOS_GRUPO: Record<IconoGrupoPermiso, LucideIconData> = {
                 <label class="flex items-center gap-2.5 px-3 py-2 text-sm text-foreground/90 cursor-pointer hover:bg-secondary/40 transition-colors select-none">
                   <input
                     type="checkbox"
-                    class="accent-teal-700 size-4 shrink-0"
+                    class="accent-brand size-4 shrink-0"
                     [checked]="estaActivo(grupo.key, item.key)"
                     (change)="toggle(grupo.key, item.key, $event)"
                   />

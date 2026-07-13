@@ -82,12 +82,12 @@ const TECNICO1_ITEMS: DashboardItem[] = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, LucideAngularModule],
   template: `
-    <section class="p-6 lg:p-8 max-w-7xl mx-auto">
+    <section class="p-6 lg:p-8 max-w-7xl mx-auto animate-page-in">
       <header class="mb-8">
-        <div class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <div class="text-caption">
           Área activa · {{ areaService.currentArea() }}
         </div>
-        <h1 class="mt-1 text-2xl font-bold text-foreground">
+        <h1 class="mt-1 text-h1 text-foreground">
           Bienvenido, {{ auth.user()?.nombre }} {{ auth.user()?.apellido }}
         </h1>
         <p class="mt-1 text-sm text-muted-foreground">
@@ -98,7 +98,7 @@ const TECNICO1_ITEMS: DashboardItem[] = [
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         @for (item of items(); track item.to) {
           <a [routerLink]="item.to" class="group focus:outline-none">
-            <div class="h-full bg-card rounded-xl ring-1 ring-black/5 border border-transparent transition-all hover:shadow-lg hover:border-brand/30 focus-visible:ring-2 focus-visible:ring-ring">
+            <div class="h-full bg-card rounded-xl ring-1 ring-border shadow-xs transition-all duration-200 hover:shadow-md hover:ring-brand/40 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-ring">
               <div class="p-6 pb-3">
                 <div class="flex items-start justify-between gap-3">
                   <div class="rounded-lg p-2.5" [class]="item.accent">

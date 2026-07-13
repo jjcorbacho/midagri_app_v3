@@ -7,13 +7,13 @@ import { CampoTipo } from '../../../core/models/campo.model';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="space-y-1">
-      <label class="text-[11px] font-bold text-slate-500 uppercase">{{ nombre() }}</label>
+      <label class="text-[11px] font-bold text-muted-foreground uppercase">{{ nombre() }}</label>
       @switch (tipo()) {
         @case ('textarea') {
-          <textarea disabled rows="2" class="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-xs"></textarea>
+          <textarea disabled rows="2" class="w-full bg-surface-2 border border-border rounded px-3 py-1.5 text-xs"></textarea>
         }
         @case ('select') {
-          <select disabled class="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-xs">
+          <select disabled class="w-full bg-surface-2 border border-border rounded px-3 py-1.5 text-xs">
             <option>— seleccionar —</option>
             @for (o of opts(); track o) {
               <option>{{ o }}</option>
@@ -39,7 +39,7 @@ import { CampoTipo } from '../../../core/models/campo.model';
           </div>
         }
         @default {
-          <input [type]="tipo()" disabled class="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-xs" />
+          <input [type]="tipo()" disabled class="w-full bg-surface-2 border border-border rounded px-3 py-1.5 text-xs" />
         }
       }
     </div>

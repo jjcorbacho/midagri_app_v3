@@ -17,7 +17,7 @@ const MOSTRAR_SELECTOR_AREA = false;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule],
   template: `
-    <header class="h-16 bg-card ring-1 ring-zinc-950/5 flex items-center justify-between px-6 sticky top-0 z-20">
+    <header class="h-16 bg-card/95 backdrop-blur border-b border-border flex items-center justify-between px-6 sticky top-0 z-20">
       <div class="flex items-center gap-6">
         <div class="flex flex-col">
           <span class="text-[10px] uppercase tracking-wider font-semibold text-brand">MIDAGRI</span>
@@ -26,7 +26,7 @@ const MOSTRAR_SELECTOR_AREA = false;
         @if (mostrarSelectorArea) {
           <div class="h-8 w-px bg-border"></div>
 
-          <div class="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-full ring-1 ring-black/5">
+          <div class="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-full ring-1 ring-border">
             <span class="text-[11px] font-semibold text-muted-foreground">ÁREA ACTIVA:</span>
             <select
               [value]="areaService.currentArea()"
@@ -60,7 +60,7 @@ const MOSTRAR_SELECTOR_AREA = false;
               }
             </div>
           </div>
-          <div class="size-9 rounded-full bg-secondary ring-1 ring-black/10 flex items-center justify-center">
+          <div class="size-9 rounded-full bg-secondary ring-1 ring-border flex items-center justify-center">
             <span class="text-xs font-semibold text-muted-foreground">
               {{ iniciales() }}
             </span>
@@ -70,23 +70,23 @@ const MOSTRAR_SELECTOR_AREA = false;
 
         @if (menuOpen()) {
           <div class="fixed inset-0 z-30" (click)="menuOpen.set(false)"></div>
-          <div class="absolute right-0 top-full mt-2 w-56 bg-card rounded-lg shadow-xl ring-1 ring-black/10 py-1.5 z-40">
+          <div class="absolute right-0 top-full mt-2 w-56 bg-popover rounded-xl shadow-lg ring-1 ring-border py-1.5 z-40 animate-modal-in">
             <button
               (click)="goPerfil()"
-              class="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-secondary"
+              class="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
             >
               <lucide-angular [img]="UserIconRef" class="size-4 text-muted-foreground" /> Perfil
             </button>
             <button
               (click)="menuOpen.set(false); pwdOpen.set(true)"
-              class="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-secondary"
+              class="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
             >
               <lucide-angular [img]="KeyRoundIcon" class="size-4 text-muted-foreground" /> Cambiar clave
             </button>
             <div class="border-t border-border my-1"></div>
             <button
               (click)="logout()"
-              class="w-full flex items-center gap-3 px-4 py-2 text-sm text-destructive hover:bg-destructive/10"
+              class="w-full flex items-center gap-3 px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
             >
               <lucide-angular [img]="LogOutIcon" class="size-4" /> Cerrar sesión
             </button>
@@ -95,9 +95,9 @@ const MOSTRAR_SELECTOR_AREA = false;
       </div>
 
       @if (pwdOpen()) {
-        <div class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" (click)="pwdOpen.set(false)">
-          <div class="bg-card rounded-xl shadow-2xl w-full max-w-md p-6" (click)="$event.stopPropagation()">
-            <h2 class="text-lg font-semibold mb-1">Cambiar clave</h2>
+        <div class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4 animate-overlay-in" (click)="pwdOpen.set(false)">
+          <div class="bg-card rounded-xl ring-1 ring-border shadow-lg w-full max-w-md p-6 animate-modal-in" (click)="$event.stopPropagation()">
+            <h2 class="text-h3 mb-1">Cambiar clave</h2>
             <p class="text-xs text-muted-foreground mb-5">
               Mínimo 8 caracteres, una mayúscula, un número y un carácter especial (estándar SBS).
             </p>
@@ -108,15 +108,15 @@ const MOSTRAR_SELECTOR_AREA = false;
                   <input
                     type="password"
                     required
-                    class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-brand outline-none"
+                    class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring outline-none transition-[box-shadow] duration-150"
                   />
                 </div>
               }
               <div class="flex gap-2 justify-end pt-2">
-                <button type="button" (click)="pwdOpen.set(false)" class="px-4 py-2 text-sm rounded-lg hover:bg-secondary">
+                <button type="button" (click)="pwdOpen.set(false)" class="btn-ghost">
                   Cancelar
                 </button>
-                <button class="px-4 py-2 text-sm bg-brand text-brand-foreground rounded-lg hover:bg-brand/90">
+                <button class="btn-primary">
                   Actualizar
                 </button>
               </div>

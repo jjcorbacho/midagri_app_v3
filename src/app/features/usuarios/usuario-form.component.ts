@@ -50,8 +50,8 @@ const INP_NORMAL = INPUT_BASE;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule, LucideAngularModule, ModalComponent, PermisosMenuFormComponent],
   template: `
-    <section class="p-6 lg:p-8 max-w-[1200px] mx-auto space-y-5">
-      <h1 class="text-base font-bold tracking-wider uppercase text-foreground">{{ titulo() }}</h1>
+    <section class="p-6 lg:p-8 max-w-[1200px] mx-auto space-y-5 animate-page-in">
+      <h1 class="text-h1 text-foreground">{{ titulo() }}</h1>
 
       <div class="inline-flex p-1 bg-card ring-1 ring-border rounded-lg">
         <button
@@ -74,15 +74,15 @@ const INP_NORMAL = INPUT_BASE;
       @if (tab() === 'datos') {
         <div class="space-y-5" [formGroup]="form">
           <!-- Datos personales -->
-          <div class="bg-card rounded-xl ring-1 ring-black/5 shadow-sm p-5 space-y-4">
-            <div class="flex items-center gap-2 border-b border-border pb-2 text-teal-700">
+          <div class="bg-card rounded-xl ring-1 ring-border shadow-sm p-5 space-y-4">
+            <div class="flex items-center gap-2 border-b border-border pb-2 text-brand">
               <lucide-angular [img]="UserCheckIcon" class="size-4" />
               <h3 class="text-[11px] font-semibold uppercase tracking-wider">Datos Personales</h3>
             </div>
 
             <div class="grid grid-cols-12 gap-3">
               <div class="col-span-4">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Nro DNI <span class="text-rose-600">*</span></label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Nro DNI <span class="text-destructive">*</span></label>
                 <div class="flex gap-1.5">
                   <input
                     type="text" maxlength="8" placeholder="Ingrese DNI"
@@ -124,7 +124,7 @@ const INP_NORMAL = INPUT_BASE;
                 <input formControlName="estCivil" readonly placeholder="Estado civil" [class]="inpDisabled" />
               </div>
               <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Profesión - especialidad <span class="text-rose-600">*</span></label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Profesión - especialidad <span class="text-destructive">*</span></label>
                 <select formControlName="profesion" [class]="reniecEditable() ? inpMandatory : inpDisabled">
                   <option value="">--Seleccione--</option>
                   @for (p of profesiones(); track p) {
@@ -148,7 +148,7 @@ const INP_NORMAL = INPUT_BASE;
                 <input formControlName="restricciones" readonly placeholder="Restricciones" [class]="inpDisabled" />
               </div>
               <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Sexo <span class="text-rose-600">*</span></label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Sexo <span class="text-destructive">*</span></label>
                 <select formControlName="sexo" [class]="reniecEditable() ? inpMandatory : inpDisabled">
                   <option value="">--Seleccione--</option>
                   @for (s of sexos(); track s) {
@@ -175,13 +175,13 @@ const INP_NORMAL = INPUT_BASE;
           </div>
 
           <!-- Datos presupuestales -->
-          <div class="bg-card rounded-xl ring-1 ring-black/5 shadow-sm p-5 space-y-4">
-            <div class="flex items-center gap-2 border-b border-border pb-2 text-teal-700">
+          <div class="bg-card rounded-xl ring-1 ring-border shadow-sm p-5 space-y-4">
+            <div class="flex items-center gap-2 border-b border-border pb-2 text-brand">
               <lucide-angular [img]="WalletIcon" class="size-4" />
               <h3 class="text-[11px] font-semibold uppercase tracking-wider">Datos Presupuestales</h3>
             </div>
             <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Unidad Responsable <span class="text-rose-600">*</span></label>
+              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Unidad Responsable <span class="text-destructive">*</span></label>
               <select formControlName="unidad" [class]="unidadBloqueada() ? inpDisabled : inpMandatory">
                 <option value="">--Seleccione--</option>
                 @for (u of unidadesResponsables(); track u) {
@@ -193,7 +193,7 @@ const INP_NORMAL = INPUT_BASE;
             @if (mostrarPresupuesto()) {
               <div class="grid grid-cols-4 gap-3 border-t border-border pt-4">
                 <div>
-                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">Fuente de financ. <span class="text-rose-600">*</span></label>
+                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">Fuente de financ. <span class="text-destructive">*</span></label>
                   <select formControlName="fuenteFinanc" [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory">
                     <option value="">Seleccione</option>
                     @for (f of fuentes(); track f) {
@@ -202,7 +202,7 @@ const INP_NORMAL = INPUT_BASE;
                   </select>
                 </div>
                 <div>
-                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">Categoría presup. <span class="text-rose-600">*</span></label>
+                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">Categoría presup. <span class="text-destructive">*</span></label>
                   <select formControlName="categoriaPresup" (change)="onCategoriaChange()" [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory">
                     <option value="">Seleccione</option>
                     @for (c of categorias(); track c) {
@@ -211,7 +211,7 @@ const INP_NORMAL = INPUT_BASE;
                   </select>
                 </div>
                 <div>
-                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">Programa presupuestal <span class="text-rose-600">*</span></label>
+                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">Programa presupuestal <span class="text-destructive">*</span></label>
                   <select formControlName="programaPresup" (change)="onProgramaChange()" [class]="presupuestoBloqueado() || !programaHabilitado() ? inpDisabled : inpMandatory">
                     <option value="">Seleccione</option>
                     @for (p of programas(); track p) {
@@ -220,7 +220,7 @@ const INP_NORMAL = INPUT_BASE;
                   </select>
                 </div>
                 <div>
-                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">Unidad funcional (Opas) <span class="text-rose-600">*</span></label>
+                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">Unidad funcional (Opas) <span class="text-destructive">*</span></label>
                   <select formControlName="unidadFuncional" [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory">
                     <option value="">Seleccione</option>
                     @for (u of unidadesFuncionales(); track u) {
@@ -233,10 +233,10 @@ const INP_NORMAL = INPUT_BASE;
           </div>
 
           <div class="flex justify-end gap-2 pt-2">
-            <button (click)="cancelar()" class="px-4 py-2 text-sm rounded-lg hover:bg-secondary ring-1 ring-border transition-colors">
+            <button (click)="cancelar()" class="btn-secondary">
               Cancelar
             </button>
-            <button (click)="guardarYContinuar()" class="px-5 py-2 text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium transition-colors flex items-center gap-1.5">
+            <button (click)="guardarYContinuar()" class="btn-primary px-5">
               <span>Siguiente</span> <lucide-angular [img]="ArrowRightIcon" class="size-3.5" />
             </button>
           </div>
@@ -246,8 +246,8 @@ const INP_NORMAL = INPUT_BASE;
       <!-- ================= PESTAÑA B: PERMISOS ================= -->
       @if (tab() === 'permisos') {
         <div class="space-y-5" [formGroup]="form">
-          <div class="bg-card rounded-xl ring-1 ring-black/5 shadow-sm p-5 space-y-4">
-            <div class="flex items-center gap-2 border-b border-border pb-2 text-teal-700">
+          <div class="bg-card rounded-xl ring-1 ring-border shadow-sm p-5 space-y-4">
+            <div class="flex items-center gap-2 border-b border-border pb-2 text-brand">
               <lucide-angular [img]="ShieldHalfIcon" class="size-4" />
               <h3 class="text-[11px] font-semibold uppercase tracking-wider">Cuenta de acceso institucional</h3>
             </div>
@@ -258,11 +258,11 @@ const INP_NORMAL = INPUT_BASE;
                 <input formControlName="userGen" readonly placeholder="Usuario Automático" [class]="inpDisabled" />
               </div>
               <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Correo Personal <span class="text-rose-600">*</span></label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Correo Personal <span class="text-destructive">*</span></label>
                 <input formControlName="correo" placeholder="correo@midagri.gob.pe" [class]="inpMandatory" />
               </div>
               <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Régimen laboral <span class="text-rose-600">*</span></label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Régimen laboral <span class="text-destructive">*</span></label>
                 <select formControlName="regimen" (change)="formTick.set(formTick() + 1)" [class]="inpMandatory">
                   <option value="">--Seleccione--</option>
                   @for (r of regimenes; track r) {
@@ -283,16 +283,16 @@ const INP_NORMAL = INPUT_BASE;
             @if (regimenTemporal()) {
               <div class="grid grid-cols-12 gap-3 p-4 bg-brand-soft/50 rounded-xl ring-1 ring-brand/20">
                 <div [class]="esLocador() ? 'col-span-4' : 'col-span-6'">
-                  <label class="block text-[11px] font-medium text-teal-700 mb-1">Fecha de inicio <span class="text-rose-600">*</span></label>
+                  <label class="block text-[11px] font-medium text-brand mb-1">Fecha de inicio <span class="text-destructive">*</span></label>
                   <input type="date" formControlName="fechaIni" [class]="inpMandatory" />
                 </div>
                 <div [class]="esLocador() ? 'col-span-4' : 'col-span-6'">
-                  <label class="block text-[11px] font-medium text-teal-700 mb-1">Fecha fin <span class="text-rose-600">*</span></label>
+                  <label class="block text-[11px] font-medium text-brand mb-1">Fecha fin <span class="text-destructive">*</span></label>
                   <input type="date" formControlName="fechaFin" [class]="inpMandatory" />
                 </div>
                 @if (esLocador()) {
                   <div class="col-span-4">
-                    <label class="block text-[11px] font-medium text-teal-700 mb-1">Nro. de Orden (O.S.) <span class="text-rose-600">*</span></label>
+                    <label class="block text-[11px] font-medium text-brand mb-1">Nro. de Orden (O.S.) <span class="text-destructive">*</span></label>
                     <input formControlName="nroOrden" placeholder="Ejem: O.S. N° 00421-2026" [class]="inpMandatory + ' uppercase'" />
                   </div>
                 }
@@ -302,7 +302,7 @@ const INP_NORMAL = INPUT_BASE;
             <!-- Perfil autorizado + Ámbito asignado -->
             <div class="grid grid-cols-12 gap-6 items-start border-t border-border pt-5">
               <div class="col-span-5 space-y-1">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Perfil autorizado <span class="text-rose-600">*</span></label>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Perfil autorizado <span class="text-destructive">*</span></label>
                 <select formControlName="perfil" (change)="onPerfilChange()" [class]="inpMandatory">
                   <option value="">--Seleccione--</option>
                   @for (p of perfilesRegistrables(); track p) {
@@ -319,7 +319,7 @@ const INP_NORMAL = INPUT_BASE;
                       <select
                         [value]="ambitoRegion()"
                         (change)="ambitoRegion.set($any($event.target).value); ambitoProvincia.set(''); ambitoDistrito.set('')"
-                        class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none transition-colors"
+                        class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none transition-colors"
                       >
                         <option value="">Seleccione</option>
                         @for (r of regiones; track r) {
@@ -333,7 +333,7 @@ const INP_NORMAL = INPUT_BASE;
                         [value]="ambitoProvincia()"
                         (change)="ambitoProvincia.set($any($event.target).value); ambitoDistrito.set('')"
                         [disabled]="soloRegion() || !ambitoRegion()"
-                        class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none transition-colors disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
+                        class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none transition-colors disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
                       >
                         <option value="">Seleccione</option>
                         @for (p of provinciasDisponibles(); track p) {
@@ -347,7 +347,7 @@ const INP_NORMAL = INPUT_BASE;
                         [value]="ambitoDistrito()"
                         (change)="ambitoDistrito.set($any($event.target).value)"
                         [disabled]="soloRegion() || !ambitoProvincia()"
-                        class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none transition-colors disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
+                        class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none transition-colors disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
                       >
                         <option value="">Seleccione</option>
                         @for (d of distritosDisponibles(); track d) {
@@ -361,14 +361,14 @@ const INP_NORMAL = INPUT_BASE;
                     <button
                       type="button"
                       (click)="agregarAmbito()"
-                      class="inline-flex items-center gap-2 h-9 px-4 rounded-md bg-card ring-1 ring-border text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+                      class="btn-secondary"
                     >
                       <span>Agregar</span>
                       <lucide-angular [img]="SquarePlusIcon" class="size-4 text-muted-foreground" />
                     </button>
                   </div>
 
-                  <div class="mt-2 bg-card rounded-xl ring-1 ring-black/5 shadow-sm overflow-hidden">
+                  <div class="mt-2 bg-card rounded-xl ring-1 ring-border shadow-sm overflow-hidden">
                     <table class="w-full text-left">
                       <thead class="bg-secondary">
                         <tr class="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
@@ -410,10 +410,10 @@ const INP_NORMAL = INPUT_BASE;
           </div>
 
           <div class="flex justify-end gap-2 pt-2">
-            <button (click)="irAPestana('datos')" class="px-4 py-2 text-sm rounded-lg hover:bg-secondary ring-1 ring-border transition-colors flex items-center gap-1.5">
+            <button (click)="irAPestana('datos')" class="btn-secondary">
               <lucide-angular [img]="ArrowLeftIcon" class="size-3.5" /> Atrás
             </button>
-            <button (click)="guardarRegistroCompleto()" class="px-5 py-2 text-sm bg-brand-accent hover:bg-brand-accent/90 text-white rounded-lg font-medium transition-colors flex items-center gap-1.5">
+            <button (click)="guardarRegistroCompleto()" class="btn-success px-5">
               <lucide-angular [img]="SaveIcon" class="size-3.5" />
               <span>{{ modo() === 'editar' ? 'Guardar Cambios' : 'Guardar Registro' }}</span>
             </button>
@@ -426,7 +426,7 @@ const INP_NORMAL = INPUT_BASE;
         <app-modal [title]="a.titulo" maxWidth="max-w-md" (closed)="cerrarAlerta()">
           <p class="text-sm text-foreground leading-relaxed">{{ a.mensaje }}</p>
           <div class="flex justify-center mt-5">
-            <button (click)="cerrarAlerta()" class="inline-flex items-center justify-center h-9 px-6 min-w-[120px] rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+            <button (click)="cerrarAlerta()" class="btn-primary px-6 min-w-[120px]">
               Aceptar
             </button>
           </div>

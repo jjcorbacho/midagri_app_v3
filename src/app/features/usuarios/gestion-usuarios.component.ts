@@ -36,10 +36,10 @@ const ICON_TONES: Record<string, string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule, ModalComponent],
   template: `
-    <section class="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
+    <section class="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6 animate-page-in">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h1 class="text-base font-bold tracking-wider uppercase text-foreground">Gestión Integral de Usuarios</h1>
+          <h1 class="text-h1 text-foreground">Gestión Integral de Usuarios</h1>
           <p class="text-sm text-muted-foreground mt-1 max-w-[70ch]">
             Administra usuarios, perfiles, vigencias laborales, ámbitos presupuestales y permisos de acceso del sistema SODEGA.
           </p>
@@ -55,7 +55,7 @@ const ICON_TONES: Record<string, string> = {
           <button
             (click)="setFiltro(k.filtro)"
             class="bg-card p-5 rounded-xl flex justify-between items-center text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
-            [class]="filtro() === k.filtro ? 'ring-2 ring-brand shadow-md' : 'ring-1 ring-black/5 shadow-sm'"
+            [class]="filtro() === k.filtro ? 'ring-2 ring-brand shadow-md' : 'ring-1 ring-border shadow-sm'"
           >
             <div>
               <p class="text-[10px] font-bold uppercase tracking-wider mb-1" [class]="k.labelCls">{{ k.label }}</p>
@@ -80,7 +80,7 @@ const ICON_TONES: Record<string, string> = {
       }
 
       <!-- Panel principal: búsqueda + grilla + paginación -->
-      <div class="bg-card rounded-xl ring-1 ring-black/5 shadow-sm overflow-hidden">
+      <div class="bg-card rounded-xl ring-1 ring-border shadow-sm overflow-hidden">
         <!-- Barra de búsqueda y acciones -->
         <div class="p-4 bg-secondary/40 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div class="flex items-center gap-2 flex-1">
@@ -92,23 +92,17 @@ const ICON_TONES: Record<string, string> = {
                 [value]="q()"
                 (input)="q.set($any($event.target).value); page.set(1)"
                 placeholder="Buscar por DNI, Nombre, Rol..."
-                class="w-full pl-10 pr-4 py-2 bg-card ring-1 ring-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
+                class="w-full pl-10 pr-4 py-2 bg-card ring-1 ring-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring"
               />
             </div>
           </div>
 
           <div class="flex items-center gap-2">
-            <button
-              (click)="exportarExcel()"
-              class="inline-flex items-center gap-2 h-9 px-3 rounded-md bg-card ring-1 ring-border text-sm font-medium text-foreground hover:bg-secondary transition-colors"
-            >
-              <lucide-angular [img]="FileSpreadsheetIcon" class="size-4 text-emerald-600" />
+            <button (click)="exportarExcel()" class="btn-secondary">
+              <lucide-angular [img]="FileSpreadsheetIcon" class="size-4 text-success" />
               <span>Exportar excel</span>
             </button>
-            <button
-              (click)="nuevoUsuario()"
-              class="inline-flex items-center gap-2 h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-            >
+            <button (click)="nuevoUsuario()" class="btn-primary">
               <lucide-angular [img]="UserPlusIcon" class="size-4" />
               <span>Nuevo usuario</span>
             </button>
@@ -119,25 +113,29 @@ const ICON_TONES: Record<string, string> = {
         <div class="overflow-auto max-h-[60vh]">
           <table class="w-full text-left min-w-[1400px]">
             <thead class="bg-secondary sticky top-0 z-10 shadow-sm">
-              <tr class="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                <th class="px-4 py-4 text-center min-w-[220px]">Acciones</th>
-                <th class="px-4 py-4 w-56">Empleado</th>
-                <th class="px-4 py-4 text-center w-28">Estado</th>
-                <th class="px-4 py-4 w-28">Usuario</th>
-                <th class="px-4 py-4 w-24">DNI</th>
-                <th class="px-4 py-4 w-48">Perfil</th>
-                <th class="px-4 py-4 w-64">OPAS</th>
-                <th class="px-4 py-4 w-48">Vigencia</th>
-                <th class="px-4 py-4 w-28">Vencimiento</th>
-                <th class="px-4 py-4 w-64">Prog. presupuestal</th>
-                <th class="px-4 py-4 w-24">Ubigeo</th>
+              <tr class="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+                <th class="px-4 py-3 text-center min-w-[220px]">Acciones</th>
+                <th class="px-4 py-3 w-56">Empleado</th>
+                <th class="px-4 py-3 text-center w-28">Estado</th>
+                <th class="px-4 py-3 w-28">Usuario</th>
+                <th class="px-4 py-3 w-24">DNI</th>
+                <th class="px-4 py-3 w-48">Perfil</th>
+                <th class="px-4 py-3 w-64">OPAS</th>
+                <th class="px-4 py-3 w-48">Vigencia</th>
+                <th class="px-4 py-3 w-28">Vencimiento</th>
+                <th class="px-4 py-3 w-64">Prog. presupuestal</th>
+                <th class="px-4 py-3 w-24">Ubigeo</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border">
               @if (pageRows().length === 0) {
                 <tr>
-                  <td colspan="11" class="px-6 py-12 text-center text-sm text-muted-foreground italic">
-                    No se encontraron registros de usuarios con los criterios establecidos.
+                  <td colspan="11">
+                    <div class="empty-state">
+                      <lucide-angular [img]="SearchIcon" class="size-8 text-muted-foreground/40" />
+                      <p class="text-sm font-medium text-foreground">Sin resultados</p>
+                      <p class="text-xs">No se encontraron registros de usuarios con los criterios establecidos.</p>
+                    </div>
                   </td>
                 </tr>
               }
@@ -215,7 +213,7 @@ const ICON_TONES: Record<string, string> = {
               <button
                 (click)="page.set(p)"
                 class="px-3 py-1 rounded text-[11px] font-bold transition-colors"
-                [class]="page() === p ? 'bg-teal-50 ring-1 ring-teal-200 text-teal-700' : 'ring-1 ring-border text-foreground/80 hover:bg-secondary'"
+                [class]="page() === p ? 'bg-brand-soft ring-1 ring-brand/25 text-brand' : 'ring-1 ring-border text-foreground/80 hover:bg-secondary'"
               >{{ p }}</button>
             }
             <button
@@ -234,7 +232,7 @@ const ICON_TONES: Record<string, string> = {
           <div class="flex justify-center mt-5">
             <button
               (click)="alerta.set(null)"
-              class="inline-flex items-center justify-center h-9 px-6 min-w-[120px] rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+              class="btn-primary px-6 min-w-[120px]"
             >Aceptar</button>
           </div>
         </app-modal>
@@ -259,10 +257,10 @@ export class GestionUsuariosComponent {
 
   readonly kpiDefs = [
     { filtro: 'TOTAL' as FiltroKpi, label: 'Total usuarios', icon: Users, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-blue-50 text-blue-600' },
-    { filtro: 'HABILITADO' as FiltroKpi, label: 'Habilitados', icon: UserCheck, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-emerald-50 text-emerald-600' },
+    { filtro: 'HABILITADO' as FiltroKpi, label: 'Habilitados', icon: UserCheck, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-success-soft text-success' },
     { filtro: 'INHABILITADO' as FiltroKpi, label: 'Inhabilitados', icon: UserX, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-destructive/10 text-destructive' },
-    { filtro: 'PERMANENTE' as FiltroKpi, label: 'Permanente', icon: InfinityIcon, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-teal-50 text-teal-600' },
-    { filtro: 'CRITICOS' as FiltroKpi, label: 'Por vencer (30 días)', icon: Clock, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-amber-50 text-amber-600' },
+    { filtro: 'PERMANENTE' as FiltroKpi, label: 'Permanente', icon: InfinityIcon, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-brand-soft text-brand' },
+    { filtro: 'CRITICOS' as FiltroKpi, label: 'Por vencer (30 días)', icon: Clock, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-warning-soft text-warning-foreground' },
     { filtro: 'VENCIDOS' as FiltroKpi, label: 'Vencidos', icon: TriangleAlert, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-destructive/10 text-destructive' },
   ];
 

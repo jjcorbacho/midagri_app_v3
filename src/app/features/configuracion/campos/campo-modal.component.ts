@@ -10,7 +10,7 @@ export const TIPOS_CAMPO: { value: CampoTipo; label: string; chip: string }[] = 
   { value: 'date', label: 'Fecha', chip: 'bg-purple-50 text-purple-700 border-purple-100' },
   { value: 'radio', label: 'Opción única', chip: 'bg-pink-50 text-pink-700 border-pink-100' },
   { value: 'checkbox', label: 'Casillas', chip: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100' },
-  { value: 'textarea', label: 'Texto largo', chip: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+  { value: 'textarea', label: 'Texto largo', chip: 'bg-success-soft text-success border-success/20' },
 ];
 
 export type CampoModalResult = Omit<CampoPersonalizado, 'id' | 'area' | 'formulario'>;
@@ -22,36 +22,36 @@ export type CampoModalResult = Omit<CampoPersonalizado, 'id' | 'area' | 'formula
   imports: [ReactiveFormsModule, LucideAngularModule],
   template: `
     <div class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
-        <div class="p-4 border-b border-slate-200 flex items-center justify-between">
-          <h3 class="text-base font-bold text-slate-800">
+      <div class="bg-card rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div class="p-4 border-b border-border flex items-center justify-between">
+          <h3 class="text-base font-bold text-foreground">
             {{ initial() ? 'Editar campo personalizado' : 'Nuevo campo personalizado' }}
           </h3>
-          <button (click)="closed.emit()" class="p-1 rounded hover:bg-slate-100" aria-label="Cerrar">
+          <button (click)="closed.emit()" class="p-1 rounded hover:bg-muted" aria-label="Cerrar">
             <lucide-angular [img]="XIcon" class="size-4" />
           </button>
         </div>
         <div class="p-5 space-y-4 overflow-y-auto" [formGroup]="form">
           <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">
-              Nombre del campo <span class="text-rose-500">*</span>
+            <label class="block text-xs font-semibold text-foreground mb-1">
+              Nombre del campo <span class="text-destructive">*</span>
             </label>
             <input
               formControlName="nombre"
               placeholder="p. ej. Tipo de cultivo"
-              class="w-full bg-amber-50 border border-amber-300 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-teal-100 outline-none transition"
+              class="w-full bg-warning-soft border border-warning/40 rounded-lg px-3 py-2 text-sm focus:bg-card focus:ring-2 focus:ring-brand/15 outline-none transition"
             />
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">
-              Tipo de dato <span class="text-rose-500">*</span>
+            <label class="block text-xs font-semibold text-foreground mb-1">
+              Tipo de dato <span class="text-destructive">*</span>
               @if (tieneData()) {
-                <span class="ml-2 text-[10px] text-amber-600 font-bold uppercase">Bloqueado — tiene datos</span>
+                <span class="ml-2 text-[10px] text-warning-foreground font-bold uppercase">Bloqueado — tiene datos</span>
               }
             </label>
             <select
               formControlName="tipo"
-              class="w-full bg-amber-50 border border-amber-300 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-teal-100 outline-none transition disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+              class="w-full bg-warning-soft border border-warning/40 rounded-lg px-3 py-2 text-sm focus:bg-card focus:ring-2 focus:ring-brand/15 outline-none transition disabled:bg-muted/40 disabled:border-border disabled:cursor-not-allowed"
             >
               @for (t of tipos; track t.value) {
                 <option [value]="t.value">{{ t.label }}</option>
@@ -60,17 +60,17 @@ export type CampoModalResult = Omit<CampoPersonalizado, 'id' | 'area' | 'formula
           </div>
 
           @if (needsOptions()) {
-            <div class="bg-teal-50/40 border border-teal-100 rounded-lg p-3">
-              <label class="block text-xs font-semibold text-teal-800 mb-2">Opciones de la lista</label>
+            <div class="bg-brand-soft/40 border border-brand/15 rounded-lg p-3">
+              <label class="block text-xs font-semibold text-brand mb-2">Opciones de la lista</label>
               <div class="space-y-1.5">
                 @for (o of opciones(); track $index; let i = $index) {
                   <div class="flex items-center gap-2">
                     <input
                       [value]="o"
                       (input)="setOpcion(i, $any($event.target).value)"
-                      class="flex-1 bg-white border border-slate-200 rounded px-2 py-1.5 text-sm"
+                      class="flex-1 bg-card border border-border rounded px-2 py-1.5 text-sm"
                     />
-                    <button (click)="quitarOpcion(i)" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded" title="Quitar">
+                    <button (click)="quitarOpcion(i)" class="p-1.5 text-destructive hover:bg-destructive/10 rounded" title="Quitar">
                       <lucide-angular [img]="Trash2Icon" class="size-3.5" />
                     </button>
                   </div>
@@ -82,9 +82,9 @@ export type CampoModalResult = Omit<CampoPersonalizado, 'id' | 'area' | 'formula
                   (input)="newOpt.set($any($event.target).value)"
                   (keydown.enter)="$event.preventDefault(); addOpt()"
                   placeholder="Nueva opción"
-                  class="flex-1 bg-white border border-slate-200 rounded px-2 py-1.5 text-sm"
+                  class="flex-1 bg-card border border-border rounded px-2 py-1.5 text-sm"
                 />
-                <button (click)="addOpt()" class="px-3 py-1.5 text-xs font-bold bg-teal-700 text-white rounded hover:bg-teal-800">
+                <button (click)="addOpt()" class="btn-primary h-7 px-3 text-xs">
                   Agregar
                 </button>
               </div>
@@ -92,34 +92,34 @@ export type CampoModalResult = Omit<CampoPersonalizado, 'id' | 'area' | 'formula
           }
 
           @if (tipoActual() === 'date') {
-            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
-              <label class="block text-xs font-semibold text-slate-700 mb-2">Vista previa del calendario</label>
+            <div class="bg-surface-2 border border-border rounded-lg p-3">
+              <label class="block text-xs font-semibold text-foreground mb-2">Vista previa del calendario</label>
               <div class="flex justify-center">
-                <input type="date" [value]="hoy" class="bg-white border border-slate-200 rounded px-3 py-2 text-sm" />
+                <input type="date" [value]="hoy" class="bg-card border border-border rounded px-3 py-2 text-sm" />
               </div>
-              <p class="text-[11px] text-slate-500 mt-2 text-center">Por defecto se resalta la fecha actual.</p>
+              <p class="text-[11px] text-muted-foreground mt-2 text-center">Por defecto se resalta la fecha actual.</p>
             </div>
           }
 
           <div class="flex items-center gap-6 pt-1">
             <label class="text-sm flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" formControlName="requerido" class="size-4 accent-teal-600" />
+              <input type="checkbox" formControlName="requerido" class="size-4 accent-brand" />
               ¿Es obligatorio?
             </label>
             <label class="text-sm flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" formControlName="activo" class="size-4 accent-teal-600" />
+              <input type="checkbox" formControlName="activo" class="size-4 accent-brand" />
               Activo
             </label>
           </div>
         </div>
-        <div class="p-4 border-t border-slate-200 flex justify-end gap-2">
-          <button (click)="closed.emit()" class="px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 hover:bg-slate-50">
+        <div class="p-4 border-t border-border flex justify-end gap-2">
+          <button (click)="closed.emit()" class="btn-secondary">
             Cancelar
           </button>
           <button
             [disabled]="!canSave()"
             (click)="guardar()"
-            class="px-5 py-2 text-sm font-semibold rounded-lg bg-teal-700 text-white hover:bg-teal-800 disabled:opacity-40 disabled:cursor-not-allowed"
+            class="btn-primary px-5"
           >
             Guardar
           </button>
