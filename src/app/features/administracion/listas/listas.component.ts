@@ -24,10 +24,10 @@ const INP_REQ = INPUT_REQUIRED;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule, ModalComponent],
   template: `
-    <section class="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
+    <section class="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6 animate-page-in">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h1 class="text-base font-bold tracking-wider uppercase text-foreground">Administración de Listas</h1>
+          <h1 class="text-h1 text-foreground">Administración de Listas</h1>
           <p class="text-sm text-muted-foreground mt-1 max-w-[70ch]">
             Gestiona catálogos maestros y opciones de lista utilizados por los formularios del sistema SODEGA.
           </p>
@@ -39,9 +39,9 @@ const INP_REQ = INPUT_REQUIRED;
 
       <div class="grid grid-cols-12 gap-5">
         <!-- Catálogo de listas -->
-        <section class="col-span-12 lg:col-span-4 bg-card rounded-xl ring-1 ring-black/5 shadow-sm overflow-hidden">
+        <section class="col-span-12 lg:col-span-4 bg-card rounded-xl ring-1 ring-border shadow-sm overflow-hidden">
           <div class="px-4 py-3 border-b border-border bg-secondary/40 flex items-center justify-between">
-            <h2 class="text-[11px] font-bold text-teal-700 uppercase tracking-wider flex items-center gap-2">
+            <h2 class="text-[11px] font-bold text-brand uppercase tracking-wider flex items-center gap-2">
               <lucide-angular [img]="ListChecksIcon" class="size-4" /> Listas
             </h2>
             <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-card ring-1 ring-border text-muted-foreground font-bold">
@@ -64,7 +64,7 @@ const INP_REQ = INPUT_REQUIRED;
                   (click)="agregarLista()"
                   title="Guardar lista"
                   aria-label="Guardar lista"
-                  class="size-9 shrink-0 inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  class="btn-primary size-9 shrink-0 px-0"
                 >
                   <lucide-angular [img]="PlusIcon" class="size-4" />
                 </button>
@@ -78,7 +78,7 @@ const INP_REQ = INPUT_REQUIRED;
                 placeholder="Buscar lista..."
                 [value]="qListas()"
                 (input)="qListas.set($any($event.target).value)"
-                class="w-full pl-10 pr-4 py-2 bg-card ring-1 ring-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
+                class="w-full pl-10 pr-4 py-2 bg-card ring-1 ring-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring"
               />
             </div>
 
@@ -107,10 +107,10 @@ const INP_REQ = INPUT_REQUIRED;
         </section>
 
         <!-- Opciones de la lista seleccionada -->
-        <section class="col-span-12 lg:col-span-8 bg-card rounded-xl ring-1 ring-black/5 shadow-sm overflow-hidden">
+        <section class="col-span-12 lg:col-span-8 bg-card rounded-xl ring-1 ring-border shadow-sm overflow-hidden">
           <div class="px-4 py-3 border-b border-border bg-secondary/40 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
-              <h2 class="text-[11px] font-bold text-teal-700 uppercase tracking-wider flex items-center gap-2">
+              <h2 class="text-[11px] font-bold text-brand uppercase tracking-wider flex items-center gap-2">
                 <lucide-angular [img]="TablePropertiesIcon" class="size-4" /> Opciones de lista
               </h2>
               <p class="text-xs text-muted-foreground mt-0.5">{{ subtituloOpciones() }}</p>
@@ -121,7 +121,7 @@ const INP_REQ = INPUT_REQUIRED;
                 <lucide-angular [img]="PlusIcon" class="size-4" />
               </button>
               <button (click)="exportarExcel()" title="Excel" aria-label="Exportar Excel"
-                class="size-8 inline-flex items-center justify-center rounded-full bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition-colors">
+                class="size-8 inline-flex items-center justify-center rounded-full bg-success text-white hover:bg-success/90 shadow-sm transition-colors">
                 <lucide-angular [img]="FileSpreadsheetIcon" class="size-4" />
               </button>
               <button (click)="imprimir()" title="Imprimir" aria-label="Imprimir"
@@ -159,8 +159,12 @@ const INP_REQ = INPUT_REQUIRED;
                 <tbody class="divide-y divide-border">
                   @if (opcionesFiltradas().length === 0) {
                     <tr>
-                      <td colspan="2" class="px-6 py-10 text-center text-sm text-muted-foreground italic">
-                        No se encontraron opciones para la búsqueda ingresada.
+                      <td colspan="2">
+                        <div class="empty-state">
+                          <lucide-angular [img]="SearchIcon" class="size-8 text-muted-foreground/40" />
+                          <p class="text-sm font-medium text-foreground">Sin opciones</p>
+                          <p class="text-xs">No se encontraron opciones para la búsqueda ingresada.</p>
+                        </div>
                       </td>
                     </tr>
                   }
@@ -177,7 +181,7 @@ const INP_REQ = INPUT_REQUIRED;
                         </button>
                         @if (menuAccionesDe() === fila.indice) {
                           <div class="fixed inset-0 z-40" (click)="menuAccionesDe.set(null)"></div>
-                          <div class="absolute left-1/2 -translate-x-1/2 top-11 z-50 w-44 bg-popover ring-1 ring-black/5 rounded-xl shadow-lg text-left overflow-hidden">
+                          <div class="absolute left-1/2 -translate-x-1/2 top-11 z-50 w-44 bg-popover ring-1 ring-border rounded-xl shadow-lg text-left overflow-hidden animate-modal-in">
                             <button (click)="abrirModalOpcion(fila.indice)"
                               class="w-full px-3 py-2 text-xs text-foreground hover:bg-secondary font-medium flex items-center gap-2 border-b border-border transition-colors">
                               <lucide-angular [img]="PencilIcon" class="size-3.5 text-muted-foreground" /> Editar
@@ -208,7 +212,7 @@ const INP_REQ = INPUT_REQUIRED;
         <app-modal [title]="tituloModalOpcion()" maxWidth="max-w-lg" (closed)="cerrarModalOpcion()">
           <div class="space-y-4">
             <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Código <span class="text-rose-600">*</span></label>
+              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Código <span class="text-destructive">*</span></label>
               <input
                 type="text"
                 placeholder="Ingrese código"
@@ -222,7 +226,7 @@ const INP_REQ = INPUT_REQUIRED;
             </div>
             <div>
               <label class="block text-[11px] font-medium text-muted-foreground mb-1">
-                Nombre {{ listaActiva() }} <span class="text-rose-600">*</span>
+                Nombre {{ listaActiva() }} <span class="text-destructive">*</span>
               </label>
               <input
                 type="text"
@@ -234,10 +238,10 @@ const INP_REQ = INPUT_REQUIRED;
               />
             </div>
             <div class="flex justify-end gap-2 pt-2 border-t border-border">
-              <button (click)="cerrarModalOpcion()" class="px-4 py-2 text-sm rounded-lg hover:bg-secondary ring-1 ring-border transition-colors">
+              <button (click)="cerrarModalOpcion()" class="btn-secondary">
                 Cancelar
               </button>
-              <button (click)="guardarOpcion()" class="px-5 py-2 text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium transition-colors flex items-center gap-1.5">
+              <button (click)="guardarOpcion()" class="btn-primary px-5">
                 <lucide-angular [img]="SaveIcon" class="size-3.5" /> Guardar
               </button>
             </div>
@@ -250,10 +254,10 @@ const INP_REQ = INPUT_REQUIRED;
         <app-modal title="¿Está seguro?" maxWidth="max-w-md" (closed)="estadoPendiente.set(null)">
           <p class="text-sm text-foreground leading-relaxed text-center">{{ textoConfirmarEstado() }}</p>
           <div class="flex justify-center gap-3 pt-5 mt-5 border-t border-border">
-            <button (click)="estadoPendiente.set(null)" class="px-6 py-2 text-sm rounded-lg hover:bg-secondary ring-1 ring-border transition-colors">
+            <button (click)="estadoPendiente.set(null)" class="btn-secondary px-6">
               No
             </button>
-            <button (click)="aplicarCambioEstado()" class="px-6 py-2 text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-medium transition-colors">
+            <button (click)="aplicarCambioEstado()" class="btn-primary px-6">
               Sí
             </button>
           </div>

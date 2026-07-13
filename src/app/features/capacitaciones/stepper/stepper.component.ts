@@ -43,7 +43,7 @@ type Paso = 1 | 2 | 3;
     ParticipanteFormComponent,
   ],
   template: `
-    <section class="p-6 lg:p-8 max-w-[1200px] mx-auto space-y-5">
+    <section class="p-6 lg:p-8 max-w-[1200px] mx-auto space-y-5 animate-page-in">
       <div class="flex items-center gap-2 text-xs text-muted-foreground">
         <a routerLink="/capacitaciones-n1" class="hover:text-brand flex items-center gap-1">
           <lucide-angular [img]="ArrowLeftIcon" class="size-3" /> Bandeja N1
@@ -58,7 +58,7 @@ type Paso = 1 | 2 | 3;
       </div>
 
       <!-- Stepper bar -->
-      <div class="bg-card ring-1 ring-black/5 rounded-xl p-4 flex items-center justify-between">
+      <div class="bg-card ring-1 ring-border rounded-xl p-4 flex items-center justify-between">
         @for (s of steps; track s.n; let i = $index) {
           <div class="flex items-center flex-1">
             <button
@@ -73,7 +73,7 @@ type Paso = 1 | 2 | 3;
                 [class]="paso() === s.n
                   ? 'bg-brand text-white ring-brand'
                   : paso() > s.n
-                    ? 'bg-emerald-500 text-white ring-emerald-500'
+                    ? 'bg-success text-success-foreground ring-success'
                     : 'bg-card text-muted-foreground ring-border'"
               >
                 @if (paso() > s.n) {
@@ -84,18 +84,18 @@ type Paso = 1 | 2 | 3;
               </span>
               <span
                 class="text-xs font-semibold uppercase tracking-wide"
-                [class]="paso() === s.n ? 'text-brand' : paso() > s.n ? 'text-emerald-700' : 'text-muted-foreground'"
+                [class]="paso() === s.n ? 'text-brand' : paso() > s.n ? 'text-success' : 'text-muted-foreground'"
               >Paso {{ s.n }}: {{ s.label }}</span>
             </button>
             @if (i < steps.length - 1) {
-              <div class="flex-1 h-0.5 mx-3" [class]="paso() > s.n ? 'bg-emerald-500' : 'bg-border'"></div>
+              <div class="flex-1 h-0.5 mx-3" [class]="paso() > s.n ? 'bg-success' : 'bg-border'"></div>
             }
           </div>
         }
       </div>
 
       @if (bloqueado()) {
-        <div class="rounded-lg bg-amber-50 ring-1 ring-amber-200 p-3 text-xs text-amber-800 flex items-center gap-2">
+        <div class="rounded-lg bg-warning-soft ring-1 ring-warning/30 p-3 text-xs text-warning-foreground flex items-center gap-2">
           <lucide-angular [img]="LockIcon" class="size-4" /> Registro en estado
           <strong>{{ cursoActivo()?.estado }}</strong>: interfaz en solo lectura.
         </div>
@@ -105,18 +105,18 @@ type Paso = 1 | 2 | 3;
       @if (paso() === 1) {
         <div class="space-y-4">
           @if (cursoActivo()?.estado === 'Observado' && observaciones().length > 0) {
-            <div class="rounded-xl ring-1 ring-rose-200 bg-rose-50 p-4">
-              <div class="flex items-center gap-2 text-rose-700 font-semibold text-sm mb-2">
+            <div class="rounded-xl ring-1 ring-destructive/25 bg-destructive/5 p-4">
+              <div class="flex items-center gap-2 text-destructive font-semibold text-sm mb-2">
                 <lucide-angular [img]="AlertTriangleIcon" class="size-4" />
                 Observaciones pendientes de subsanación
               </div>
               <ul class="space-y-2">
                 @for (o of observaciones(); track $index) {
-                  <li class="text-xs text-rose-900 bg-card/70 ring-1 ring-rose-200 rounded-md px-3 py-2">
-                    <span class="font-mono font-bold mr-2 text-rose-700">{{ o.fecha }}</span>
+                  <li class="text-xs text-destructive bg-card/70 ring-1 ring-destructive/25 rounded-md px-3 py-2">
+                    <span class="font-mono font-bold mr-2 text-destructive">{{ o.fecha }}</span>
                     {{ o.descripcion }}
                     @if (o.autor) {
-                      <span class="ml-2 text-rose-600/70">— {{ o.autor }}</span>
+                      <span class="ml-2 text-destructive/70">— {{ o.autor }}</span>
                     }
                   </li>
                 }
@@ -124,8 +124,8 @@ type Paso = 1 | 2 | 3;
             </div>
           }
 
-          <div class="bg-card rounded-xl ring-1 ring-black/5 overflow-hidden">
-            <div class="px-6 py-4 border-b border-border bg-gradient-to-br from-teal-500/5 to-transparent flex items-start justify-between gap-3">
+          <div class="bg-card rounded-xl ring-1 ring-border overflow-hidden">
+            <div class="px-6 py-4 border-b border-border bg-gradient-to-br from-brand/5 to-transparent flex items-start justify-between gap-3">
               <div>
                 <div class="text-[10px] font-bold uppercase tracking-widest text-brand">
                   Paso 1 · Datos del evento
@@ -139,7 +139,7 @@ type Paso = 1 | 2 | 3;
                 <button
                   type="button"
                   (click)="cursoForm()?.simular()"
-                  class="h-8 px-3 rounded-md ring-1 ring-border text-sm font-medium hover:bg-secondary transition-colors"
+                  class="btn-secondary h-8"
                 >Autocompletar</button>
               }
             </div>
@@ -163,8 +163,8 @@ type Paso = 1 | 2 | 3;
       @if (paso() === 2 && cursoActivo(); as curso) {
         <div class="space-y-4">
           @if (!bloqueado() && showForm()) {
-            <div class="bg-card rounded-xl ring-1 ring-black/5 overflow-hidden">
-              <div class="px-6 py-4 border-b border-border bg-gradient-to-br from-teal-500/5 to-transparent flex items-start justify-between gap-3">
+            <div class="bg-card rounded-xl ring-1 ring-border overflow-hidden">
+              <div class="px-6 py-4 border-b border-border bg-gradient-to-br from-brand/5 to-transparent flex items-start justify-between gap-3">
                 <div>
                   <div class="text-[10px] font-bold uppercase tracking-widest text-brand">
                     Paso 2 · Registro de participantes
@@ -178,13 +178,13 @@ type Paso = 1 | 2 | 3;
                   <button
                     type="button"
                     (click)="participanteForm()?.simular()"
-                    class="h-8 px-3 rounded-md ring-1 ring-border text-sm font-medium hover:bg-secondary transition-colors"
+                    class="btn-secondary h-8"
                   >Autocompletar</button>
                   <button
                     type="button"
                     (click)="showForm.set(false)"
                     aria-label="Cerrar formulario"
-                    class="h-8 px-2 rounded-md text-sm hover:bg-secondary transition-colors"
+                    class="btn-icon"
                   >
                     <lucide-angular [img]="XIcon" class="size-4" />
                   </button>
@@ -203,7 +203,7 @@ type Paso = 1 | 2 | 3;
           }
 
           @if (!showForm()) {
-            <div class="bg-card rounded-xl ring-1 ring-black/5 overflow-hidden">
+            <div class="bg-card rounded-xl ring-1 ring-border overflow-hidden">
               <div class="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
                 <div>
                   <h2 class="text-sm font-bold uppercase tracking-wider">Participantes registrados</h2>
@@ -213,7 +213,7 @@ type Paso = 1 | 2 | 3;
                   <button
                     type="button"
                     (click)="showForm.set(true)"
-                    class="inline-flex items-center gap-2 h-8 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+                    class="btn-primary h-8"
                   >
                     <lucide-angular [img]="PlusIcon" class="size-4" /> Nuevo participante
                   </button>
@@ -222,7 +222,7 @@ type Paso = 1 | 2 | 3;
               <div class="overflow-auto max-h-[40vh]">
                 <table class="w-full text-sm">
                   <thead class="bg-secondary/60 sticky top-0 z-10">
-                    <tr class="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
+                    <tr class="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
                       <th class="px-3 py-2 text-left">DNI</th>
                       <th class="px-3 py-2 text-left">Apellidos y Nombres</th>
                       <th class="px-3 py-2 text-left">Tipo</th>
@@ -247,7 +247,7 @@ type Paso = 1 | 2 | 3;
                         <td class="px-3 py-2 font-mono text-xs">{{ p.dni }}</td>
                         <td class="px-3 py-2 font-medium">{{ p.apellidos }}, {{ p.nombres }}</td>
                         <td class="px-3 py-2">
-                          <span class="text-[10px] px-1.5 py-0.5 font-bold uppercase rounded-sm bg-slate-100 text-slate-700">
+                          <span class="text-[10px] px-1.5 py-0.5 font-bold uppercase rounded-sm bg-muted text-foreground">
                             {{ p.tipoParticipante }}
                           </span>
                         </td>
@@ -257,7 +257,7 @@ type Paso = 1 | 2 | 3;
                             <div class="flex justify-center">
                               <button
                                 (click)="eliminarParticipante(p.id)"
-                                class="p-1.5 rounded-md text-rose-600 hover:bg-rose-50"
+                                class="p-1.5 rounded-md text-destructive hover:bg-destructive/10"
                                 aria-label="Eliminar participante"
                               >
                                 <lucide-angular [img]="Trash2Icon" class="size-4" />
@@ -274,14 +274,14 @@ type Paso = 1 | 2 | 3;
               <div class="px-5 py-3 border-t border-border bg-secondary/30 flex items-center justify-between gap-2">
                 <button
                   (click)="paso.set(1)"
-                  class="inline-flex items-center gap-2 h-8 px-3 rounded-md ring-1 ring-border text-sm font-medium hover:bg-secondary transition-colors"
+                  class="btn-secondary h-8"
                 >
                   <lucide-angular [img]="ArrowLeftIcon" class="size-4" /> Volver al Paso 1
                 </button>
                 <button
                   (click)="paso.set(3)"
                   [disabled]="participantes().length === 0 && !bloqueado()"
-                  class="inline-flex items-center gap-2 h-8 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+                  class="btn-primary h-8"
                 >
                   Continuar al Paso 3 <lucide-angular [img]="ChevronRightIcon" class="size-4" />
                 </button>
@@ -293,8 +293,8 @@ type Paso = 1 | 2 | 3;
 
       <!-- ============ Paso 3 ============ -->
       @if (paso() === 3 && cursoActivo(); as curso) {
-        <div class="bg-card rounded-xl ring-1 ring-black/5 overflow-hidden">
-          <div class="px-6 py-4 border-b border-border bg-gradient-to-br from-teal-500/5 to-transparent">
+        <div class="bg-card rounded-xl ring-1 ring-border overflow-hidden">
+          <div class="px-6 py-4 border-b border-border bg-gradient-to-br from-brand/5 to-transparent">
             <div class="text-[10px] font-bold uppercase tracking-widest text-brand">
               Paso 3 · Sustento y envío
             </div>
@@ -368,13 +368,13 @@ type Paso = 1 | 2 | 3;
                   <p class="text-[11px] text-muted-foreground">Solo PDF de hasta {{ maxMb }} MB</p>
                 </button>
               } @else {
-                <div class="flex items-center gap-3 p-3 bg-emerald-50 ring-1 ring-emerald-200 rounded-lg">
-                  <div class="size-9 rounded-md bg-card flex items-center justify-center text-emerald-700">
+                <div class="flex items-center gap-3 p-3 bg-success-soft ring-1 ring-success/25 rounded-lg">
+                  <div class="size-9 rounded-md bg-card flex items-center justify-center text-success">
                     <lucide-angular [img]="FileTextIcon" class="size-5" />
                   </div>
                   <div class="flex-1 min-w-0">
                     <p class="text-sm font-semibold truncate">{{ file()?.name ?? existingName() }}</p>
-                    <p class="text-[11px] text-emerald-700">
+                    <p class="text-[11px] text-success">
                       {{ file() ? 'Listo para enviar' : 'Archivo previamente cargado' }}
                     </p>
                   </div>
@@ -402,7 +402,7 @@ type Paso = 1 | 2 | 3;
 
               <label
                 class="flex items-start gap-3 p-3 ring-1 rounded-lg"
-                [class]="bloqueado() ? 'opacity-60' : 'bg-amber-50 ring-amber-200 cursor-pointer'"
+                [class]="bloqueado() ? 'opacity-60' : 'bg-warning-soft ring-warning/30 cursor-pointer'"
               >
                 <input
                   type="checkbox"
@@ -411,7 +411,7 @@ type Paso = 1 | 2 | 3;
                   (change)="declaro.set($any($event.target).checked)"
                   class="mt-0.5 size-4 accent-brand"
                 />
-                <span class="text-xs text-amber-900 leading-relaxed">
+                <span class="text-xs text-warning-foreground leading-relaxed">
                   Declaro bajo juramento la veracidad de la información adjunta como sustento de la actividad realizada.
                 </span>
               </label>
@@ -421,14 +421,14 @@ type Paso = 1 | 2 | 3;
           <div class="px-6 py-4 border-t border-border bg-secondary/30 flex items-center justify-between gap-2">
             <button
               (click)="paso.set(2)"
-              class="inline-flex items-center gap-2 h-8 px-3 rounded-md ring-1 ring-border text-sm font-medium hover:bg-secondary transition-colors"
+              class="btn-secondary h-8"
             >
               <lucide-angular [img]="ArrowLeftIcon" class="size-4" /> Volver al Paso 2
             </button>
             <button
               (click)="enviar()"
               [disabled]="!puedeEnviar()"
-              class="inline-flex items-center gap-2 h-8 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+              class="btn-primary h-8"
             >
               <lucide-angular [img]="SendIcon" class="size-4" /> Enviar
             </button>

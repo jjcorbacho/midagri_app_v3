@@ -175,7 +175,7 @@ const COLLAPSE_KEY = 'midagri.sidebar.collapsed';
               @if (!collapsed()) {
                 <span class="text-sm">{{ item.label }}</span>
               } @else {
-                <span class="pointer-events-none absolute left-14 top-1/2 -translate-y-1/2 scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all bg-zinc-800 text-white text-xs font-medium px-2.5 py-1.5 rounded whitespace-nowrap z-50 shadow-lg">
+                <span class="pointer-events-none absolute left-14 top-1/2 -translate-y-1/2 scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all bg-foreground text-white text-xs font-medium px-2.5 py-1.5 rounded whitespace-nowrap z-50 shadow-lg">
                   {{ item.label }}
                 </span>
               }
@@ -195,7 +195,7 @@ const COLLAPSE_KEY = 'midagri.sidebar.collapsed';
           @if (!collapsed()) {
             <span class="text-sm">Cerrar sesión</span>
           } @else {
-            <span class="pointer-events-none absolute left-14 top-1/2 -translate-y-1/2 scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all bg-zinc-800 text-white text-xs font-medium px-2.5 py-1.5 rounded whitespace-nowrap z-50 shadow-lg">
+            <span class="pointer-events-none absolute left-14 top-1/2 -translate-y-1/2 scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all bg-foreground text-white text-xs font-medium px-2.5 py-1.5 rounded whitespace-nowrap z-50 shadow-lg">
               Cerrar sesión
             </span>
           }

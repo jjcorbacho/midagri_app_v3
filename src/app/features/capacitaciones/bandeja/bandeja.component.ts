@@ -35,7 +35,7 @@ const ICON_TONES: Record<string, string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule, EstadoBadgeComponent, KpiCardComponent, ModalComponent, SustentoModalComponent],
   template: `
-    <section class="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
+    <section class="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6 animate-page-in">
       <!-- KPIs -->
       <div class="space-y-3">
         <div class="flex justify-start">
@@ -46,7 +46,7 @@ const ICON_TONES: Record<string, string> = {
                 [attr.aria-selected]="kpiView() === opt.k"
                 (click)="kpiView.set(opt.k)"
                 class="px-4 h-8 rounded-lg text-xs font-semibold transition-all duration-200"
-                [class]="kpiView() === opt.k ? 'bg-card text-brand shadow-sm ring-1 ring-black/5' : 'text-muted-foreground hover:text-foreground'"
+                [class]="kpiView() === opt.k ? 'bg-card text-brand shadow-sm ring-1 ring-border' : 'text-muted-foreground hover:text-foreground'"
               >{{ opt.label }}</button>
             }
           </div>
@@ -67,10 +67,10 @@ const ICON_TONES: Record<string, string> = {
       </div>
 
       <!-- Main panel -->
-      <div class="bg-card rounded-xl ring-1 ring-black/5 shadow-sm overflow-hidden">
+      <div class="bg-card rounded-xl ring-1 ring-border shadow-sm overflow-hidden">
         <div class="p-6 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 class="text-base font-bold tracking-wider uppercase text-foreground">
+            <h2 class="text-h2 text-foreground">
               Bandeja de Control de {{ areaService.currentArea() }}
             </h2>
             <p class="text-sm text-muted-foreground mt-1 max-w-[70ch]">
@@ -78,16 +78,10 @@ const ICON_TONES: Record<string, string> = {
             </p>
           </div>
           <div class="flex flex-wrap gap-2">
-            <button
-              (click)="nuevo('capacitacion')"
-              class="inline-flex items-center gap-2 h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-            >
+            <button (click)="nuevo('capacitacion')" class="btn-primary">
               <lucide-angular [img]="PlusIcon" class="size-4" /> Registrar Capacitación
             </button>
-            <button
-              (click)="nuevo('asistencia')"
-              class="inline-flex items-center gap-2 h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-            >
+            <button (click)="nuevo('asistencia')" class="btn-primary">
               <lucide-angular [img]="PlusIcon" class="size-4" /> Registrar Asis. Técnica
             </button>
           </div>
@@ -112,7 +106,7 @@ const ICON_TONES: Record<string, string> = {
               (input)="setQ($event)"
               type="text"
               placeholder="Buscar por código, tema, ubicación, extensionista, nombres, apellidos o DNI…"
-              class="w-full pl-10 pr-4 py-2 bg-card ring-1 ring-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
+              class="w-full pl-10 pr-4 py-2 bg-card ring-1 ring-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring"
             />
           </div>
 
@@ -132,14 +126,14 @@ const ICON_TONES: Record<string, string> = {
         <div class="overflow-auto max-h-[60vh]">
           <table class="w-full text-left min-w-[1100px]">
             <thead class="bg-secondary sticky top-0 z-10 shadow-sm">
-              <tr class="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                <th class="px-4 py-4 text-center">Acciones</th>
-                <th class="px-4 py-4">Tipo / Tema</th>
-                <th class="px-4 py-4">Estado</th>
-                <th class="px-4 py-4">Fecha</th>
-                <th class="px-4 py-4 text-center">Horas</th>
-                <th class="px-4 py-4 text-center">Participantes</th>
-                <th class="px-4 py-4">Ubicación</th>
+              <tr class="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+                <th class="px-4 py-3 text-center">Acciones</th>
+                <th class="px-4 py-3">Tipo / Tema</th>
+                <th class="px-4 py-3">Estado</th>
+                <th class="px-4 py-3">Fecha</th>
+                <th class="px-4 py-3 text-center">Horas</th>
+                <th class="px-4 py-3 text-center">Participantes</th>
+                <th class="px-4 py-3">Ubicación</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border">
@@ -204,7 +198,7 @@ const ICON_TONES: Record<string, string> = {
                     <div class="mb-1">
                       <span
                         class="text-[9px] px-1.5 py-0.5 font-bold uppercase rounded-sm"
-                        [class]="c.tipo === 'capacitacion' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'"
+                        [class]="c.tipo === 'capacitacion' ? 'bg-state-validado-soft text-state-validado-foreground' : 'bg-success-soft text-success'"
                       >{{ c.tipo === 'capacitacion' ? 'Capacitación' : 'Asist. Técnica' }}</span>
                       <span class="ml-2 text-[10px] font-mono text-muted-foreground">{{ c.codigo }}</span>
                     </div>
@@ -250,7 +244,7 @@ const ICON_TONES: Record<string, string> = {
                             @for (p of subRows(c); track p.id) {
                               <li
                                 class="flex items-center gap-3 px-6 py-2 text-xs"
-                                [class]="esMatch(c, p) ? 'bg-amber-50 border-l-4 border-l-amber-500' : 'border-l-4 border-l-transparent'"
+                                [class]="esMatch(c, p) ? 'bg-warning-soft border-l-4 border-l-warning' : 'border-l-4 border-l-transparent'"
                               >
                                 <span class="hidden md:inline text-muted-foreground/60 font-mono select-none">└─</span>
                                 <span class="font-mono tabular-nums text-foreground/80 w-24 shrink-0">{{ p.dni }}</span>
@@ -259,7 +253,7 @@ const ICON_TONES: Record<string, string> = {
                                 </span>
                                 <span
                                   class="ml-auto px-1.5 py-0.5 rounded-sm text-[9px] font-bold uppercase shrink-0"
-                                  [class]="p.tipoParticipante === 'PRODUCTOR' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'"
+                                  [class]="p.tipoParticipante === 'PRODUCTOR' ? 'bg-success-soft text-success' : 'bg-muted text-foreground'"
                                 >{{ p.tipoParticipante }}</span>
                               </li>
                             }
@@ -272,8 +266,12 @@ const ICON_TONES: Record<string, string> = {
               }
               @if (pageRows().length === 0) {
                 <tr>
-                  <td colspan="7" class="px-6 py-12 text-center text-sm text-muted-foreground italic">
-                    No hay registros que coincidan con los filtros.
+                  <td colspan="7">
+                    <div class="empty-state">
+                      <lucide-angular [img]="SearchIcon" class="size-8 text-muted-foreground/40" />
+                      <p class="text-sm font-medium text-foreground">Sin resultados</p>
+                      <p class="text-xs">No hay registros que coincidan con los filtros aplicados.</p>
+                    </div>
                   </td>
                 </tr>
               }
@@ -300,15 +298,15 @@ const ICON_TONES: Record<string, string> = {
             <button
               (click)="prevPage()"
               [disabled]="safePage() === 1"
-              class="px-3 py-1 ring-1 ring-border rounded text-[11px] font-bold text-foreground/80 disabled:opacity-40"
+              class="px-3 py-1 ring-1 ring-border rounded-md text-[11px] font-bold text-foreground/80 hover:bg-secondary transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
             >Anterior</button>
-            <span class="px-3 py-1 bg-teal-50 ring-1 ring-teal-200 rounded text-[11px] font-bold text-teal-700">
+            <span class="px-3 py-1 bg-brand-soft ring-1 ring-brand/25 rounded text-[11px] font-bold text-brand">
               {{ safePage() }} / {{ totalPages() }}
             </span>
             <button
               (click)="nextPage()"
               [disabled]="safePage() === totalPages()"
-              class="px-3 py-1 ring-1 ring-border rounded text-[11px] font-bold text-foreground/80 disabled:opacity-40"
+              class="px-3 py-1 ring-1 ring-border rounded-md text-[11px] font-bold text-foreground/80 hover:bg-secondary transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
             >Siguiente</button>
           </div>
         </div>

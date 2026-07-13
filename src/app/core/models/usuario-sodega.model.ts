@@ -35,6 +35,16 @@ export interface AmbitoTerritorial {
   distrito: string;  // '-' cuando el perfil es solo-región (Admin UO)
 }
 
+/**
+ * Meta operativa asignada a un ámbito territorial. Aplica cuando un
+ * Administrador DZ_Cap_Asit. registra un Técnico Capacitación y Asistencia
+ * Técnica (una fila por ámbito, cantidades enteras ≥ 0).
+ */
+export interface MetaAmbitoTerritorial extends AmbitoTerritorial {
+  cantidadCapacitaciones: number;
+  cantidadAsistenciaTecnica: number;
+}
+
 /** Registro de usuario SODEGA (un usuario puede tener varios registros por unidad). */
 export interface UsuarioSodega {
   id: string;
@@ -67,6 +77,8 @@ export interface UsuarioSodega {
   unidadFuncional: string;
   creadoPor?: string;
   ambitos: AmbitoTerritorial[];
+  /** Metas por ámbito territorial (solo Técnicos registrados por un Admin DZ_Cap_Asit.). */
+  metasAmbito?: MetaAmbitoTerritorial[];
   /** Permisos de menú del usuario (solo perfiles con esquema configurable). */
   permisosMenu?: PermisosMenu;
   inhabilitadoPorVencimiento?: boolean;
@@ -125,6 +137,17 @@ export function perfilRequiereAmbito(perfil: string): boolean {
 /** Admin UO asigna ámbito solo a nivel de región. */
 export function perfilSoloRegion(perfil: string): boolean {
   return perfil === 'Administrador Unidad Organizacional';
+}
+
+/**
+ * Las metas por ámbito territorial aplican únicamente cuando un
+ * Administrador DZ_Cap_Asit. registra un Técnico Capacitación y Asistencia Técnica.
+ */
+export function aplicaMetasPorAmbito(perfilActivo: string, perfilObjetivo: string): boolean {
+  return (
+    perfilActivo === 'Administrador DZ_Cap_Asit.' &&
+    perfilObjetivo === 'Técnico Capacitación y Asistencia Técnica'
+  );
 }
 
 export function toTitleCase(str: string): string {

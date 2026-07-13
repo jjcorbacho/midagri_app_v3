@@ -8,10 +8,10 @@
  */
 
 export const INPUT_BASE =
-  'w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none transition-colors';
+  'w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/60 hover:ring-muted-foreground/30 focus:ring-2 focus:ring-ring focus:outline-none transition-[box-shadow,background-color] duration-150';
 
 export const INPUT_REQUIRED =
-  'w-full bg-amber-50 ring-1 ring-amber-300 rounded-lg px-3 py-2 text-sm focus:bg-card focus:ring-2 focus:ring-teal-500 focus:outline-none transition-colors';
+  'w-full bg-warning-soft ring-1 ring-warning/40 rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus:bg-card focus:ring-2 focus:ring-ring focus:outline-none transition-[box-shadow,background-color] duration-150';
 
 export const INPUT_DISABLED =
   'w-full bg-muted/40 ring-1 ring-border rounded-lg px-3 py-2 text-sm text-muted-foreground cursor-not-allowed';

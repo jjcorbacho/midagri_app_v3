@@ -9,11 +9,11 @@ import { AreaService } from '../../core/services/area.service';
   imports: [LucideAngularModule],
   template: `
     @if (auth.user(); as user) {
-      <section class="p-6 max-w-3xl mx-auto">
-        <h1 class="text-2xl font-semibold mb-1">Mi Perfil</h1>
+      <section class="p-6 lg:p-8 max-w-3xl mx-auto animate-page-in">
+        <h1 class="text-h1 mb-1">Mi Perfil</h1>
         <p class="text-sm text-muted-foreground mb-6">Información de la cuenta institucional.</p>
 
-        <div class="bg-card rounded-xl ring-1 ring-black/5 overflow-hidden">
+        <div class="bg-card rounded-xl ring-1 ring-border shadow-xs overflow-hidden">
           <div class="px-6 py-8 bg-gradient-to-br from-brand/10 to-transparent flex items-center gap-5">
             <div class="size-20 rounded-full bg-brand text-brand-foreground flex items-center justify-center text-2xl font-semibold">
               {{ user.nombre[0] }}{{ user.apellido[0] }}

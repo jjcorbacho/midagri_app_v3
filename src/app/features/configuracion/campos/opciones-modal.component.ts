@@ -9,13 +9,13 @@ import { CampoPersonalizado } from '../../../core/models/campo.model';
   imports: [LucideAngularModule],
   template: `
     <div class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div class="bg-white rounded-xl shadow-2xl w-full max-w-md">
-        <div class="p-4 border-b border-slate-200 flex items-center justify-between">
+      <div class="bg-card rounded-xl shadow-2xl w-full max-w-md">
+        <div class="p-4 border-b border-border flex items-center justify-between">
           <div>
-            <h3 class="text-base font-bold text-slate-800">Editar valores del campo</h3>
-            <p class="text-xs text-slate-500 mt-0.5">{{ campo().nombre }}</p>
+            <h3 class="text-base font-bold text-foreground">Editar valores del campo</h3>
+            <p class="text-xs text-muted-foreground mt-0.5">{{ campo().nombre }}</p>
           </div>
-          <button (click)="closed.emit()" class="p-1 rounded hover:bg-slate-100" aria-label="Cerrar">
+          <button (click)="closed.emit()" class="p-1 rounded hover:bg-muted" aria-label="Cerrar">
             <lucide-angular [img]="XIcon" class="size-4" />
           </button>
         </div>
@@ -25,9 +25,9 @@ import { CampoPersonalizado } from '../../../core/models/campo.model';
               <input
                 [value]="o"
                 (input)="setOpcion(i, $any($event.target).value)"
-                class="flex-1 bg-white border border-slate-200 rounded px-2 py-1.5 text-sm"
+                class="flex-1 bg-card border border-border rounded px-2 py-1.5 text-sm"
               />
-              <button (click)="quitarOpcion(i)" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded">
+              <button (click)="quitarOpcion(i)" class="p-1.5 text-destructive hover:bg-destructive/10 rounded">
                 <lucide-angular [img]="Trash2Icon" class="size-3.5" />
               </button>
             </div>
@@ -38,20 +38,20 @@ import { CampoPersonalizado } from '../../../core/models/campo.model';
               (input)="newOpt.set($any($event.target).value)"
               (keydown.enter)="$event.preventDefault(); addOpt()"
               placeholder="Nueva opción"
-              class="flex-1 bg-white border border-slate-200 rounded px-2 py-1.5 text-sm"
+              class="flex-1 bg-card border border-border rounded px-2 py-1.5 text-sm"
             />
-            <button (click)="addOpt()" class="px-3 py-1.5 text-xs font-bold bg-teal-700 text-white rounded hover:bg-teal-800">
+            <button (click)="addOpt()" class="btn-primary h-7 px-3 text-xs">
               Agregar
             </button>
           </div>
         </div>
-        <div class="p-4 border-t border-slate-200 flex justify-end gap-2">
-          <button (click)="closed.emit()" class="px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 hover:bg-slate-50">
+        <div class="p-4 border-t border-border flex justify-end gap-2">
+          <button (click)="closed.emit()" class="btn-secondary">
             Cancelar
           </button>
           <button
             (click)="guardar()"
-            class="px-5 py-2 text-sm font-semibold rounded-lg bg-teal-700 text-white hover:bg-teal-800"
+            class="btn-primary px-5"
           >
             Guardar
           </button>

@@ -29,13 +29,13 @@ const ICON_TONES: Record<string, string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule, EstadoBadgeComponent, ModalComponent],
   template: `
-    <section class="p-4 md:p-8 max-w-[1400px] mx-auto space-y-6 pb-32">
+    <section class="p-4 md:p-8 max-w-[1400px] mx-auto space-y-6 pb-32 animate-page-in">
       <!-- Header -->
       <header class="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <div class="flex items-center gap-2 mb-1">
             <lucide-angular [img]="ClipboardListIcon" class="size-5 text-brand" />
-            <h1 class="text-2xl font-bold tracking-tight">{{ title() }}</h1>
+            <h1 class="text-h1">{{ title() }}</h1>
             <span class="px-2.5 py-1 bg-secondary text-muted-foreground font-semibold text-[11px] rounded-md ml-1 tracking-widest">
               {{ rolLabel() || rol() }}
             </span>
@@ -46,7 +46,7 @@ const ICON_TONES: Record<string, string> = {
           <button
             (click)="validarOpen.set(true)"
             [disabled]="sel().size === 0"
-            class="inline-flex items-center gap-2 h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+            class="btn-primary"
           >
             <lucide-angular [img]="CheckCircle2Icon" class="size-4" />
             {{ labelAprobar() }} seleccionados ({{ sel().size }})
@@ -54,7 +54,7 @@ const ICON_TONES: Record<string, string> = {
           <button
             (click)="observarOpen.set(true)"
             [disabled]="sel().size === 0"
-            class="inline-flex items-center gap-2 h-9 px-3 rounded-md bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+            class="btn-danger"
           >
             <lucide-angular [img]="MessageSquareWarningIcon" class="size-4" />
             Observar
@@ -63,7 +63,7 @@ const ICON_TONES: Record<string, string> = {
       </header>
 
       <!-- Panel grilla -->
-      <div class="bg-card rounded-xl ring-1 ring-black/5 shadow-sm overflow-hidden">
+      <div class="bg-card rounded-xl ring-1 ring-border shadow-sm overflow-hidden">
         <!-- Filtros -->
         <div class="p-4 bg-secondary/40 border-b border-border flex flex-col md:flex-row gap-3 flex-wrap items-stretch md:items-center">
           <div class="flex flex-wrap gap-2">
@@ -128,15 +128,15 @@ const ICON_TONES: Record<string, string> = {
         <div class="overflow-auto max-h-[60vh]">
           <table class="w-full text-left min-w-[1100px]">
             <thead class="bg-secondary sticky top-0 z-10 shadow-sm">
-              <tr class="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                <th class="px-4 py-4 w-10"></th>
-                <th class="px-4 py-4 text-center">Acciones</th>
-                <th class="px-4 py-4">Tipo / Tema</th>
-                <th class="px-4 py-4">Estado</th>
-                <th class="px-4 py-4">Fecha</th>
-                <th class="px-4 py-4 text-center">Horas</th>
-                <th class="px-4 py-4 text-center">Participantes</th>
-                <th class="px-4 py-4">Ubicación</th>
+              <tr class="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+                <th class="px-4 py-3 w-10"></th>
+                <th class="px-4 py-3 text-center">Acciones</th>
+                <th class="px-4 py-3">Tipo / Tema</th>
+                <th class="px-4 py-3">Estado</th>
+                <th class="px-4 py-3">Fecha</th>
+                <th class="px-4 py-3 text-center">Horas</th>
+                <th class="px-4 py-3 text-center">Participantes</th>
+                <th class="px-4 py-3">Ubicación</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border">
@@ -180,7 +180,7 @@ const ICON_TONES: Record<string, string> = {
                     <div class="mb-1">
                       <span
                         class="text-[9px] px-1.5 py-0.5 font-bold uppercase rounded-sm"
-                        [class]="c.tipo === 'capacitacion' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'"
+                        [class]="c.tipo === 'capacitacion' ? 'bg-state-validado-soft text-state-validado-foreground' : 'bg-success-soft text-success'"
                       >{{ c.tipo === 'capacitacion' ? 'Capacitación' : 'Asist. Técnica' }}</span>
                       <span class="ml-2 text-[10px] font-mono text-muted-foreground">{{ c.codigo }}</span>
                     </div>
@@ -227,7 +227,7 @@ const ICON_TONES: Record<string, string> = {
                             @for (p of subRows(c); track p.id) {
                               <li
                                 class="flex items-center gap-3 px-6 py-2 text-xs"
-                                [class]="esMatch(c, p) ? 'bg-amber-50 border-l-4 border-l-amber-500' : 'border-l-4 border-l-transparent'"
+                                [class]="esMatch(c, p) ? 'bg-warning-soft border-l-4 border-l-warning' : 'border-l-4 border-l-transparent'"
                               >
                                 <span class="hidden md:inline text-muted-foreground/60 font-mono select-none">└─</span>
                                 <span class="font-mono tabular-nums text-foreground/80 w-24 shrink-0">{{ p.dni }}</span>
@@ -236,7 +236,7 @@ const ICON_TONES: Record<string, string> = {
                                 </span>
                                 <span
                                   class="ml-auto px-1.5 py-0.5 rounded-sm text-[9px] font-bold uppercase shrink-0"
-                                  [class]="p.tipoParticipante === 'PRODUCTOR' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'"
+                                  [class]="p.tipoParticipante === 'PRODUCTOR' ? 'bg-success-soft text-success' : 'bg-muted text-foreground'"
                                 >{{ p.tipoParticipante }}</span>
                               </li>
                             }
@@ -249,8 +249,12 @@ const ICON_TONES: Record<string, string> = {
               }
               @if (filtered().length === 0) {
                 <tr>
-                  <td colspan="8" class="px-6 py-12 text-center text-sm text-muted-foreground italic">
-                    No hay registros en bandeja para los filtros actuales.
+                  <td colspan="8">
+                    <div class="empty-state">
+                      <lucide-angular [img]="ClipboardListIcon" class="size-8 text-muted-foreground/40" />
+                      <p class="text-sm font-medium text-foreground">Bandeja vacía</p>
+                      <p class="text-xs">No hay registros en bandeja para los filtros actuales.</p>
+                    </div>
                   </td>
                 </tr>
               }
@@ -265,7 +269,7 @@ const ICON_TONES: Record<string, string> = {
           @if ((curso.observacionesHistorial?.length ?? 0) > 0) {
             <ul class="space-y-3">
               @for (o of curso.observacionesHistorial; track $index) {
-                <li class="text-sm border-l-2 border-orange-400 pl-3">
+                <li class="text-sm border-l-2 border-state-observado pl-3">
                   <p class="text-[11px] text-muted-foreground">{{ o.fecha }} · {{ o.autor ?? '—' }}</p>
                   <p class="text-foreground">{{ o.descripcion }}</p>
                 </li>
@@ -291,11 +295,11 @@ const ICON_TONES: Record<string, string> = {
           <div class="flex justify-end gap-2 mt-6">
             <button
               (click)="validarOpen.set(false)"
-              class="h-8 px-3 rounded-md ring-1 ring-border text-sm font-medium hover:bg-secondary transition-colors"
+              class="btn-secondary h-8"
             >Cancelar</button>
             <button
               (click)="confirmarValidar()"
-              class="h-8 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+              class="btn-primary h-8"
             >Sí, {{ labelAprobar().toLowerCase() }}</button>
           </div>
         </app-modal>
@@ -331,11 +335,11 @@ const ICON_TONES: Record<string, string> = {
           <div class="flex justify-end gap-2 mt-6">
             <button
               (click)="observarOpen.set(false)"
-              class="h-8 px-3 rounded-md ring-1 ring-border text-sm font-medium hover:bg-secondary transition-colors"
+              class="btn-secondary h-8"
             >Cancelar</button>
             <button
               (click)="confirmarObservar()"
-              class="h-8 px-3 rounded-md bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors"
+              class="btn-danger h-8"
             >Confirmar observación</button>
           </div>
         </app-modal>

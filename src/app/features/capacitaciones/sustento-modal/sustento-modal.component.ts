@@ -12,8 +12,8 @@ const MAX_MB = 15;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule],
   template: `
-    <div class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" (click)="closed.emit()">
-      <div class="bg-card text-foreground rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col" (click)="$event.stopPropagation()">
+    <div class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4 animate-overlay-in" (click)="closed.emit()">
+      <div class="bg-card text-foreground rounded-xl ring-1 ring-border shadow-lg w-full max-w-3xl max-h-[90vh] flex flex-col animate-modal-in" (click)="$event.stopPropagation()">
         <!-- Header -->
         <div class="flex items-start justify-between p-6 border-b border-border">
           <div>
@@ -135,13 +135,13 @@ const MAX_MB = 15;
 
         <!-- Footer -->
         <div class="flex items-center justify-end gap-2 p-4 border-t border-border bg-secondary/30 rounded-b-xl">
-          <button (click)="closed.emit()" class="h-9 px-3 rounded-md text-sm font-medium hover:bg-secondary transition-colors">
+          <button (click)="closed.emit()" class="btn-ghost">
             Cancelar
           </button>
           <button
             (click)="enviar()"
             [disabled]="!file() || !declaro()"
-            class="inline-flex items-center gap-2 h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+            class="btn-primary"
           >
             <lucide-angular [img]="SendIcon" class="size-4" /> Enviar
           </button>

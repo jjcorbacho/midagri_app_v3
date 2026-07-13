@@ -33,10 +33,10 @@ export interface ParticipanteFormSubmit {
   primActividad: string;
 }
 
-const LOCKED_INPUT = 'w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-slate-500 text-sm cursor-not-allowed';
-const ACTIVE_INPUT = 'w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm bg-white transition';
+const LOCKED_INPUT = 'w-full px-3 py-2 bg-surface-2 border border-border rounded-md text-muted-foreground text-sm cursor-not-allowed';
+const ACTIVE_INPUT = 'w-full px-3 py-2 border border-border rounded-md focus:ring-2 focus:ring-ring focus:outline-none text-sm bg-card transition';
 /** Campo obligatorio: resaltado ámbar hasta recibir foco (convención del sistema). */
-const REQUIRED_INPUT = 'w-full px-3 py-2 bg-amber-50 border border-amber-300 rounded-md focus:bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm transition';
+const REQUIRED_INPUT = 'w-full px-3 py-2 bg-warning-soft border border-warning/40 rounded-md focus:bg-card focus:ring-2 focus:ring-ring focus:outline-none text-sm transition';
 
 @Component({
   selector: 'app-participante-form',
@@ -46,15 +46,15 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-amber-50 border border-amber-300 rou
     <div>
       <form class="p-6 space-y-8" [formGroup]="form" (ngSubmit)="guardar()">
         <section class="space-y-4">
-          <div class="flex items-center gap-2 border-b border-teal-100 pb-2">
-            <span class="bg-teal-700 text-white text-xs font-bold px-2 py-0.5 rounded-full">1</span>
-            <h3 class="text-teal-800 font-bold uppercase text-sm tracking-wide">Identidad y Demográficos</h3>
+          <div class="flex items-center gap-2 border-b border-brand/15 pb-2">
+            <span class="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded-full">1</span>
+            <h3 class="text-brand font-bold uppercase text-sm tracking-wide">Identidad y Demográficos</h3>
           </div>
 
           @if (mode() === 'nuevo') {
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-teal-50/60 p-4 rounded-lg border border-teal-100">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-brand-soft/60 p-4 rounded-lg border border-brand/15">
               <div class="md:col-span-4">
-                <label class="block text-xs font-semibold text-slate-700 mb-1">DNI (8 dígitos) <span class="text-rose-500">*</span></label>
+                <label class="block text-xs font-semibold text-foreground mb-1">DNI (8 dígitos) <span class="text-destructive">*</span></label>
                 <input
                   type="text" inputmode="numeric" maxlength="8" placeholder="Ingrese DNI"
                   formControlName="dni"
@@ -62,30 +62,30 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-amber-50 border border-amber-300 rou
                   [class]="(dniLocked() ? lockedInput : requiredCls(false)) + ' font-mono'"
                 />
                 @if (errors()['dni']) {
-                  <p class="text-[11px] text-rose-600 mt-1">{{ errors()['dni'] }}</p>
+                  <p class="text-[11px] text-destructive mt-1">{{ errors()['dni'] }}</p>
                 }
               </div>
               <div class="md:col-span-4 flex gap-2">
                 <button type="button" (click)="buscarDNI()" [disabled]="dniLocked()"
-                  class="flex-1 bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm">
+                  class="flex-1 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm">
                   <lucide-angular [img]="SearchIcon" class="size-4" />
                   Buscar
                 </button>
                 <button type="button" (click)="limpiar()"
-                  class="px-4 py-2 text-slate-600 hover:text-slate-800 text-sm font-medium border border-slate-300 rounded-md bg-white hover:bg-slate-50">
+                  class="px-4 py-2 text-muted-foreground hover:text-foreground text-sm font-medium border border-border rounded-md bg-card hover:bg-surface-2">
                   Limpiar
                 </button>
               </div>
               <div class="md:col-span-4 text-xs font-medium italic">
                 @switch (busqueda()) {
                   @case ('ok') {
-                    <span class="text-emerald-600">✓ Encontrado en la base de datos de Productores</span>
+                    <span class="text-success">✓ Encontrado en la base de datos de Productores</span>
                   }
                   @case ('no-encontrado') {
-                    <span class="text-amber-600">⚠ DNI no encontrado. Puede registrarlo manualmente.</span>
+                    <span class="text-warning-foreground">⚠ DNI no encontrado. Puede registrarlo manualmente.</span>
                   }
                   @default {
-                    <span class="text-teal-600">* Ingrese el DNI para autocompletar.</span>
+                    <span class="text-brand">* Ingrese el DNI para autocompletar.</span>
                   }
                 }
               </div>
@@ -93,11 +93,11 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-amber-50 border border-amber-300 rou
           } @else {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <label class="block">
-                <span class="block text-xs font-semibold text-slate-700 mb-1">DNI</span>
+                <span class="block text-xs font-semibold text-foreground mb-1">DNI</span>
                 <input disabled [value]="form.controls.dni.value" [class]="lockedInput" />
               </label>
               @if (busqueda() === 'ok') {
-                <div class="md:col-span-2 flex items-end text-xs italic text-emerald-700">
+                <div class="md:col-span-2 flex items-end text-xs italic text-success">
                   ✓ Encontrado en la base de datos de Productores
                 </div>
               }
@@ -106,23 +106,23 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-amber-50 border border-amber-300 rou
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label class="block">
-              <span class="block text-xs font-semibold text-slate-700 mb-1">Apellidos <span class="text-rose-500">*</span></span>
+              <span class="block text-xs font-semibold text-foreground mb-1">Apellidos <span class="text-destructive">*</span></span>
               <input formControlName="apellidos" [class]="requiredCls(demoLocked())" />
               @if (errors()['apellidos']) {
-                <p class="text-[11px] text-rose-600 mt-1">{{ errors()['apellidos'] }}</p>
+                <p class="text-[11px] text-destructive mt-1">{{ errors()['apellidos'] }}</p>
               }
             </label>
             <label class="block">
-              <span class="block text-xs font-semibold text-slate-700 mb-1">Nombres <span class="text-rose-500">*</span></span>
+              <span class="block text-xs font-semibold text-foreground mb-1">Nombres <span class="text-destructive">*</span></span>
               <input formControlName="nombres" [class]="requiredCls(demoLocked())" />
               @if (errors()['nombres']) {
-                <p class="text-[11px] text-rose-600 mt-1">{{ errors()['nombres'] }}</p>
+                <p class="text-[11px] text-destructive mt-1">{{ errors()['nombres'] }}</p>
               }
             </label>
           </div>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <label class="block">
-              <span class="block text-xs font-semibold text-slate-700 mb-1">Sexo</span>
+              <span class="block text-xs font-semibold text-foreground mb-1">Sexo</span>
               <select formControlName="sexo" [class]="inputCls(demoLocked())">
                 <option value="">—</option>
                 <option value="Masculino">Masculino</option>
@@ -130,45 +130,45 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-amber-50 border border-amber-300 rou
               </select>
             </label>
             <label class="block">
-              <span class="block text-xs font-semibold text-slate-700 mb-1">Edad</span>
+              <span class="block text-xs font-semibold text-foreground mb-1">Edad</span>
               <input disabled [value]="edad() ? edad() + ' años' : ''" [class]="lockedInput" />
             </label>
             <label class="block">
-              <span class="block text-xs font-semibold text-slate-700 mb-1">Fecha Nacimiento <span class="text-rose-500">*</span></span>
+              <span class="block text-xs font-semibold text-foreground mb-1">Fecha Nacimiento <span class="text-destructive">*</span></span>
               <input type="date" formControlName="fechaNacimiento" [class]="requiredCls(demoLocked())" />
               @if (errors()['fecha']) {
-                <p class="text-[11px] text-rose-600 mt-1">{{ errors()['fecha'] }}</p>
+                <p class="text-[11px] text-destructive mt-1">{{ errors()['fecha'] }}</p>
               }
             </label>
             <label class="block">
-              <span class="block text-xs font-semibold text-slate-700 mb-1">Estado Civil</span>
+              <span class="block text-xs font-semibold text-foreground mb-1">Estado Civil</span>
               <input formControlName="estadoCivil" [class]="inputCls(demoLocked())" />
             </label>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label class="block">
-              <span class="block text-xs font-semibold text-slate-700 mb-1">Ubigeo</span>
+              <span class="block text-xs font-semibold text-foreground mb-1">Ubigeo</span>
               <input formControlName="ubigeo" [class]="inputCls(demoLocked())" />
             </label>
             <label class="block">
-              <span class="block text-xs font-semibold text-slate-700 mb-1">Dirección</span>
+              <span class="block text-xs font-semibold text-foreground mb-1">Dirección</span>
               <input formControlName="direccion" [class]="inputCls(demoLocked())" />
             </label>
           </div>
           <label class="block">
-            <span class="block text-xs font-semibold text-slate-700 mb-1">Restricciones</span>
+            <span class="block text-xs font-semibold text-foreground mb-1">Restricciones</span>
             <input formControlName="restricciones" [class]="inputCls(demoLocked())" />
           </label>
         </section>
 
         <section class="space-y-4 pt-2">
-          <div class="flex items-center gap-2 border-b border-teal-100 pb-2">
-            <span class="bg-teal-700 text-white text-xs font-bold px-2 py-0.5 rounded-full">2</span>
-            <h3 class="text-teal-800 font-bold uppercase text-sm tracking-wide">Datos técnicos y comerciales</h3>
+          <div class="flex items-center gap-2 border-b border-brand/15 pb-2">
+            <span class="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded-full">2</span>
+            <h3 class="text-brand font-bold uppercase text-sm tracking-wide">Datos técnicos y comerciales</h3>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <label class="block">
-              <span class="block text-xs font-semibold text-slate-700 mb-1">Tipo Participante</span>
+              <span class="block text-xs font-semibold text-foreground mb-1">Tipo Participante</span>
               <select formControlName="tipo" [class]="inputCls(false)">
                 @for (t of tiposParticipante; track t) {
                   <option [value]="t">{{ t }}</option>
@@ -177,7 +177,7 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-amber-50 border border-amber-300 rou
             </label>
             @if (tipoActual() === 'OTRO') {
               <label class="block">
-                <span class="block text-xs font-semibold text-slate-700 mb-1">Actividad Otro Participante</span>
+                <span class="block text-xs font-semibold text-foreground mb-1">Actividad Otro Participante</span>
                 <select formControlName="actividadOtro" [class]="inputCls(false)">
                   <option value="">— Seleccione —</option>
                   @for (a of actividadesOtro; track a) {
@@ -188,7 +188,7 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-amber-50 border border-amber-300 rou
             }
             @if (tipoActual() === 'PRODUCTOR') {
               <label class="block">
-                <span class="block text-xs font-semibold text-slate-700 mb-1">Principal Actividad</span>
+                <span class="block text-xs font-semibold text-foreground mb-1">Principal Actividad</span>
                 <select formControlName="primActividad" [class]="inputCls(false)">
                   <option value="">— Seleccione —</option>
                   @for (a of principalActividad; track a) {
@@ -202,16 +202,16 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-amber-50 border border-amber-300 rou
           @if (tipoActual() === 'PRODUCTOR') {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <label class="block">
-                <span class="block text-xs font-semibold text-slate-700 mb-1">Nombre cultivo principal</span>
+                <span class="block text-xs font-semibold text-foreground mb-1">Nombre cultivo principal</span>
                 <input formControlName="cultivo" placeholder="Ej. Papa nativa" [class]="inputCls(false)" />
               </label>
               <label class="block">
-                <span class="block text-xs font-semibold text-slate-700 mb-1">Principal plantación forestal</span>
+                <span class="block text-xs font-semibold text-foreground mb-1">Principal plantación forestal</span>
                 <input formControlName="plantacion" placeholder="Ej. Pino" [class]="inputCls(false)" />
               </label>
               <div class="hidden md:block"></div>
               <label class="block">
-                <span class="block text-xs font-semibold text-slate-700 mb-1">Crianza principal</span>
+                <span class="block text-xs font-semibold text-foreground mb-1">Crianza principal</span>
                 <select formControlName="crianzaPrincipal" [class]="inputCls(false)">
                   <option value="">— Seleccione —</option>
                   @for (c of crianzas; track c) {
@@ -220,7 +220,7 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-amber-50 border border-amber-300 rou
                 </select>
               </label>
               <label class="block">
-                <span class="block text-xs font-semibold text-slate-700 mb-1">Crianza secundaria</span>
+                <span class="block text-xs font-semibold text-foreground mb-1">Crianza secundaria</span>
                 <select formControlName="crianzaSecundaria" [class]="inputCls(false)">
                   <option value="">— Seleccione —</option>
                   @for (c of crianzas; track c) {
@@ -233,27 +233,27 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-amber-50 border border-amber-300 rou
         </section>
 
         <section class="space-y-4 pt-2">
-          <div class="flex items-center gap-2 border-b border-teal-100 pb-2">
-            <span class="bg-teal-700 text-white text-xs font-bold px-2 py-0.5 rounded-full">3</span>
-            <h3 class="text-teal-800 font-bold uppercase text-sm tracking-wide">Organización y participación social</h3>
+          <div class="flex items-center gap-2 border-b border-brand/15 pb-2">
+            <span class="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded-full">3</span>
+            <h3 class="text-brand font-bold uppercase text-sm tracking-wide">Organización y participación social</h3>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             <label class="block">
-              <span class="block text-xs font-semibold text-slate-700 mb-1">¿Está asociado?</span>
+              <span class="block text-xs font-semibold text-foreground mb-1">¿Está asociado?</span>
               <div class="flex gap-4 py-2">
                 <label class="inline-flex items-center text-sm">
-                  <input type="radio" value="SI" formControlName="asociado" class="text-teal-600 focus:ring-teal-500" />
-                  <span class="ml-2 text-slate-600">SI</span>
+                  <input type="radio" value="SI" formControlName="asociado" class="text-brand focus:ring-ring" />
+                  <span class="ml-2 text-muted-foreground">SI</span>
                 </label>
                 <label class="inline-flex items-center text-sm">
-                  <input type="radio" value="NO" formControlName="asociado" class="text-teal-600 focus:ring-teal-500" />
-                  <span class="ml-2 text-slate-600">NO</span>
+                  <input type="radio" value="NO" formControlName="asociado" class="text-brand focus:ring-ring" />
+                  <span class="ml-2 text-muted-foreground">NO</span>
                 </label>
               </div>
             </label>
             @if (asociadoActual() === 'SI') {
               <label class="block">
-                <span class="block text-xs font-semibold text-slate-700 mb-1">Tipo de Organización</span>
+                <span class="block text-xs font-semibold text-foreground mb-1">Tipo de Organización</span>
                 <select formControlName="tipoOrg" [class]="inputCls(false)">
                   <option value="">— Seleccione —</option>
                   @for (t of tiposOrganizacion; track t) {
@@ -261,14 +261,14 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-amber-50 border border-amber-300 rou
                   }
                 </select>
                 @if (errors()['tipoOrg']) {
-                  <p class="text-[11px] text-rose-600 mt-1">{{ errors()['tipoOrg'] }}</p>
+                  <p class="text-[11px] text-destructive mt-1">{{ errors()['tipoOrg'] }}</p>
                 }
               </label>
               <label class="block">
-                <span class="block text-xs font-semibold text-slate-700 mb-1">Nombre de Organización</span>
+                <span class="block text-xs font-semibold text-foreground mb-1">Nombre de Organización</span>
                 <input formControlName="nombreOrg" maxlength="160" [class]="inputCls(false)" />
                 @if (errors()['nombreOrg']) {
-                  <p class="text-[11px] text-rose-600 mt-1">{{ errors()['nombreOrg'] }}</p>
+                  <p class="text-[11px] text-destructive mt-1">{{ errors()['nombreOrg'] }}</p>
                 }
               </label>
             }
@@ -276,13 +276,13 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-amber-50 border border-amber-300 rou
         </section>
 
         <section class="space-y-4 pt-2">
-          <div class="flex items-center gap-2 border-b border-teal-100 pb-2">
-            <span class="bg-teal-700 text-white text-xs font-bold px-2 py-0.5 rounded-full">4</span>
-            <h3 class="text-teal-800 font-bold uppercase text-sm tracking-wide">Información adicional</h3>
+          <div class="flex items-center gap-2 border-b border-brand/15 pb-2">
+            <span class="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded-full">4</span>
+            <h3 class="text-brand font-bold uppercase text-sm tracking-wide">Información adicional</h3>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label class="block">
-              <span class="block text-xs font-semibold text-slate-700 mb-1">Nivel de instrucción</span>
+              <span class="block text-xs font-semibold text-foreground mb-1">Nivel de instrucción</span>
               <select formControlName="nivelInstr" [class]="inputCls(false)">
                 <option value="">— Seleccione —</option>
                 @for (n of nivelesInstruccion; track n) {
@@ -291,18 +291,18 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-amber-50 border border-amber-300 rou
               </select>
             </label>
             <label class="block">
-              <span class="block text-xs font-semibold text-slate-700 mb-1">Centro poblado</span>
+              <span class="block text-xs font-semibold text-foreground mb-1">Centro poblado</span>
               <input formControlName="centroPobl" [class]="inputCls(false)" />
             </label>
           </div>
         </section>
       </form>
 
-      <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex justify-end gap-3">
+      <div class="bg-surface-2 border-t border-border px-6 py-4 flex justify-end gap-3">
         <button
           type="button"
           (click)="cancelled.emit()"
-          class="px-5 py-2 text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-md text-sm font-semibold transition-colors"
+          class="btn-ghost px-5"
         >
           {{ cancelLabel() ?? (mode() === 'ver' ? 'Volver' : 'Cancelar') }}
         </button>
@@ -310,7 +310,7 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-amber-50 border border-amber-300 rou
           <button
             type="button"
             (click)="guardar()"
-            class="px-6 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-md text-sm font-semibold shadow-md transition-all hover:shadow-lg"
+            class="btn-primary px-6"
           >
             {{ submitLabel() ?? (mode() === 'editar' ? 'Guardar cambios' : 'Registrar participante') }}
           </button>
