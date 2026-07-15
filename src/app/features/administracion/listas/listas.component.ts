@@ -8,6 +8,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { ListasAdminService } from '../../../core/services/listas-admin.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { OpcionLista, generarCodigoOpcion } from '../../../core/models/lista-admin.model';
+import { UNIDADES_RESPONSABLES } from '../../../core/constants/sodega.const';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { INPUT_BASE, INPUT_REQUIRED } from '../../../shared/utils/input-styles.const';
 
@@ -215,26 +216,42 @@ const INP_REQ = INPUT_REQUIRED;
               <label class="block text-[11px] font-medium text-muted-foreground mb-1">Código <span class="text-destructive">*</span></label>
               <input
                 type="text"
-                placeholder="Ingrese código"
+                placeholder="Código automático"
                 [value]="modalCodigo()"
-                (input)="modalCodigo.set($any($event.target).value)"
-                [readOnly]="opcionEnEdicion() !== null"
-                class="${INP_REQ} uppercase"
-                [class.opacity-70]="opcionEnEdicion() !== null"
-                [class.cursor-not-allowed]="opcionEnEdicion() !== null"
+                readonly
+                aria-disabled="true"
+                class="${INP_REQ} uppercase opacity-70 cursor-not-allowed"
               />
             </div>
+            @if (listaActivaEsUnidadFuncional()) {
+              <div>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">
+                  Unidad Responsable <span class="text-destructive">*</span>
+                </label>
+                <select
+                  [value]="modalUnidadResponsable()"
+                  (change)="modalUnidadResponsable.set($any($event.target).value)"
+                  class="${INP_REQ}"
+                >
+                  <option value="">Seleccione Unidad Responsable</option>
+                  @for (u of unidadesResponsables(); track u) {
+                    <option [value]="u">{{ u }}</option>
+                  }
+                </select>
+              </div>
+            }
             <div>
               <label class="block text-[11px] font-medium text-muted-foreground mb-1">
-                Nombre {{ listaActiva() }} <span class="text-destructive">*</span>
+                Nombre {{ listaActivaEsUnidadFuncional() ? 'Unidad Funcional' : listaActiva() }} <span class="text-destructive">*</span>
               </label>
               <input
                 type="text"
-                placeholder="Ingrese descripción"
+                [placeholder]="listaActivaEsUnidadFuncional() ? 'Ingrese nombre de Unidad Funcional' : 'Ingrese descripción'"
                 [value]="modalNombre()"
                 (input)="modalNombre.set($any($event.target).value)"
                 (keyup.enter)="guardarOpcion()"
-                class="${INP_REQ}"
+                [disabled]="listaActivaEsUnidadFuncional() && !modalUnidadResponsable()"
+                class="${INP_REQ} disabled:opacity-70 disabled:cursor-not-allowed"
               />
             </div>
             <div class="flex justify-end gap-2 pt-2 border-t border-border">
@@ -294,10 +311,18 @@ export class ListasComponent {
   readonly modalOpcionAbierto = signal(false);
   readonly modalCodigo = signal('');
   readonly modalNombre = signal('');
+  readonly modalUnidadResponsable = signal('');
   readonly estadoPendiente = signal<number | null>(null);
 
   readonly perfilActivo = computed(() => this.auth.session()?.perfil ?? '');
   readonly listaActiva = this.listasService.listaActiva;
+  readonly listaActivaEsUnidadFuncional = computed(() =>
+    this.listasService.esListaUnidadFuncional(this.listaActiva()),
+  );
+  /** Unidades Responsables activas (para asociar Unidades Funcionales). */
+  readonly unidadesResponsables = computed(() =>
+    this.listasService.opcionesFormulario('Unidad Responsable', UNIDADES_RESPONSABLES),
+  );
 
   readonly listasFiltradas = computed(() => {
     const filtro = this.qListas().toLowerCase().trim();
@@ -369,8 +394,13 @@ export class ListasComponent {
     }
     const opcion = indice !== null ? lista.opciones[indice] : undefined;
     this.opcionEnEdicion.set(indice);
-    this.modalCodigo.set(opcion ? opcion.codigo || generarCodigoOpcion(indice ?? 0) : '');
+    this.modalCodigo.set(
+      opcion
+        ? opcion.codigo || generarCodigoOpcion(indice ?? 0)
+        : this.listasService.siguienteCodigoOpcion(),
+    );
     this.modalNombre.set(opcion?.nombre ?? '');
+    this.modalUnidadResponsable.set(opcion?.unidadResponsable ?? '');
     this.modalOpcionAbierto.set(true);
   }
 
@@ -379,6 +409,7 @@ export class ListasComponent {
     this.opcionEnEdicion.set(null);
     this.modalCodigo.set('');
     this.modalNombre.set('');
+    this.modalUnidadResponsable.set('');
   }
 
   guardarOpcion(): void {
@@ -386,6 +417,7 @@ export class ListasComponent {
       this.modalCodigo(),
       this.modalNombre(),
       this.opcionEnEdicion(),
+      this.listaActivaEsUnidadFuncional() ? this.modalUnidadResponsable() : '',
     );
     if (resultado.ok) {
       this.cerrarModalOpcion();

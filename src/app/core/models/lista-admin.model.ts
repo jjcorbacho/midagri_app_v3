@@ -8,6 +8,8 @@ export interface OpcionLista {
   codigo: string;
   nombre: string;
   activo: boolean;
+  /** Solo lista "Unidad Funcional": Unidad Responsable a la que pertenece la OPA. */
+  unidadResponsable?: string;
 }
 
 /** Lista maestra administrable (catálogo del sistema). */
@@ -34,8 +36,13 @@ export interface ResultadoLista {
 }
 
 /** Crea una opción de lista normalizada. */
-export function crearOpcionLista(codigo: string, nombre: string, activo = true): OpcionLista {
-  return { codigo, nombre, activo };
+export function crearOpcionLista(
+  codigo: string,
+  nombre: string,
+  activo = true,
+  unidadResponsable?: string,
+): OpcionLista {
+  return unidadResponsable ? { codigo, nombre, activo, unidadResponsable } : { codigo, nombre, activo };
 }
 
 /** Código autogenerado correlativo (OPC001, OPC002, …). */

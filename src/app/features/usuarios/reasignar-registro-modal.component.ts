@@ -6,6 +6,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { CursosService } from '../../core/services/cursos.service';
 import { UsuarioSodega, toTitleCase } from '../../core/models/usuario-sodega.model';
+import { normalizarNombreCatalogo } from '../../shared/utils/texto.util';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
 
 /** Resultado emitido al completar la transferencia de registros. */
@@ -177,11 +178,15 @@ export class ReasignarRegistroModalComponent {
     const s = this.auth.session();
     if (!s) return [];
     this.usuariosService.usuarios(); // dependencia reactiva del listado global
+    const origen = this.origen();
     const unicos = new Map<string, UsuarioSodega>();
-    for (const u of this.usuariosService.registrosVisibles(s.perfil, s.userGen)) {
+    for (const u of this.usuariosService.registrosVisibles(s.perfil, s.userGen, s.perfilAutenticado)) {
       if (u.estado !== 'HABILITADO') continue;
       if (u.perfil !== ReasignarRegistroModalComponent.PERFIL_RECEPTOR) continue;
-      if (u.dni === this.origen().dni) continue;
+      if (u.dni === origen.dni) continue;
+      // Solo técnicos de la misma Unidad Responsable y Unidad Funcional del origen.
+      if (normalizarNombreCatalogo(u.unidad) !== normalizarNombreCatalogo(origen.unidad)) continue;
+      if (normalizarNombreCatalogo(u.unidadFuncional) !== normalizarNombreCatalogo(origen.unidadFuncional)) continue;
       if (!unicos.has(u.dni)) unicos.set(u.dni, u);
     }
     return [...unicos.values()];

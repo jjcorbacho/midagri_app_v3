@@ -14,6 +14,12 @@ import { normalizarNombreCatalogo } from '../../shared/utils/texto.util';
 
 const STORAGE_KEY = 'sodega_listas_admin_db_v1';
 
+/** Opciones oficialmente retiradas de la lista Unidad Responsable (depuración del prototipo). */
+const UNIDAD_RESPONSABLE_OPCIONES_RETIRADAS = [
+  'PESCS CUI N° 230593 CONSTRUCCION SISTEMA DE IRRIGACION NUEVO OCCORO',
+  'PESCS CUI N° 2104591 PROY. DE RIEGO CHINCHO, DIST. CHINCHO - ANGARAES - HUANCAVELICA',
+];
+
 /**
  * Administración de Listas (catálogos maestros SODEGA).
  *
@@ -78,6 +84,53 @@ export class ListasAdminService {
       existentes.add(clave);
     }
     return resultado;
+  }
+
+  /** ¿La lista corresponde a "Unidad Funcional" (con cualquiera de sus nombres históricos)? */
+  esListaUnidadFuncional(nombre: string): boolean {
+    const n = normalizarNombreCatalogo(nombre);
+    return n === normalizarNombreCatalogo('Unidad Funcional') || n === normalizarNombreCatalogo('Unidad Funcional (OPAS)');
+  }
+
+  /**
+   * Unidades funcionales activas asociadas a una Unidad Responsable
+   * (opciones de la lista "Unidad Funcional" con `unidadResponsable`).
+   */
+  unidadesFuncionalesPorUnidadResponsable(unidadResponsable: string): string[] {
+    const buscada = normalizarNombreCatalogo(unidadResponsable);
+    if (!buscada) return [];
+    const lista = this.listaPorNombre('Unidad Funcional');
+    if (!lista) return [];
+    const vistos = new Set<string>();
+    return lista.opciones
+      .filter((o) => o.activo && normalizarNombreCatalogo(o.unidadResponsable ?? '') === buscada)
+      .map((o) => o.nombre.trim())
+      .filter((nombre) => {
+        const clave = normalizarNombreCatalogo(nombre);
+        if (!nombre || vistos.has(clave)) return false;
+        vistos.add(clave);
+        return true;
+      });
+  }
+
+  /**
+   * Perfiles autorizados efectivos: los oficiales más los perfiles
+   * personalizados activos agregados en la lista "Perfil Autorizado".
+   */
+  perfilesAutorizados(base: readonly string[]): string[] {
+    return this.opcionesFormulario('Perfil Autorizado', base);
+  }
+
+  /** Siguiente código correlativo de la lista activa (OPC###, autogenerado). */
+  siguienteCodigoOpcion(): string {
+    const lista = this.activa();
+    const numeros = (lista?.opciones ?? [])
+      .map((o) => /^OPC(\d+)$/i.exec(o.codigo)?.[1])
+      .filter((n): n is string => !!n)
+      .map(Number)
+      .filter(Number.isFinite);
+    const siguiente = numeros.length ? Math.max(...numeros) + 1 : (lista?.opciones.length ?? 0) + 1;
+    return this.codigoCorrelativo(siguiente - 1);
   }
 
   private catalogoSistemaPorNombre(nombre: string): CatalogoSistema | undefined {
@@ -147,7 +200,7 @@ export class ListasAdminService {
    * POST/PUT /listas/{nombre}/opciones — crea o edita una opción de la lista activa.
    * `indice` es la posición original en la lista (null = nueva opción).
    */
-  guardarOpcion(codigo: string, nombre: string, indice: number | null): ResultadoLista {
+  guardarOpcion(codigo: string, nombre: string, indice: number | null, unidadResponsable = ''): ResultadoLista {
     const lista = this.activa();
     if (!lista) {
       return { ok: false, titulo: 'Lista no seleccionada', mensaje: 'Seleccione una lista antes de agregar una opción.' };
@@ -157,6 +210,14 @@ export class ListasAdminService {
     const nom = nombre.trim();
     if (!cod || !nom) {
       return { ok: false, titulo: 'Campos incompletos', mensaje: 'Debe ingresar el código y el nombre de la opción.' };
+    }
+    const esUnidadFuncional = this.esListaUnidadFuncional(lista.nombre);
+    if (esUnidadFuncional && !unidadResponsable) {
+      return {
+        ok: false,
+        titulo: 'Unidad Responsable requerida',
+        mensaje: 'Debe seleccionar una Unidad Responsable antes de registrar la Unidad Funcional.',
+      };
     }
 
     const duplicada = lista.opciones.some((opcion, i) => {
@@ -174,10 +235,11 @@ export class ListasAdminService {
       listas.map((l) => {
         if (l.nombre !== lista.nombre) return l;
         const opciones = [...l.opciones];
+        const ur = esUnidadFuncional ? unidadResponsable : undefined;
         if (indice !== null && opciones[indice]) {
-          opciones[indice] = crearOpcionLista(cod, nom, opciones[indice].activo);
+          opciones[indice] = crearOpcionLista(cod, nom, opciones[indice].activo, ur);
         } else {
-          opciones.push(crearOpcionLista(cod, nom, true));
+          opciones.push(crearOpcionLista(cod, nom, true, ur));
         }
         return { ...l, opciones };
       }),
@@ -226,16 +288,42 @@ export class ListasAdminService {
       if (!raw) return LISTAS_ADMIN_INICIALES;
       const guardadas = JSON.parse(raw) as ListaAdmin[];
       if (!Array.isArray(guardadas) || guardadas.length === 0) return LISTAS_ADMIN_INICIALES;
-      // Normaliza opciones antiguas guardadas como texto plano.
-      return guardadas.map((l) => ({
-        nombre: l.nombre,
-        opciones: (l.opciones ?? []).map((o: OpcionLista | string, i: number) =>
-          typeof o === 'string' ? crearOpcionLista(this.codigoCorrelativo(i), o) : { activo: o.activo !== false, codigo: o.codigo ?? this.codigoCorrelativo(i), nombre: o.nombre },
-        ),
-      }));
+      // Normaliza opciones antiguas y aplica las migraciones de nombres (SODEGA v3.1.2).
+      return guardadas.map((l) => {
+        const nombre = this.esListaUnidadFuncional(l.nombre) ? 'Unidad Funcional' : l.nombre;
+        const esPerfilAutorizado =
+          normalizarNombreCatalogo(nombre) === normalizarNombreCatalogo('Perfil Autorizado');
+        const opciones = (l.opciones ?? [])
+          .map((o: OpcionLista | string, i: number) =>
+            typeof o === 'string'
+              ? crearOpcionLista(this.codigoCorrelativo(i), o)
+              : {
+                  activo: o.activo !== false,
+                  codigo: o.codigo ?? this.codigoCorrelativo(i),
+                  nombre: o.nombre,
+                  ...(o.unidadResponsable ? { unidadResponsable: o.unidadResponsable } : {}),
+                },
+          )
+          .map((o) =>
+            esPerfilAutorizado && o.nombre === 'Administrador Unidad Organizacional'
+              ? { ...o, nombre: 'Administrador Unidad Ejecutora(UE)' }
+              : o,
+          );
+        return { nombre, opciones };
+      }).map((l) => this.depurarUnidadResponsable(l));
     } catch {
       return LISTAS_ADMIN_INICIALES;
     }
+  }
+
+  /** Retira de "Unidad Responsable" las opciones oficialmente dadas de baja. */
+  private depurarUnidadResponsable(lista: ListaAdmin): ListaAdmin {
+    if (normalizarNombreCatalogo(lista.nombre) !== normalizarNombreCatalogo('Unidad Responsable')) return lista;
+    const retiradas = new Set(UNIDAD_RESPONSABLE_OPCIONES_RETIRADAS.map(normalizarNombreCatalogo));
+    return {
+      ...lista,
+      opciones: lista.opciones.filter((o) => !retiradas.has(normalizarNombreCatalogo(o.nombre))),
+    };
   }
 
   private persistir(): void {

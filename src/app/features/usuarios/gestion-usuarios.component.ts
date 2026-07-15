@@ -10,6 +10,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { ToastService } from '../../core/services/toast.service';
 import { UsuarioSodega, esUsuarioPermanente, toTitleCase } from '../../core/models/usuario-sodega.model';
+import { formatearUbigeoTexto } from '../../core/constants/sodega.const';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
 import {
   ReasignarRegistroModalComponent,
@@ -124,7 +125,8 @@ const ICON_TONES: Record<string, string> = {
                 <th class="px-4 py-3 w-28">Usuario</th>
                 <th class="px-4 py-3 w-24">DNI</th>
                 <th class="px-4 py-3 w-48">Perfil</th>
-                <th class="px-4 py-3 w-64">OPAS</th>
+                <th class="px-4 py-3 w-64">Unidad Responsable</th>
+                <th class="px-4 py-3 w-64">Unidad Funcional</th>
                 <th class="px-4 py-3 w-48">Vigencia</th>
                 <th class="px-4 py-3 w-28">Vencimiento</th>
                 <th class="px-4 py-3 w-64">Prog. presupuestal</th>
@@ -134,7 +136,7 @@ const ICON_TONES: Record<string, string> = {
             <tbody class="divide-y divide-border">
               @if (pageRows().length === 0) {
                 <tr>
-                  <td colspan="11">
+                  <td colspan="12">
                     <div class="empty-state">
                       <lucide-angular [img]="SearchIcon" class="size-8 text-muted-foreground/40" />
                       <p class="text-sm font-medium text-foreground">Sin resultados</p>
@@ -159,10 +161,12 @@ const ICON_TONES: Record<string, string> = {
                         class="p-2 rounded-lg transition-all" [class]="tone('amber')">
                         <lucide-angular [img]="KeyRoundIcon" class="size-4" />
                       </button>
-                      <button title="Reasignar Registro" aria-label="Reasignar Registro" (click)="accion('REASIGNAR_REGISTRO', u)"
-                        class="p-2 rounded-lg transition-all" [class]="tone('blue')">
-                        <lucide-angular [img]="MapPinnedIcon" class="size-4" />
-                      </button>
+                      @if (puedeReasignar(u)) {
+                        <button title="Reasignar Registro" aria-label="Reasignar Registro" (click)="accion('REASIGNAR_REGISTRO', u)"
+                          class="p-2 rounded-lg transition-all" [class]="tone('blue')">
+                          <lucide-angular [img]="MapPinnedIcon" class="size-4" />
+                        </button>
+                      }
                       <button title="Cambiar Estado" aria-label="Cambiar Estado" (click)="accion('ESTADO', u)"
                         class="p-2 rounded-lg transition-all" [class]="tone('red')">
                         <lucide-angular [img]="WorkflowIcon" class="size-4" />
@@ -181,11 +185,12 @@ const ICON_TONES: Record<string, string> = {
                   <td class="px-4 py-4 text-sm text-muted-foreground font-medium">{{ u.userGen }}</td>
                   <td class="px-4 py-4 text-sm font-mono tabular-nums text-foreground/80">{{ u.dni }}</td>
                   <td class="px-4 py-4 text-sm font-semibold text-foreground">{{ u.perfil }}</td>
-                  <td class="px-4 py-4 text-sm text-muted-foreground">{{ opasDe(u) }}</td>
+                  <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[220px]" [title]="unidadResponsableDe(u)">{{ unidadResponsableDe(u) }}</td>
+                  <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[220px]" [title]="opasDe(u)">{{ opasDe(u) }}</td>
                   <td class="px-4 py-4 whitespace-nowrap"><span [class]="vigenciaCls(u)">{{ u.vigenciaCalculada }}</span></td>
                   <td class="px-4 py-4 whitespace-nowrap"><span [class]="vencimientoCls(u)">{{ vencimientoDe(u) }}</span></td>
                   <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[180px]" [title]="progPresupDe(u)">{{ progPresupDe(u) }}</td>
-                  <td class="px-4 py-4 text-sm font-mono tabular-nums text-foreground/80">{{ u.ubigeo }}</td>
+                  <td class="px-4 py-4 text-sm text-foreground/80" [title]="ubigeoDe(u)">{{ ubigeoDe(u) }}</td>
                 </tr>
               }
             </tbody>
@@ -292,7 +297,7 @@ export class GestionUsuariosComponent {
     if (!s) return [];
     // Dependencia reactiva del listado global
     this.usuariosService.usuarios();
-    return this.usuariosService.registrosVisibles(s.perfil, s.userGen);
+    return this.usuariosService.registrosVisibles(s.perfil, s.userGen, s.perfilAutenticado);
   });
 
   readonly kpis = computed<Record<FiltroKpi, number>>(() => {
@@ -326,7 +331,8 @@ export class GestionUsuariosComponent {
           u.dni.includes(texto) ||
           u.perfil.toLowerCase().includes(texto) ||
           u.regimen.toLowerCase().includes(texto) ||
-          u.unidad.toLowerCase().includes(texto),
+          u.unidad.toLowerCase().includes(texto) ||
+          formatearUbigeoTexto(u.ubigeo).toLowerCase().includes(texto),
       );
     }
     return list;
@@ -360,10 +366,29 @@ export class GestionUsuariosComponent {
     return toTitleCase(`${u.apePat} ${u.apeMat}, ${u.nombres}`);
   }
 
+  /**
+   * La reasignación de registros solo aplica a técnicos de Capacitación y
+   * Asistencia Técnica y la ejecuta el Administrador General.
+   */
+  puedeReasignar(u: UsuarioSodega): boolean {
+    return (
+      this.auth.session()?.perfil === 'Administrador General' &&
+      u.perfil === 'Técnico Capacitación y Asistencia Técnica'
+    );
+  }
+
+  unidadResponsableDe(u: UsuarioSodega): string {
+    return u.perfil === 'Administrador General' ? '-' : u.unidad || '-';
+  }
+
+  ubigeoDe(u: UsuarioSodega): string {
+    return formatearUbigeoTexto(u.ubigeo);
+  }
+
   opasDe(u: UsuarioSodega): string {
     const conOpas = [
       'Jefe de Área',
-      'Administrador Unidad Organizacional',
+      'Administrador Unidad Ejecutora(UE)',
       'Administrador DZ_Cap_Asit.',
       'Técnico Capacitación y Asistencia Técnica',
     ];

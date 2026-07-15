@@ -278,7 +278,9 @@ export class SidebarComponent {
       }
       return items;
     }
-    if (this.auth.isAdministrador()) {
+    // Administrador General y perfiles personalizados (lista "Perfil Autorizado"):
+    // menú derivado íntegramente de los permisos del registro activo.
+    if (this.auth.session()) {
       const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
       if (this.registra(PERMISO_CAPACITACION) || this.registra(PERMISO_ASISTENCIA_TECNICA)) {
         items.push({

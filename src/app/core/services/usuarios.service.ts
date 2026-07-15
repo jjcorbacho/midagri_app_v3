@@ -11,6 +11,7 @@ import {
 } from '../models/usuario-sodega.model';
 import { permisosCompletos } from '../models/permisos-menu.model';
 import { ESQUEMAS_PERMISOS_MENU } from '../constants/permisos-menu.const';
+import { obtenerUbigeoTextoSimulado } from '../constants/sodega.const';
 
 /** Cuenta master: ingresa con todos los permisos de menú activos. */
 const PERMISOS_MASTER = permisosCompletos(ESQUEMAS_PERMISOS_MENU['Administrador General']!);
@@ -40,7 +41,7 @@ export class UsuariosService {
       estCivil: 'Soltero',
       profesion: 'Especialista TI',
       direccion: 'Jr. Lambayeque 450',
-      ubigeo: '150101',
+      ubigeo: 'Lima/Lima/Jesús María',
       restricciones: 'Ninguna',
       sexo: 'Masculino',
       fechaNac: '15/08/1988',
@@ -109,28 +110,35 @@ export class UsuariosService {
 
   /* ===== Visibilidad y jerarquía de perfiles ===== */
 
-  /** Admin General ve todo; el resto ve sus registros y los que creó. */
-  registrosVisibles(perfilActivo: Perfil, userGenActivo: string): UsuarioSodega[] {
+  /**
+   * Admin General ve todo; el Admin General master operando con otro perfil ve
+   * los registros de ese perfil; el resto ve sus registros y los que creó.
+   */
+  registrosVisibles(
+    perfilActivo: Perfil,
+    userGenActivo: string,
+    perfilAutenticado: Perfil = perfilActivo,
+  ): UsuarioSodega[] {
     if (perfilActivo === 'Administrador General') return this._usuarios();
+    if (perfilAutenticado === 'Administrador General') {
+      return this._usuarios().filter((u) => u.perfil === perfilActivo);
+    }
     return this._usuarios().filter(
       (u) => u.userGen === userGenActivo || u.creadoPor === userGenActivo,
     );
   }
 
-  /** Perfiles que el perfil activo puede registrar (jerarquía del prototipo). */
-  perfilesRegistrables(perfilActivo: Perfil): Perfil[] {
-    return PERFILES.filter((p) => {
-      // El Admin General puede registrar otro Admin General; el resto no registra su propio perfil.
-      if (p === perfilActivo && perfilActivo !== 'Administrador General') return false;
-      if (perfilActivo === 'Jefe de Área' && p === 'Administrador General') return false;
-      if (
-        perfilActivo === 'Administrador Unidad Organizacional' &&
-        (p === 'Jefe de Área' || p === 'Administrador General')
-      ) return false;
-      if (
-        perfilActivo === 'Administrador DZ_Cap_Asit.' &&
-        (p === 'Administrador Unidad Organizacional' || p === 'Jefe de Área' || p === 'Administrador General')
-      ) return false;
+  /**
+   * Perfiles que el perfil activo puede registrar (jerarquía del prototipo),
+   * incluyendo los perfiles personalizados de la lista "Perfil Autorizado".
+   */
+  perfilesRegistrables(perfilActivo: Perfil, disponibles: readonly string[] = PERFILES): Perfil[] {
+    const esDz = perfilActivo === 'Administrador DZ_Cap_Asit.';
+    return disponibles.filter((p) => {
+      if (perfilActivo === 'Administrador General') return p !== 'Administrador General';
+      if (p === perfilActivo || p === 'Administrador General') return false;
+      if (perfilActivo === 'Administrador Unidad Ejecutora(UE)' && p === 'Jefe de Área') return false;
+      if (esDz && (p === 'Jefe de Área' || p === 'Administrador Unidad Ejecutora(UE)')) return false;
       return true;
     });
   }
@@ -154,6 +162,21 @@ export class UsuariosService {
 
   existeUnidadParaDni(dni: string, unidad: string): boolean {
     return this._usuarios().some((u) => u.dni === dni && u.unidad === unidad);
+  }
+
+  /** ¿El DNI ya tiene registrada alguna de las fechas de contrato? (nueva partida). */
+  existeFechaContratoParaDni(dni: string, fechaIni: string, fechaFin: string): boolean {
+    return this._usuarios().some(
+      (u) => u.dni === dni && (u.fechaIni === fechaIni || u.fechaFin === fechaFin),
+    );
+  }
+
+  /** ¿El DNI ya tiene registrado el Nro. de Orden (O.S.)? (nueva partida). */
+  existeOrdenParaDni(dni: string, nroOrden: string): boolean {
+    const orden = nroOrden.trim().toLowerCase();
+    return this._usuarios().some(
+      (u) => u.dni === dni && (u.nroOrden || '').trim().toLowerCase() === orden,
+    );
   }
 
   /* ===== Mutaciones ===== */
@@ -186,6 +209,54 @@ export class UsuariosService {
   /** POST /usuarios/{id}/restablecer-clave — devuelve clave temporal. */
   restablecerClave(): string {
     return 'MIDAGRI_' + Math.floor(1000 + Math.random() * 9000);
+  }
+
+  /* ===== Usuario unificado generado (mismas reglas que el prototipo) ===== */
+
+  private static limpiarTextoUsuario(texto: string): string {
+    return (texto || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]/g, '');
+  }
+
+  /** ¿El usuario generado ya pertenece a otro DNI? */
+  existeUsuarioGeneradoParaOtroDni(usuario: string, dniActual: string): boolean {
+    const buscado = UsuariosService.limpiarTextoUsuario(usuario);
+    return this._usuarios().some(
+      (u) =>
+        UsuariosService.limpiarTextoUsuario(u.userGen) === buscado &&
+        String(u.dni || '').trim() !== String(dniActual || '').trim(),
+    );
+  }
+
+  /**
+   * Usuario unificado único: inicial del primer nombre + apellido paterno,
+   * desambiguado con letras del apellido materno y, si aún colisiona,
+   * con un correlativo numérico.
+   */
+  generarUsuarioUnico(nombres: string, apellidoPaterno: string, apellidoMaterno: string, dniActual: string): string {
+    const primerNombre = UsuariosService.limpiarTextoUsuario((nombres || '').trim().split(/\s+/)[0] ?? '');
+    const apePat = UsuariosService.limpiarTextoUsuario(apellidoPaterno);
+    const apeMat = UsuariosService.limpiarTextoUsuario(apellidoMaterno);
+    if (!primerNombre || !apePat) return '';
+
+    const base = primerNombre.charAt(0) + apePat;
+    if (!this.existeUsuarioGeneradoParaOtroDni(base, dniActual)) return base;
+
+    for (let i = 1; i <= apeMat.length; i++) {
+      const candidato = base + apeMat.substring(0, i);
+      if (!this.existeUsuarioGeneradoParaOtroDni(candidato, dniActual)) return candidato;
+    }
+
+    let correlativo = 2;
+    let candidato = `${base}${apeMat}${correlativo}`;
+    while (this.existeUsuarioGeneradoParaOtroDni(candidato, dniActual)) {
+      correlativo++;
+      candidato = `${base}${apeMat}${correlativo}`;
+    }
+    return candidato;
   }
 
   /**
@@ -226,16 +297,14 @@ export class UsuariosService {
     const distritosElegibles = distritosPorDepto[deptoElegido];
     const distritoSim = distritosElegibles[(seed + 2) % distritosElegibles.length];
     const direccionSim = `AV. PROLONGACIÓN ${distritoSim} NRO. ${100 + (seed % 800)}`;
-    const ubigeoSim = String(150101 + (seed % 9999));
+    const ubigeoSim = obtenerUbigeoTextoSimulado(seed);
 
     const edadSim = 22 + (seed % 40);
     const anioNac = 2026 - edadSim;
     const mesNac = String(1 + (seed % 12)).padStart(2, '0');
     const diaNac = String(1 + (seed % 28)).padStart(2, '0');
 
-    const primerNombreLetra = nombresSim.split(' ')[0].substring(0, 1).toLowerCase();
-    const apellidoPatLimpio = apePatSim.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    const userGenerado = primerNombreLetra + apellidoPatLimpio;
+    const userGenerado = this.generarUsuarioUnico(nombresSim, apePatSim, apeMatSim, dni);
 
     const datos: DatosReniec = {
       apePat: toTitleCase(apePatSim),
