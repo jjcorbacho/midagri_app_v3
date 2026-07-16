@@ -7,10 +7,12 @@ import {
   permisosPorDefecto,
   tienePermiso,
 } from '../models/permisos-menu.model';
-import { ESQUEMAS_PERMISOS_MENU } from '../constants/permisos-menu.const';
-import { Perfil, UsuarioSodega } from '../models/usuario-sodega.model';
+import { ESQUEMAS_PERMISOS_MENU, esquemaPerfilPersonalizado } from '../constants/permisos-menu.const';
+import { PERFILES, Perfil, PerfilConocido, UsuarioSodega } from '../models/usuario-sodega.model';
 import { AuthService } from './auth.service';
+import { ListasAdminService } from './listas-admin.service';
 import { UsuariosService } from './usuarios.service';
+import { normalizarNombreCatalogo } from '../../shared/utils/texto.util';
 
 /**
  * Permisos de menú por usuario (lógica desacoplada de la interfaz).
@@ -24,6 +26,7 @@ import { UsuariosService } from './usuarios.service';
 export class PermisosMenuService {
   private readonly auth = inject(AuthService);
   private readonly usuariosService = inject(UsuariosService);
+  private readonly listasAdmin = inject(ListasAdminService);
 
   /** Permisos efectivos del registro activo en sesión (defaults ⊕ guardados). */
   readonly permisosSesion = computed<PermisosMenu | null>(() => {
@@ -34,15 +37,33 @@ export class PermisosMenuService {
     const registro = this.usuariosService
       .usuarios()
       .find((u) => u.userGen === s.userGen && u.perfil === s.perfil && (!s.unidad || u.unidad === s.unidad))
-      ?? this.usuariosService.usuarios().find((u) => u.userGen === s.userGen && u.perfil === s.perfil);
+      ?? this.usuariosService.usuarios().find((u) => u.userGen === s.userGen && u.perfil === s.perfil)
+      // Perfil personalizado sin registro propio (Admin General master operando
+      // con él): hereda los permisos guardados de un usuario de ese perfil.
+      ?? (this.esPerfilPersonalizado(s.perfil)
+        ? this.usuariosService.usuarios().find((u) => u.perfil === s.perfil && u.permisosMenu)
+        : undefined);
     return combinarPermisos(esquema, registro?.permisosMenu);
   });
 
   /* ===== Esquemas ===== */
 
+  /** ¿El perfil es personalizado (creado en la lista "Perfil Autorizado")? */
+  esPerfilPersonalizado(perfil: Perfil | ''): boolean {
+    if (!perfil) return false;
+    const clave = normalizarNombreCatalogo(perfil);
+    if (PERFILES.some((p) => normalizarNombreCatalogo(p) === clave)) return false;
+    return this.listasAdmin
+      .perfilesAutorizados(PERFILES)
+      .some((p) => normalizarNombreCatalogo(p) === clave);
+  }
+
   /** Esquema de permisos configurable para un perfil (undefined si no aplica). */
   esquemaPara(perfil: Perfil | ''): EsquemaPermisosMenu | undefined {
-    return perfil ? ESQUEMAS_PERMISOS_MENU[perfil] : undefined;
+    if (!perfil) return undefined;
+    const conocido = ESQUEMAS_PERMISOS_MENU[perfil as PerfilConocido];
+    if (conocido) return conocido;
+    return this.esPerfilPersonalizado(perfil) ? esquemaPerfilPersonalizado(perfil) : undefined;
   }
 
   /** Permisos por defecto del perfil (usuario nuevo). */

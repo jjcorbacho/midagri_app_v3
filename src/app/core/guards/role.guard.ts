@@ -2,10 +2,11 @@ import { inject } from '@angular/core';
 import { CanActivateChildFn, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { PermisosMenuService } from '../services/permisos-menu.service';
-import { Perfil } from '../models/usuario-sodega.model';
+import { PERFILES, Perfil, PerfilConocido } from '../models/usuario-sodega.model';
 import {
   GRUPO_REGISTRAR,
   GRUPO_VISUALIZAR,
+  PERMISO_GESTION_USUARIOS,
   PERMISO_LISTAS,
   PERMISO_REPORTE_ASISTENCIA,
   PERMISO_REPORTE_CAPACITACIONES,
@@ -15,6 +16,7 @@ import {
 interface FlagsPermisos {
   puedeVerListas: boolean;
   puedeVerReportes: boolean;
+  puedeGestionarUsuarios: boolean;
 }
 
 /**
@@ -39,7 +41,7 @@ function isAllowed(path: string, perfil: Perfil, flags: FlagsPermisos): boolean 
     if (path.startsWith('/capacitaciones-n1/')) return true;
     return false;
   }
-  if (perfil === 'Administrador Unidad Organizacional') {
+  if (perfil === 'Administrador Unidad Ejecutora(UE)') {
     if (path.startsWith('/seguimiento/aprobacion')) return true;
     if (path.startsWith('/configuracion/campos')) return true;
     if (path.startsWith('/configuracion/reglas')) return true;
@@ -60,6 +62,12 @@ function isAllowed(path: string, perfil: Perfil, flags: FlagsPermisos): boolean 
     if (path.startsWith('/capacitaciones-n1')) return true;
     return false;
   }
+  // Perfil personalizado (lista "Perfil Autorizado"): acceso según sus permisos de menú.
+  if (!PERFILES.includes(perfil as PerfilConocido)) {
+    if (path.startsWith('/usuarios')) return flags.puedeGestionarUsuarios;
+    if (path.startsWith('/reportes')) return flags.puedeVerReportes;
+    return false;
+  }
   return false;
 }
 
@@ -67,7 +75,7 @@ function isAllowed(path: string, perfil: Perfil, flags: FlagsPermisos): boolean 
 function fallbackFor(perfil: Perfil): string {
   switch (perfil) {
     case 'Jefe de Área': return '/seguimiento/aprobacion';
-    case 'Administrador Unidad Organizacional': return '/seguimiento/aprobacion';
+    case 'Administrador Unidad Ejecutora(UE)': return '/seguimiento/aprobacion';
     case 'Administrador DZ_Cap_Asit.': return '/seguimiento/revision';
     case 'Técnico Capacitación y Asistencia Técnica': return '/capacitaciones-n1';
     default: return '/dashboard';
@@ -85,6 +93,7 @@ export const roleGuard: CanActivateChildFn = (_route, state) => {
     puedeVerReportes:
       permisosMenu.sesionTiene(GRUPO_VISUALIZAR, PERMISO_REPORTE_CAPACITACIONES) ||
       permisosMenu.sesionTiene(GRUPO_VISUALIZAR, PERMISO_REPORTE_ASISTENCIA),
+    puedeGestionarUsuarios: permisosMenu.sesionTiene(GRUPO_REGISTRAR, PERMISO_GESTION_USUARIOS),
   };
   if (isAllowed(state.url, perfil, flags)) return true;
   return router.createUrlTree([fallbackFor(perfil)]);

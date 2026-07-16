@@ -13,9 +13,11 @@ import { PermisosMenuService } from '../../core/services/permisos-menu.service';
 import {
   AmbitoTerritorial,
   MetaAmbitoTerritorial,
+  PERFILES,
   Perfil,
   UsuarioSodega,
   aplicaMetasPorAmbito,
+  calcularDiasCalendarioEntre,
   perfilRequiereAmbito,
   perfilSoloRegion,
   toTitleCase,
@@ -25,12 +27,14 @@ import { PermisosMenuFormComponent } from './permisos-menu-form.component';
 import { INPUT_BASE, INPUT_DISABLED, INPUT_REQUIRED } from '../../shared/utils/input-styles.const';
 import {
   CATEGORIAS_PRESUPUESTALES,
+  CATEGORIAS_PRESUPUESTALES_JEFE_AREA,
   FUENTES_FINANCIAMIENTO,
   PROFESIONES,
   PROGRAMAS_MAESTROS,
   REGIMENES_LABORALES,
   UBIGEO_SODEGA,
   UNIDADES_FUNCIONALES_MAESTRAS,
+  UNIDADES_FUNCIONALES_POR_UNIDAD_RESPONSABLE,
   UNIDADES_POR_PROGRAMA,
   UNIDADES_RESPONSABLES,
 } from '../../core/constants/sodega.const';
@@ -199,7 +203,7 @@ const INP_NORMAL = INPUT_BASE;
             </div>
 
             @if (mostrarPresupuesto()) {
-              <div class="grid grid-cols-4 gap-3 border-t border-border pt-4">
+              <div class="grid gap-3 border-t border-border pt-4" [class]="modoJefeArea() ? 'grid-cols-3' : 'grid-cols-4'">
                 <div>
                   <label class="block text-[11px] font-medium text-muted-foreground mb-1">Fuente de financ. <span class="text-destructive">*</span></label>
                   <select formControlName="fuenteFinanc" [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory">
@@ -209,17 +213,21 @@ const INP_NORMAL = INPUT_BASE;
                     }
                   </select>
                 </div>
+                @if (!modoJefeArea()) {
+                  <div>
+                    <label class="block text-[11px] font-medium text-muted-foreground mb-1">Categoría presup. <span class="text-destructive">*</span></label>
+                    <select formControlName="categoriaPresup" (change)="onCategoriaChange()" [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory">
+                      <option value="">Seleccione</option>
+                      @for (c of categorias(); track c) {
+                        <option [value]="c">{{ c }}</option>
+                      }
+                    </select>
+                  </div>
+                }
                 <div>
-                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">Categoría presup. <span class="text-destructive">*</span></label>
-                  <select formControlName="categoriaPresup" (change)="onCategoriaChange()" [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory">
-                    <option value="">Seleccione</option>
-                    @for (c of categorias(); track c) {
-                      <option [value]="c">{{ c }}</option>
-                    }
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">Programa presupuestal <span class="text-destructive">*</span></label>
+                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">
+                    {{ modoJefeArea() ? 'Categoría' : 'Programa presupuestal' }} <span class="text-destructive">*</span>
+                  </label>
                   <select formControlName="programaPresup" (change)="onProgramaChange()" [class]="presupuestoBloqueado() || !programaHabilitado() ? inpDisabled : inpMandatory">
                     <option value="">Seleccione</option>
                     @for (p of programas(); track p) {
@@ -228,7 +236,9 @@ const INP_NORMAL = INPUT_BASE;
                   </select>
                 </div>
                 <div>
-                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">Unidad funcional (Opas) <span class="text-destructive">*</span></label>
+                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">
+                    {{ modoJefeArea() ? 'Unidad Funcional' : 'Unidad funcional (Opas)' }} <span class="text-destructive">*</span>
+                  </label>
                   <select formControlName="unidadFuncional" [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory">
                     <option value="">Seleccione</option>
                     @for (u of unidadesFuncionales(); track u) {
@@ -326,7 +336,7 @@ const INP_NORMAL = INPUT_BASE;
                       <label class="block text-[11px] font-medium text-muted-foreground mb-1">Región</label>
                       <select
                         [value]="ambitoRegion()"
-                        (change)="ambitoRegion.set($any($event.target).value); ambitoProvincia.set(''); ambitoDistrito.set('')"
+                        (change)="ambitoRegion.set($any($event.target).value); ambitoProvincia.set(''); ambitoDistrito.set(''); limpiarDistritosSeleccionados()"
                         class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none transition-colors"
                       >
                         <option value="">Seleccione</option>
@@ -339,7 +349,7 @@ const INP_NORMAL = INPUT_BASE;
                       <label class="block text-[11px] font-medium text-muted-foreground mb-1">Provincia</label>
                       <select
                         [value]="ambitoProvincia()"
-                        (change)="ambitoProvincia.set($any($event.target).value); ambitoDistrito.set('')"
+                        (change)="ambitoProvincia.set($any($event.target).value); ambitoDistrito.set(''); limpiarDistritosSeleccionados()"
                         [disabled]="soloRegion() || !ambitoRegion()"
                         class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none transition-colors disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
                       >
@@ -349,19 +359,61 @@ const INP_NORMAL = INPUT_BASE;
                         }
                       </select>
                     </div>
-                    <div>
+                    <div class="relative">
                       <label class="block text-[11px] font-medium text-muted-foreground mb-1">Distrito</label>
-                      <select
-                        [value]="ambitoDistrito()"
-                        (change)="ambitoDistrito.set($any($event.target).value)"
-                        [disabled]="soloRegion() || !ambitoProvincia()"
-                        class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none transition-colors disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
-                      >
-                        <option value="">Seleccione</option>
-                        @for (d of distritosDisponibles(); track d) {
-                          <option [value]="d">{{ d }}</option>
+                      @if (esTecnicoSeleccionado()) {
+                        <!-- Multi-selección de distritos (solo Técnicos) -->
+                        <button
+                          type="button"
+                          (click)="distritosPanelAbierto.set(!distritosPanelAbierto())"
+                          [disabled]="!ambitoProvincia() || distritosDisponibles().length === 0"
+                          class="w-full min-h-[38px] bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
+                        >
+                          <span class="truncate text-left">{{ textoDistritosSeleccionados() }}</span>
+                          <span class="shrink-0 rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-bold text-brand tabular-nums">
+                            {{ distritosSeleccionados().length }} seleccionados
+                          </span>
+                        </button>
+                        @if (distritosPanelAbierto()) {
+                          <div class="fixed inset-0 z-40" (click)="distritosPanelAbierto.set(false)"></div>
+                          <div class="absolute z-50 mt-1 w-full rounded-xl bg-popover ring-1 ring-border shadow-lg overflow-hidden animate-modal-in">
+                            <label class="flex items-center gap-2 px-3 py-2 text-xs font-bold text-brand bg-brand-soft border-b border-brand/10 cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                class="accent-brand size-4"
+                                [checked]="todosDistritosSeleccionados()"
+                                (change)="toggleTodosDistritos($any($event.target).checked)"
+                              />
+                              <span>Seleccionar todos</span>
+                            </label>
+                            <div class="max-h-52 overflow-y-auto p-2 space-y-0.5 thin-scroll">
+                              @for (d of distritosDisponibles(); track d) {
+                                <label class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-foreground/90 hover:bg-secondary/60 cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    class="accent-brand size-4"
+                                    [checked]="distritosSeleccionados().includes(d)"
+                                    (change)="toggleDistrito(d, $any($event.target).checked)"
+                                  />
+                                  <span>{{ d }}</span>
+                                </label>
+                              }
+                            </div>
+                          </div>
                         }
-                      </select>
+                      } @else {
+                        <select
+                          [value]="ambitoDistrito()"
+                          (change)="ambitoDistrito.set($any($event.target).value)"
+                          [disabled]="soloRegion() || !ambitoProvincia()"
+                          class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none transition-colors disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
+                        >
+                          <option value="">Seleccione</option>
+                          @for (d of distritosDisponibles(); track d) {
+                            <option [value]="d">{{ d }}</option>
+                          }
+                        </select>
+                      }
                     </div>
                   </div>
 
@@ -473,7 +525,18 @@ const INP_NORMAL = INPUT_BASE;
             <button (click)="irAPestana('datos')" class="btn-secondary">
               <lucide-angular [img]="ArrowLeftIcon" class="size-3.5" /> Atrás
             </button>
-            <button (click)="guardarRegistroCompleto()" class="btn-success px-5">
+            @if (requierePresupuestoAdminGeneral()) {
+              <button (click)="irARegistrarDatosPresupuestales()" class="btn-primary px-5">
+                <lucide-angular [img]="WalletIcon" class="size-3.5" />
+                <span>Registrar Datos Presupuestales</span>
+              </button>
+            }
+            <button
+              (click)="guardarRegistroCompleto()"
+              [disabled]="guardarBloqueado()"
+              [title]="guardarBloqueado() ? 'Complete los Datos Presupuestales obligatorios antes de guardar.' : ''"
+              class="btn-success px-5 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <lucide-angular [img]="SaveIcon" class="size-3.5" />
               <span>{{ modo() === 'editar' ? 'Guardar Cambios' : 'Guardar Registro' }}</span>
             </button>
@@ -527,7 +590,11 @@ export class UsuarioFormComponent implements OnInit {
   readonly regimenes = REGIMENES_LABORALES;
   readonly fuentes = computed(() => this.listasAdmin.opcionesFormulario('Fuente de Financiamiento', FUENTES_FINANCIAMIENTO));
   readonly categorias = computed(() => this.listasAdmin.opcionesFormulario('Categoría Presupuestal', CATEGORIAS_PRESUPUESTALES));
-  readonly programas = computed(() => this.listasAdmin.opcionesFormulario('Programas Presupuestales', PROGRAMAS_MAESTROS));
+  readonly programas = computed(() =>
+    this.modoJefeArea()
+      ? [...CATEGORIAS_PRESUPUESTALES_JEFE_AREA]
+      : this.listasAdmin.opcionesFormulario('Programas Presupuestales', PROGRAMAS_MAESTROS),
+  );
   readonly unidadesResponsables = computed(() => this.listasAdmin.opcionesFormulario('Unidad Responsable', UNIDADES_RESPONSABLES));
   readonly sexos = computed(() => this.listasAdmin.opcionesFormulario('Sexo', ['Masculino', 'Femenino']));
   readonly regiones = Object.keys(UBIGEO_SODEGA);
@@ -540,6 +607,9 @@ export class UsuarioFormComponent implements OnInit {
   readonly ambitoRegion = signal('');
   readonly ambitoProvincia = signal('');
   readonly ambitoDistrito = signal('');
+  /** Multi-selección de distritos (solo perfil objetivo Técnico). */
+  readonly distritosSeleccionados = signal<string[]>([]);
+  readonly distritosPanelAbierto = signal(false);
   readonly alerta = signal<{ titulo: string; mensaje: string; cerrarYSalir?: boolean } | null>(null);
   readonly formTick = signal(0);
   /** Permisos de menú en edición (esquema del perfil seleccionado). */
@@ -640,7 +710,9 @@ export class UsuarioFormComponent implements OnInit {
   private aplicarBloqueosPorPerfilActivo(): void {
     const s = this.auth.session();
     if (!s) return;
-    const bloqueaUnidad = ['Jefe de Área', 'Administrador Unidad Organizacional', 'Administrador DZ_Cap_Asit.'].includes(s.perfil);
+    const bloqueaUnidad =
+      !this.auth.esAdminGeneralAutenticado() &&
+      ['Jefe de Área', 'Administrador Unidad Ejecutora(UE)', 'Administrador DZ_Cap_Asit.'].includes(s.perfil);
     if (bloqueaUnidad && this.modo() !== 'presupuesto') {
       this.form.controls.unidad.setValue(s.unidad);
       this.form.controls.unidad.disable();
@@ -674,7 +746,10 @@ export class UsuarioFormComponent implements OnInit {
 
   readonly perfilesRegistrables = computed<Perfil[]>(() => {
     const s = this.auth.session();
-    return s ? this.usuariosService.perfilesRegistrables(s.perfil) : [];
+    if (!s) return [];
+    // Perfiles oficiales + personalizados de la lista "Perfil Autorizado".
+    const disponibles = this.listasAdmin.perfilesAutorizados(PERFILES);
+    return this.usuariosService.perfilesRegistrables(s.perfil, disponibles);
   });
 
   readonly unidadBloqueada = computed(() => {
@@ -684,7 +759,8 @@ export class UsuarioFormComponent implements OnInit {
 
   presupuestoBloqueado(): boolean {
     const s = this.auth.session();
-    return !!s && ['Administrador Unidad Organizacional', 'Administrador DZ_Cap_Asit.'].includes(s.perfil);
+    if (!s || this.auth.esAdminGeneralAutenticado()) return false;
+    return ['Administrador Unidad Ejecutora(UE)', 'Administrador DZ_Cap_Asit.'].includes(s.perfil);
   }
 
   /**
@@ -693,37 +769,102 @@ export class UsuarioFormComponent implements OnInit {
    * (como objetivo, o registrando sin perfil elegido aún) se muestra
    * únicamente la Unidad Responsable, igual que el prototipo.
    */
+  /** Perfiles que heredan la vista presupuestal del Jefe de Área. */
+  private static readonly PERFILES_HEREDEROS_PRESUPUESTO = [
+    'Administrador Unidad Ejecutora(UE)',
+    'Administrador DZ_Cap_Asit.',
+    'Técnico Capacitación y Asistencia Técnica',
+  ];
+
+  /**
+   * Vista presupuestal del Jefe de Área (3 columnas, "Categoría" en lugar de
+   * Categoría presup. + Programa): aplica al Jefe de Área, a sus perfiles
+   * herederos y al Admin General cuando registra uno de esos perfiles.
+   */
+  readonly modoJefeArea = computed(() => {
+    this.formTick();
+    const s = this.auth.session();
+    if (!s) return false;
+    const target = this.form.controls.perfil.value;
+    const herederos = UsuarioFormComponent.PERFILES_HEREDEROS_PRESUPUESTO;
+    return (
+      s.perfil === 'Jefe de Área' ||
+      herederos.includes(s.perfil) ||
+      (s.perfilAutenticado === 'Administrador General' && herederos.includes(target))
+    );
+  });
+
   readonly mostrarPresupuesto = computed(() => {
     this.formTick();
     const target = this.form.controls.perfil.value;
     const s = this.auth.session();
     if (target === 'Administrador General') return false;
     if (s?.perfil === 'Administrador General' && target === 'Jefe de Área') return false;
-    const perfilesGestion = ['Jefe de Área', 'Administrador Unidad Organizacional', 'Administrador DZ_Cap_Asit.', 'Técnico Capacitación y Asistencia Técnica'];
-    return perfilesGestion.includes(s?.perfil ?? '') || perfilesGestion.includes(target);
+    const perfilesGestion = ['Jefe de Área', ...UsuarioFormComponent.PERFILES_HEREDEROS_PRESUPUESTO];
+    return (
+      perfilesGestion.includes(s?.perfil ?? '') ||
+      perfilesGestion.includes(target) ||
+      (this.auth.esAdminGeneralAutenticado() && this.permisosService.esPerfilPersonalizado(target))
+    );
   });
 
   readonly programaHabilitado = computed(() => {
     this.formTick();
-    return this.form.controls.categoriaPresup.value === 'Programa Presupuestal';
+    return this.modoJefeArea() || this.form.controls.categoriaPresup.value === 'Programa Presupuestal';
   });
 
   readonly unidadesFuncionales = computed<string[]>(() => {
     this.formTick();
+    const s = this.auth.session();
+    // 1) Unidades funcionales asociadas a la Unidad Responsable en la
+    //    Administración de Listas (tienen prioridad sobre los catálogos fijos).
+    const unidadResponsable = this.form.getRawValue().unidad || s?.unidad || '';
+    const relacionadas = this.listasAdmin.unidadesFuncionalesPorUnidadResponsable(unidadResponsable);
+    if (relacionadas.length) return relacionadas;
+    // 2) Jefe de Área en sesión: catálogo propio de su Unidad Responsable.
+    if (this.modoJefeArea()) {
+      const base =
+        s?.perfil === 'Jefe de Área'
+          ? UNIDADES_FUNCIONALES_POR_UNIDAD_RESPONSABLE[s.unidad] ?? UNIDADES_FUNCIONALES_MAESTRAS
+          : UNIDADES_FUNCIONALES_MAESTRAS;
+      return this.listasAdmin.opcionesFormulario('Unidad Funcional', base);
+    }
+    // 3) Cascada clásica Categoría → Programa → Unidad funcional.
     const cat = this.form.controls.categoriaPresup.value;
     const prog = this.form.controls.programaPresup.value;
     const base =
       cat === 'Programa Presupuestal' && prog
         ? UNIDADES_POR_PROGRAMA[prog] ?? UNIDADES_FUNCIONALES_MAESTRAS
         : UNIDADES_FUNCIONALES_MAESTRAS;
-    return this.listasAdmin.opcionesFormulario('Unidad Funcional (OPAS)', base);
+    return this.listasAdmin.opcionesFormulario('Unidad Funcional', base);
   });
 
-  /** Esquema de permisos del perfil seleccionado (solo lo configura el Admin General). */
+  /**
+   * ¿La sesión activa puede configurar los permisos del perfil objetivo?
+   * Admin General master siempre; los demás solo sobre su subordinado directo
+   * (Jefe → UE, UE → DZ, DZ → Técnico), igual que el prototipo.
+   */
+  private debeConfigurarPermisos(target: Perfil | ''): boolean {
+    const s = this.auth.session();
+    if (!s || !target) return false;
+    if (s.perfilAutenticado === 'Administrador General') return true;
+    const activo = s.perfil;
+    const configuraUE =
+      target === 'Administrador Unidad Ejecutora(UE)' &&
+      ['Jefe de Área', 'Administrador Unidad Ejecutora(UE)', 'Administrador DZ_Cap_Asit.'].includes(activo);
+    const configuraDzDesdeUE =
+      activo === 'Administrador Unidad Ejecutora(UE)' && target === 'Administrador DZ_Cap_Asit.';
+    const configuraTecnicoDesdeDz =
+      activo === 'Administrador DZ_Cap_Asit.' && target === 'Técnico Capacitación y Asistencia Técnica';
+    return configuraUE || configuraDzDesdeUE || configuraTecnicoDesdeDz;
+  }
+
+  /** Esquema de permisos del perfil seleccionado (según jerarquía de configuración). */
   readonly esquemaPermisos = computed(() => {
     this.formTick();
-    if (this.auth.session()?.perfil !== 'Administrador General') return undefined;
-    return this.permisosService.esquemaPara(this.form.controls.perfil.value);
+    const target = this.form.controls.perfil.value;
+    if (!this.debeConfigurarPermisos(target)) return undefined;
+    return this.permisosService.esquemaPara(target);
   });
 
   readonly regimenTemporal = computed(() => {
@@ -745,6 +886,57 @@ export class UsuarioFormComponent implements OnInit {
   readonly soloRegion = computed(() => {
     this.formTick();
     return perfilSoloRegion(this.form.controls.perfil.value);
+  });
+
+  /** El Técnico asigna varios distritos por vez (multi-selección). */
+  readonly esTecnicoSeleccionado = computed(() => {
+    this.formTick();
+    return this.form.controls.perfil.value === 'Técnico Capacitación y Asistencia Técnica';
+  });
+
+  /** Admin UE y Admin DZ pueden registrar el ámbito solo con la región ("-"). */
+  readonly provinciaDistritoOpcional = computed(() => {
+    this.formTick();
+    return ['Administrador Unidad Ejecutora(UE)', 'Administrador DZ_Cap_Asit.'].includes(
+      this.form.controls.perfil.value,
+    );
+  });
+
+  readonly textoDistritosSeleccionados = computed(() => {
+    const sel = this.distritosSeleccionados();
+    if (sel.length === 0) return 'Seleccione distritos';
+    if (sel.length === 1) return sel[0];
+    return `${sel.length} distritos seleccionados`;
+  });
+
+  readonly todosDistritosSeleccionados = computed(() => {
+    const disponibles = this.distritosDisponibles();
+    return disponibles.length > 0 && disponibles.every((d) => this.distritosSeleccionados().includes(d));
+  });
+
+  /* ===== Presupuesto obligatorio para el Admin General (nuevo registro) ===== */
+
+  /** Admin General registrando un perfil heredero nuevo: presupuesto obligatorio. */
+  readonly requierePresupuestoAdminGeneral = computed(() => {
+    this.formTick();
+    const s = this.auth.session();
+    return (
+      s?.perfil === 'Administrador General' &&
+      this.modo() === 'nuevo' &&
+      UsuarioFormComponent.PERFILES_HEREDEROS_PRESUPUESTO.includes(this.form.controls.perfil.value)
+    );
+  });
+
+  /** ¿Los datos presupuestales obligatorios están completos? */
+  private presupuestoCompleto(): boolean {
+    const v = this.form.getRawValue();
+    const categoriaOk = this.modoJefeArea() || !!v.categoriaPresup;
+    return !!(v.unidad && v.fuenteFinanc && categoriaOk && v.programaPresup && v.unidadFuncional);
+  }
+
+  readonly guardarBloqueado = computed(() => {
+    this.formTick();
+    return this.requierePresupuestoAdminGeneral() && !this.presupuestoCompleto();
   });
 
   /** Metas por ámbito: solo cuando un Admin DZ_Cap_Asit. registra un Técnico. */
@@ -782,6 +974,7 @@ export class UsuarioFormComponent implements OnInit {
       this.ambitos.set([]);
       this.metasAmbito.clear();
     }
+    this.limpiarDistritosSeleccionados();
     this.sincronizarPermisosMenu();
   }
 
@@ -831,17 +1024,70 @@ export class UsuarioFormComponent implements OnInit {
     });
   }
 
+  /* ===== Multi-selección de distritos (Técnico) ===== */
+
+  toggleDistrito(distrito: string, seleccionado: boolean): void {
+    this.distritosSeleccionados.update((prev) =>
+      seleccionado ? [...prev, distrito] : prev.filter((d) => d !== distrito),
+    );
+  }
+
+  toggleTodosDistritos(seleccionar: boolean): void {
+    this.distritosSeleccionados.set(seleccionar ? [...this.distritosDisponibles()] : []);
+  }
+
+  limpiarDistritosSeleccionados(): void {
+    this.distritosSeleccionados.set([]);
+    this.distritosPanelAbierto.set(false);
+  }
+
   agregarAmbito(): void {
     const region = this.ambitoRegion();
     const soloRegion = this.soloRegion();
-    const provincia = soloRegion ? '-' : this.ambitoProvincia();
-    const distrito = soloRegion ? '-' : this.ambitoDistrito();
+    const opcional = this.provinciaDistritoOpcional();
+    const provincia = soloRegion || (opcional && !this.ambitoProvincia()) ? '-' : this.ambitoProvincia();
+    const distrito = soloRegion || (opcional && !this.ambitoDistrito()) ? '-' : this.ambitoDistrito();
 
     if (!region) {
       this.alerta.set({ titulo: 'Ámbito Incompleto', mensaje: 'Debe seleccionar una Región para poder agregar.' });
       return;
     }
-    if (!soloRegion && (!provincia || !distrito)) {
+
+    // Técnico: alta múltiple de distritos con aviso de duplicados.
+    if (this.esTecnicoSeleccionado()) {
+      const provinciaSeleccionada = this.ambitoProvincia();
+      const seleccionados = this.distritosSeleccionados();
+      if (!provinciaSeleccionada || seleccionados.length === 0) {
+        this.alerta.set({
+          titulo: 'Ámbito Incompleto',
+          mensaje: 'Debe seleccionar Provincia y al menos un Distrito para poder agregar.',
+        });
+        return;
+      }
+      const duplicados: string[] = [];
+      const nuevos: AmbitoTerritorial[] = [];
+      for (const dist of seleccionados) {
+        const existe = this.ambitos().some(
+          (a) => a.region === region && a.provincia === provinciaSeleccionada && a.distrito === dist,
+        );
+        if (existe) duplicados.push(dist);
+        else nuevos.push({ region, provincia: provinciaSeleccionada, distrito: dist });
+      }
+      if (nuevos.length) {
+        this.ambitos.update((prev) => [...prev, ...nuevos]);
+        nuevos.forEach(() => this.metasAmbito.push(this.crearFilaMeta()));
+        this.limpiarDistritosSeleccionados();
+      }
+      if (duplicados.length) {
+        this.alerta.set({
+          titulo: 'Distritos Duplicados',
+          mensaje: `No se agregaron los distritos ya existentes: ${duplicados.join(', ')}.`,
+        });
+      }
+      return;
+    }
+
+    if (!soloRegion && !opcional && (!provincia || !distrito)) {
       this.alerta.set({ titulo: 'Ámbito Incompleto', mensaje: 'Debe seleccionar Región, Provincia y Distrito para poder agregar.' });
       return;
     }
@@ -910,6 +1156,14 @@ export class UsuarioFormComponent implements OnInit {
     });
   }
 
+  /** Regresa a la pestaña Datos para completar la sección presupuestal. */
+  irARegistrarDatosPresupuestales(): void {
+    this.tab.set('datos');
+    setTimeout(() => {
+      document.querySelector('select[formcontrolname="unidad"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
+  }
+
   irAPestana(tab: 'datos' | 'permisos'): void {
     if (tab === 'permisos') {
       const v = this.form.getRawValue();
@@ -954,25 +1208,39 @@ export class UsuarioFormComponent implements OnInit {
     this.tab.set('permisos');
   }
 
+  /** Perfiles cuyo Programa/Categoría y Unidad Funcional son opcionales al validar. */
+  private programaOpasOpcional(perfil: string): boolean {
+    return ['Jefe de Área', ...UsuarioFormComponent.PERFILES_HEREDEROS_PRESUPUESTO].includes(perfil);
+  }
+
   private validarPresupuesto(v: ReturnType<typeof this.form.getRawValue>): boolean {
     const s = this.auth.session();
     const esAdminGeneral = v.perfil === 'Administrador General';
-    const omitir = s?.perfil === 'Administrador General' && v.perfil === 'Jefe de Área';
+    const omitir = (s?.perfil === 'Administrador General' && v.perfil === 'Jefe de Área') || v.perfil === 'Jefe de Área';
     if (!this.mostrarPresupuesto() || esAdminGeneral || omitir) return true;
+    const modoJefe = this.modoJefeArea();
     if (!v.fuenteFinanc) {
       this.alerta.set({ titulo: 'Fuente de Financiamiento Requerida', mensaje: 'Debe seleccionar una Fuente de Financiamiento válida.' });
       return false;
     }
-    if (!v.categoriaPresup) {
+    if (!modoJefe && !v.categoriaPresup) {
       this.alerta.set({ titulo: 'Categoría Presupuestal Requerida', mensaje: 'Debe seleccionar una Categoría Presupuestal.' });
       return false;
     }
-    if (v.categoriaPresup === 'Programa Presupuestal' && !v.programaPresup) {
-      this.alerta.set({ titulo: 'Programa Presupuestal Requerido', mensaje: 'Debe seleccionar un Programa Presupuestal estratégico.' });
+    if (
+      (modoJefe || v.categoriaPresup === 'Programa Presupuestal') &&
+      !v.programaPresup &&
+      !this.programaOpasOpcional(v.perfil)
+    ) {
+      this.alerta.set(
+        modoJefe
+          ? { titulo: 'Categoría Requerida', mensaje: 'Debe seleccionar una Categoría.' }
+          : { titulo: 'Programa Presupuestal Requerido', mensaje: 'Debe seleccionar un Programa Presupuestal estratégico.' },
+      );
       return false;
     }
-    if (!v.unidadFuncional) {
-      this.alerta.set({ titulo: 'Unidad Funcional Requerida', mensaje: 'Debe seleccionar una Unidad Funcional de OPAS.' });
+    if (!v.unidadFuncional && !this.programaOpasOpcional(v.perfil)) {
+      this.alerta.set({ titulo: 'Unidad Funcional Requerida', mensaje: 'Debe seleccionar una Unidad Funcional.' });
       return false;
     }
     return true;
@@ -983,6 +1251,14 @@ export class UsuarioFormComponent implements OnInit {
     const v = this.form.getRawValue();
     const s = this.auth.session();
     if (!s) return;
+
+    if (this.guardarBloqueado()) {
+      this.alerta.set({
+        titulo: 'Datos Presupuestales requeridos',
+        mensaje: 'Debe completar los Datos Presupuestales obligatorios antes de guardar el registro.',
+      });
+      return;
+    }
 
     if (!v.correo.trim() || !v.regimen || !v.perfil || !v.unidad) {
       this.alerta.set({
@@ -1016,10 +1292,36 @@ export class UsuarioFormComponent implements OnInit {
         });
         return;
       }
+      const diasContrato = calcularDiasCalendarioEntre(v.fechaIni, v.fechaFin);
+      if (diasContrato === null || diasContrato <= 30) {
+        this.alerta.set({
+          titulo: 'Vigencia no permitida',
+          mensaje: 'La fecha de inicio y la fecha de fin deben tener una vigencia mayor a 30 días calendario.',
+        });
+        return;
+      }
       if (this.esLocador() && !v.nroOrden.trim()) {
         this.alerta.set({
           titulo: 'Orden de Servicio Requerida',
           mensaje: 'Para locadores de servicio (OS) es obligatorio registrar el Nro. de Orden (O.S.).',
+        });
+        return;
+      }
+    }
+
+    // Nueva partida presupuestal: fechas y Nro. de Orden distintos a los ya registrados.
+    if (this.modo() === 'presupuesto') {
+      if (this.usuariosService.existeFechaContratoParaDni(v.dni, v.fechaIni, v.fechaFin)) {
+        this.alerta.set({
+          titulo: 'Fechas ya registradas',
+          mensaje: 'La fecha de inicio y la fecha fin deben ser diferentes a las fechas ya registradas para este usuario.',
+        });
+        return;
+      }
+      if (this.esLocador() && this.usuariosService.existeOrdenParaDni(v.dni, v.nroOrden)) {
+        this.alerta.set({
+          titulo: 'Orden ya registrada',
+          mensaje: 'El Nro. de Orden (O.S.) debe ser diferente al que ya fue registrado para este usuario.',
         });
         return;
       }
@@ -1044,6 +1346,9 @@ export class UsuarioFormComponent implements OnInit {
     if (!this.validarPresupuesto(v)) return;
 
     const esAdminGeneral = v.perfil === 'Administrador General';
+    // Usuario unificado único (desambiguado con apellido materno / correlativo).
+    const userGen =
+      this.usuariosService.generarUsuarioUnico(v.nombres, v.apePat, v.apeMat, v.dni) || v.userGen;
     const datos: Omit<UsuarioSodega, 'id'> = {
       dni: v.dni,
       nombres: toTitleCase(v.nombres.trim()),
@@ -1059,7 +1364,7 @@ export class UsuarioFormComponent implements OnInit {
       edad: v.edad.replace(/ años/i, '').replace(' AÑOS', ''),
       celular: v.celular,
       unidad: v.unidad,
-      userGen: v.userGen,
+      userGen,
       correo: v.correo,
       regimen: v.regimen as UsuarioSodega['regimen'],
       estado: v.estado as UsuarioSodega['estado'],
@@ -1069,7 +1374,7 @@ export class UsuarioFormComponent implements OnInit {
       perfil: v.perfil as Perfil,
       opa: this.usuariosService.derivarOpa(v.unidad),
       fuenteFinanc: esAdminGeneral ? '' : v.fuenteFinanc,
-      categoriaPresup: esAdminGeneral ? '' : v.categoriaPresup,
+      categoriaPresup: esAdminGeneral ? '' : this.modoJefeArea() ? 'Categoría' : v.categoriaPresup,
       programaPresup: esAdminGeneral ? '' : v.programaPresup,
       unidadFuncional: esAdminGeneral ? '' : v.unidadFuncional,
       creadoPor: s.userGen,

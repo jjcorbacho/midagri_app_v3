@@ -85,7 +85,7 @@ const ESQUEMA_JEFE_AREA = esquema(
 );
 
 const ESQUEMA_ADMIN_UO = esquema(
-  'Administrador Unidad Organizacional',
+  'Administrador Unidad Ejecutora(UE)',
   [
     item(PERMISO_EVALUACION_ADMIN_DZ, 'Evaluación de administrador DZ', true),
     item(PERMISO_GESTION_USUARIOS, 'Gestión de usuarios', true),
@@ -113,11 +113,23 @@ const ESQUEMA_TECNICO = esquema(
   [item(PERMISO_VIDEO_INFORMATIVO, 'Video informativo', true)],
 );
 
+/**
+ * Esquema para perfiles personalizados (lista "Perfil Autorizado"): las mismas
+ * opciones del Administrador General pero sin ningún permiso marcado por defecto.
+ */
+export function esquemaPerfilPersonalizado(perfil: Perfil): EsquemaPermisosMenu {
+  return esquema(
+    perfil,
+    ESQUEMA_ADMIN_GENERAL.grupos[0].items.map((i) => item(i.key, i.label, false)),
+    ESQUEMA_ADMIN_GENERAL.grupos[1].items.map((i) => item(i.key, i.label, false)),
+  );
+}
+
 /** Esquemas disponibles, indexados por perfil. */
 export const ESQUEMAS_PERMISOS_MENU: Partial<Record<Perfil, EsquemaPermisosMenu>> = {
   'Administrador General': ESQUEMA_ADMIN_GENERAL,
   'Jefe de Área': ESQUEMA_JEFE_AREA,
-  'Administrador Unidad Organizacional': ESQUEMA_ADMIN_UO,
+  'Administrador Unidad Ejecutora(UE)': ESQUEMA_ADMIN_UO,
   'Administrador DZ_Cap_Asit.': ESQUEMA_ADMIN_DZ,
   'Técnico Capacitación y Asistencia Técnica': ESQUEMA_TECNICO,
 };

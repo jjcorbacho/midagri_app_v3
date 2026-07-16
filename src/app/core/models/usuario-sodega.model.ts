@@ -5,17 +5,24 @@
 import type { PermisosMenu } from './permisos-menu.model';
 
 /** Perfiles oficiales del sistema (jerarquía descendente). */
-export type Perfil =
+export type PerfilConocido =
   | 'Administrador General'
   | 'Jefe de Área'
-  | 'Administrador Unidad Organizacional'
+  | 'Administrador Unidad Ejecutora(UE)'
   | 'Administrador DZ_Cap_Asit.'
   | 'Técnico Capacitación y Asistencia Técnica';
 
-export const PERFILES: Perfil[] = [
+/**
+ * Perfil autorizado: los cinco oficiales más los perfiles personalizados
+ * creados desde Administración de Listas → "Perfil Autorizado".
+ * (`string & {}` conserva el autocompletado de los perfiles conocidos.)
+ */
+export type Perfil = PerfilConocido | (string & {});
+
+export const PERFILES: PerfilConocido[] = [
   'Administrador General',
   'Jefe de Área',
-  'Administrador Unidad Organizacional',
+  'Administrador Unidad Ejecutora(UE)',
   'Administrador DZ_Cap_Asit.',
   'Técnico Capacitación y Asistencia Técnica',
 ];
@@ -111,6 +118,19 @@ export function esUsuarioPermanente(u: Pick<UsuarioSodega, 'regimen' | 'fechaFin
   return !(u.regimen === 'Locador de Servicio (OS)' || u.regimen === 'Régimen CAS Temporal') || !u.fechaFin;
 }
 
+/**
+ * Días calendario entre dos fechas ISO (yyyy-mm-dd); null si son inválidas.
+ * Usado para validar la vigencia mínima de contratos OS / CAS Temporal.
+ */
+export function calcularDiasCalendarioEntre(fechaIni: string, fechaFin: string): number | null {
+  const inicio = fechaIni.split('-').map(Number);
+  const fin = fechaFin.split('-').map(Number);
+  if (inicio.length !== 3 || fin.length !== 3 || inicio.some(Number.isNaN) || fin.some(Number.isNaN)) return null;
+  const inicioUtc = Date.UTC(inicio[0], inicio[1] - 1, inicio[2]);
+  const finUtc = Date.UTC(fin[0], fin[1] - 1, fin[2]);
+  return Math.round((finUtc - inicioUtc) / (1000 * 60 * 60 * 24));
+}
+
 /** Días hasta la fecha fin (−1 si ya expiró; null si no aplica). */
 export function calcularDiasRestantes(fechaFin: string): number | null {
   if (!fechaFin) return null;
@@ -128,7 +148,7 @@ export function calcularDiasRestantes(fechaFin: string): number | null {
 /** Perfiles que requieren ámbito territorial asignado. */
 export function perfilRequiereAmbito(perfil: string): boolean {
   return (
-    perfil === 'Administrador Unidad Organizacional' ||
+    perfil === 'Administrador Unidad Ejecutora(UE)' ||
     perfil === 'Administrador DZ_Cap_Asit.' ||
     perfil === 'Técnico Capacitación y Asistencia Técnica'
   );
@@ -136,7 +156,7 @@ export function perfilRequiereAmbito(perfil: string): boolean {
 
 /** Admin UO asigna ámbito solo a nivel de región. */
 export function perfilSoloRegion(perfil: string): boolean {
-  return perfil === 'Administrador Unidad Organizacional';
+  return perfil === 'Administrador Unidad Ejecutora(UE)';
 }
 
 /**

@@ -411,7 +411,7 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
           <div class="flex items-center gap-2 text-xs text-muted-foreground/70 italic">
             <lucide-angular [img]="InfoIcon" class="size-4" />
             {{ isAdmin()
-              ? 'Los cambios se guardan como catálogo y se reflejan en la vista del Administrador de Unidad Organizacional.'
+              ? 'Los cambios se guardan como catálogo y se reflejan en la vista del Administrador Unidad Ejecutora(UE).'
               : 'Marca como visibles los campos que deben aparecer en los formularios de los técnicos.' }}
           </div>
           <div class="flex gap-3">

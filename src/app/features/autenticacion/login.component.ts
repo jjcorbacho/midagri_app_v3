@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { LucideAngularModule, User, Lock, ShieldCheck, CircleCheck, CircleX, Info, TriangleAlert, UserCog } from 'lucide-angular';
+import { LucideAngularModule, User, Lock, ShieldCheck, CircleCheck, CircleX, Info, TriangleAlert, UserCog, KeyRound, Send, X } from 'lucide-angular';
 import { AuthService } from '../../core/services/auth.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
+import { ListasAdminService } from '../../core/services/listas-admin.service';
 import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodega.model';
 
 /**
@@ -97,7 +98,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
                   placeholder="••••••••"
                 />
               </div>
-              <a href="#" (click)="$event.preventDefault()" class="text-[11px] text-brand mt-1 inline-block hover:underline">¿Olvidaste tu clave?</a>
+              <a href="#" (click)="$event.preventDefault(); abrirRecuperarClave()" class="text-[11px] text-brand mt-1 inline-block hover:underline">Recuperar Contraseña</a>
             </div>
           </div>
 
@@ -166,7 +167,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
                   (change)="perfilSeleccionado.set($any($event.target).value)"
                   class="w-full ring-1 ring-border p-3 rounded-xl text-xs outline-none focus:ring-2 focus:ring-ring bg-card font-semibold transition-[box-shadow] duration-150"
                 >
-                  @for (p of perfiles; track p) {
+                  @for (p of perfiles(); track p) {
                     <option [value]="p">{{ p }}</option>
                   }
                 </select>
@@ -187,12 +188,72 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
         </div>
       </div>
     }
+
+    <!-- Modal Recuperar Contraseña -->
+    @if (recuperarOpen()) {
+      <div class="fixed inset-0 z-[96] flex items-center justify-center p-4 bg-foreground/70 backdrop-blur-sm animate-overlay-in">
+        <div class="bg-card rounded-2xl shadow-lg ring-1 ring-border w-[460px] max-w-full text-foreground overflow-hidden animate-modal-in">
+          <div class="px-6 py-4 bg-primary text-primary-foreground flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="size-10 rounded-xl bg-white/15 flex items-center justify-center">
+                <lucide-angular [img]="KeyRoundIcon" class="size-5" />
+              </div>
+              <div>
+                <h3 class="text-base font-bold">Recuperar Contraseña</h3>
+                <p class="text-[10px] opacity-80 font-semibold mt-0.5">Sistema SODEGA</p>
+              </div>
+            </div>
+            <button (click)="recuperarOpen.set(false)" class="size-8 rounded-lg bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center" title="Cerrar" aria-label="Cerrar">
+              <lucide-angular [img]="XIcon" class="size-4" />
+            </button>
+          </div>
+          <div class="p-6 space-y-4">
+            @if (recuperarEnviado()) {
+              <div class="rounded-md bg-success-soft ring-1 ring-success/30 px-3 py-2 text-xs text-success flex items-center gap-2">
+                <lucide-angular [img]="CircleCheckIcon" class="size-4 shrink-0" />
+                La nueva clave fue enviada al correo electrónico registrado.
+              </div>
+              <div class="flex justify-end">
+                <button (click)="recuperarOpen.set(false)" class="btn-primary px-6">Aceptar</button>
+              </div>
+            } @else {
+              <p class="text-xs text-muted-foreground leading-relaxed">
+                Por favor, ingrese el correo electrónico que tiene registrado en el sistema, la nueva clave se enviará a este correo.
+              </p>
+              <div>
+                <label class="block text-[11px] font-medium text-muted-foreground mb-1">
+                  Correo electrónico <span class="text-destructive">*</span>
+                </label>
+                <input
+                  type="email"
+                  [value]="recuperarCorreo()"
+                  (input)="recuperarCorreo.set($any($event.target).value); recuperarError.set('')"
+                  (keyup.enter)="enviarNuevaClave()"
+                  placeholder="correo@midagri.gob.pe"
+                  class="w-full bg-card ring-1 ring-border rounded-lg px-3 py-2.5 text-sm placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-ring outline-none transition-[box-shadow] duration-150"
+                />
+                @if (recuperarError()) {
+                  <p class="text-[11px] text-destructive font-semibold mt-1.5">{{ recuperarError() }}</p>
+                }
+              </div>
+              <div class="flex justify-end gap-2 pt-2 border-t border-border">
+                <button (click)="recuperarOpen.set(false)" class="btn-secondary">Cancelar</button>
+                <button (click)="enviarNuevaClave()" class="btn-primary px-5">
+                  <lucide-angular [img]="SendIcon" class="size-3.5" /> Enviar nueva clave
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
   `,
 })
 export class LoginComponent {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly usuariosService = inject(UsuariosService);
+  private readonly listasAdmin = inject(ListasAdminService);
   private readonly router = inject(Router);
 
   readonly UserIcon = User;
@@ -200,10 +261,20 @@ export class LoginComponent {
   readonly ShieldCheckIcon = ShieldCheck;
   readonly TriangleAlertIcon = TriangleAlert;
   readonly UserCogIcon = UserCog;
+  readonly KeyRoundIcon = KeyRound;
+  readonly SendIcon = Send;
+  readonly XIcon = X;
+  readonly CircleCheckIcon = CircleCheck;
 
-  readonly perfiles = PERFILES;
+  /** Perfiles oficiales + personalizados de la lista "Perfil Autorizado". */
+  readonly perfiles = computed(() => this.listasAdmin.perfilesAutorizados(PERFILES));
 
   readonly error = signal('');
+  /* Modal Recuperar Contraseña */
+  readonly recuperarOpen = signal(false);
+  readonly recuperarCorreo = signal('');
+  readonly recuperarError = signal('');
+  readonly recuperarEnviado = signal(false);
   readonly modalOpen = signal(false);
   readonly modo = signal<'seleccion-perfil' | 'seleccion-opa'>('seleccion-opa');
   readonly registros = signal<UsuarioSodega[]>([]);
@@ -293,14 +364,22 @@ export class LoginComponent {
       const perfil = this.perfilSeleccionado();
       const base =
         this.registros().find((r) => r.perfil === perfil) ??
+        // Perfil personalizado: hereda el registro habilitado de un usuario de ese perfil
+        this.usuariosService.usuarios().find((u) => u.estado === 'HABILITADO' && u.perfil === perfil) ??
         this.registros()[0] ??
         this.usuariosService.findByUserGen('ccandelaria')[0];
       if (!base) {
         this.error.set('Error de consistencia de privilegios al procesar su solicitud.');
         return;
       }
-      // Admin General master: la unidad institucional por defecto (igual que el prototipo)
-      this.auth.confirmarIngreso(base, perfil, 'Programa de Desarrollo Productivo Agrario Rural');
+      // Admin General master: conserva sus privilegios de autenticación
+      // aunque opere la sesión con otro perfil (perfilAutenticado).
+      this.auth.confirmarIngreso(
+        base,
+        perfil,
+        'Programa de Desarrollo Productivo Agrario Rural',
+        'Administrador General',
+      );
     } else {
       const registro = this.registros().find((r) => r.unidad === this.opaSeleccionada());
       if (!registro) {
@@ -311,5 +390,32 @@ export class LoginComponent {
     }
     this.modalOpen.set(false);
     this.router.navigate(['/dashboard']);
+  }
+
+  /* ===== Recuperar Contraseña (POST /auth/recuperar-clave simulado) ===== */
+
+  abrirRecuperarClave(): void {
+    this.recuperarCorreo.set('');
+    this.recuperarError.set('');
+    this.recuperarEnviado.set(false);
+    this.recuperarOpen.set(true);
+  }
+
+  enviarNuevaClave(): void {
+    const correo = this.recuperarCorreo().trim().toLowerCase();
+    const formatoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
+    if (!correo || !formatoValido) {
+      this.recuperarError.set('Ingrese un correo electrónico válido.');
+      return;
+    }
+    const existe = this.usuariosService
+      .usuarios()
+      .some((u) => (u.correo || '').trim().toLowerCase() === correo);
+    if (!existe) {
+      this.recuperarError.set('El correo ingresado no se encuentra registrado en el sistema.');
+      return;
+    }
+    // TODO(backend): POST /auth/recuperar-clave { correo }
+    this.recuperarEnviado.set(true);
   }
 }

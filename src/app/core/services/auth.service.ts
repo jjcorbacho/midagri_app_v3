@@ -9,7 +9,10 @@ const SESSION_KEY = 'sodega.session';
 export interface SodegaSession {
   userGen: string;
   nombreCompleto: string;
+  /** Perfil con el que se opera la sesión (el Admin General puede elegir otro al ingresar). */
   perfil: Perfil;
+  /** Perfil real autenticado (conserva los privilegios del Admin General master). */
+  perfilAutenticado: Perfil;
   unidad: string;
   opa: string;
 }
@@ -42,11 +45,14 @@ export class AuthService {
   readonly sessionReady = this._sessionReady.asReadonly();
 
   readonly perfil = computed<Perfil | null>(() => this._session()?.perfil ?? null);
+  readonly perfilAutenticado = computed<Perfil | null>(() => this._session()?.perfilAutenticado ?? null);
+  /** ¿La cuenta autenticada es el Admin General master (aunque opere con otro perfil)? */
+  readonly esAdminGeneralAutenticado = computed(() => this.perfilAutenticado() === 'Administrador General');
 
   /* Helpers por perfil (matriz SODEGA) */
   readonly isAdministrador = computed(() => this.perfil() === 'Administrador General');
   readonly isJefeArea = computed(() => this.perfil() === 'Jefe de Área');
-  readonly isAdminUE = computed(() => this.perfil() === 'Administrador Unidad Organizacional');
+  readonly isAdminUE = computed(() => this.perfil() === 'Administrador Unidad Ejecutora(UE)');
   readonly isAdminDZ = computed(() => this.perfil() === 'Administrador DZ_Cap_Asit.');
   readonly isTecnico1 = computed(() => this.perfil() === 'Técnico Capacitación y Asistencia Técnica');
   readonly isReadOnly = computed(() => this.isAdminDZ() || this.isAdminUE());
@@ -72,7 +78,16 @@ export class AuthService {
   private restoreSession(): void {
     try {
       const raw = sessionStorage.getItem(SESSION_KEY);
-      if (raw) this._session.set(JSON.parse(raw) as SodegaSession);
+      if (raw) {
+        const session = JSON.parse(raw) as SodegaSession;
+        // Migración: el perfil "Administrador Unidad Organizacional" pasó a
+        // llamarse "Administrador Unidad Ejecutora(UE)" (SODEGA v3.1.2).
+        if ((session.perfil as string) === 'Administrador Unidad Organizacional') {
+          session.perfil = 'Administrador Unidad Ejecutora(UE)';
+        }
+        if (!session.perfilAutenticado) session.perfilAutenticado = session.perfil;
+        this._session.set(session);
+      }
     } catch (e) {
       console.error('[SODEGA] No se pudo restaurar la sesión.', e);
     } finally {
@@ -113,11 +128,12 @@ export class AuthService {
   }
 
   /** Confirma el ingreso con el perfil/unidad elegidos y persiste la sesión. */
-  confirmarIngreso(registro: UsuarioSodega, perfil?: Perfil, unidad?: string): void {
+  confirmarIngreso(registro: UsuarioSodega, perfil?: Perfil, unidad?: string, perfilAutenticado?: Perfil): void {
     const session: SodegaSession = {
       userGen: registro.userGen,
       nombreCompleto: `${registro.nombres} ${registro.apePat} ${registro.apeMat}`,
       perfil: perfil ?? registro.perfil,
+      perfilAutenticado: perfilAutenticado ?? perfil ?? registro.perfil,
       unidad: unidad ?? registro.unidad ?? 'Sede Central',
       opa: registro.opa,
     };
