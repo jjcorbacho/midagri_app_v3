@@ -39,6 +39,8 @@ import {
   UNIDADES_RESPONSABLES,
 } from '../../core/constants/sodega.const';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
+import { AutocompleteComponent } from '../../shared/components/autocomplete/autocomplete.component';
+import { normalizarBusqueda } from '../../shared/utils/texto.util';
 
 type ModoForm = 'nuevo' | 'editar' | 'presupuesto';
 
@@ -60,7 +62,7 @@ const INP_NORMAL = INPUT_BASE;
 @Component({
   selector: 'app-usuario-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, LucideAngularModule, ModalComponent, PermisosMenuFormComponent],
+  imports: [ReactiveFormsModule, LucideAngularModule, ModalComponent, PermisosMenuFormComponent, AutocompleteComponent],
   template: `
     <section class="p-6 lg:p-8 max-w-[1200px] mx-auto space-y-5 animate-page-in">
       <h1 class="text-h1 text-foreground">{{ titulo() }}</h1>
@@ -317,11 +319,11 @@ const INP_NORMAL = INPUT_BASE;
               </div>
             }
 
-            <!-- Perfil autorizado + Ámbito asignado -->
-            <div class="grid grid-cols-12 gap-6 items-start border-t border-border pt-5">
-              <div class="col-span-5 space-y-1">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Perfil autorizado <span class="text-destructive">*</span></label>
-                <select formControlName="perfil" (change)="onPerfilChange()" [class]="inpMandatory">
+            <!-- Perfil autorizado + Ámbito asignado (apilado a ancho completo) -->
+            <div class="space-y-4 border-t border-border pt-5">
+              <div class="space-y-1">
+                <label for="perfil-autorizado" class="block text-[11px] font-medium text-muted-foreground mb-1">Perfil autorizado <span class="text-destructive">*</span></label>
+                <select id="perfil-autorizado" formControlName="perfil" (change)="onPerfilChange()" [class]="inpMandatory">
                   <option value="">--Seleccione--</option>
                   @for (p of perfilesRegistrables(); track p) {
                     <option [value]="p">{{ p }}</option>
@@ -330,102 +332,117 @@ const INP_NORMAL = INPUT_BASE;
               </div>
 
               @if (mostrarAmbito()) {
-                <div class="col-span-7 space-y-4">
-                  <div class="grid grid-cols-3 gap-3">
-                    <div>
-                      <label class="block text-[11px] font-medium text-muted-foreground mb-1">Región</label>
-                      <select
+                <div class="space-y-4">
+                  <!-- Fila territorial: Región | Provincia | Distrito | Agregar (apila en móvil) -->
+                  <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+                    <div class="md:col-span-3">
+                      <app-autocomplete
+                        label="Región"
+                        placeholder="Escriba para buscar una región..."
+                        ariaLabel="Buscar región"
+                        [options]="regiones"
                         [value]="ambitoRegion()"
-                        (change)="ambitoRegion.set($any($event.target).value); ambitoProvincia.set(''); ambitoDistrito.set(''); limpiarDistritosSeleccionados()"
-                        class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none transition-colors"
-                      >
-                        <option value="">Seleccione</option>
-                        @for (r of regiones; track r) {
-                          <option [value]="r">{{ r }}</option>
-                        }
-                      </select>
+                        (valueChange)="onRegionSeleccionada($event)"
+                      />
                     </div>
-                    <div>
-                      <label class="block text-[11px] font-medium text-muted-foreground mb-1">Provincia</label>
-                      <select
+
+                    <div class="md:col-span-3">
+                      <app-autocomplete
+                        label="Provincia"
+                        placeholder="Escriba para buscar una provincia..."
+                        ariaLabel="Buscar provincia"
+                        [options]="provinciasDisponibles()"
                         [value]="ambitoProvincia()"
-                        (change)="ambitoProvincia.set($any($event.target).value); ambitoDistrito.set(''); limpiarDistritosSeleccionados()"
-                        [disabled]="soloRegion() || !ambitoRegion()"
-                        class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none transition-colors disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
-                      >
-                        <option value="">Seleccione</option>
-                        @for (p of provinciasDisponibles(); track p) {
-                          <option [value]="p">{{ p }}</option>
-                        }
-                      </select>
+                        [deshabilitado]="soloRegion() || !ambitoRegion()"
+                        (valueChange)="onProvinciaSeleccionada($event)"
+                      />
                     </div>
-                    <div class="relative">
-                      <label class="block text-[11px] font-medium text-muted-foreground mb-1">Distrito</label>
-                      @if (esTecnicoSeleccionado()) {
-                        <!-- Multi-selección de distritos (solo Técnicos) -->
-                        <button
-                          type="button"
-                          (click)="distritosPanelAbierto.set(!distritosPanelAbierto())"
-                          [disabled]="!ambitoProvincia() || distritosDisponibles().length === 0"
-                          class="w-full min-h-[38px] bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none transition-colors flex items-center justify-between gap-2 disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
-                        >
-                          <span class="truncate text-left">{{ textoDistritosSeleccionados() }}</span>
-                          <span class="shrink-0 rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-bold text-brand tabular-nums">
+
+                  @if (esTecnicoSeleccionado()) {
+                    <!-- Buscador + multi-selección de distritos (solo Técnicos) -->
+                    <div class="md:col-span-4">
+                      <label for="buscador-distrito" class="block text-[11px] font-medium text-muted-foreground mb-1">Distrito</label>
+                      <div class="relative">
+                        <input
+                          id="buscador-distrito"
+                          type="text"
+                          autocomplete="off"
+                          aria-label="Buscar distrito"
+                          placeholder="Escriba para filtrar distritos..."
+                          [value]="distritoFiltro()"
+                          (input)="distritoFiltro.set($any($event.target).value)"
+                          [disabled]="!ambitoProvincia()"
+                          [class]="(!ambitoProvincia() ? inpDisabled : inpNormal) + ' pr-9'"
+                        />
+                        <lucide-angular [img]="SearchIcon" class="size-4 text-muted-foreground/60 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+
+                      <div class="mt-2 rounded-xl ring-1 ring-border bg-card overflow-hidden">
+                        <div class="flex items-center justify-between gap-2 px-3 py-2 bg-brand-soft border-b border-brand/10">
+                          <label class="flex items-center gap-2 text-xs font-bold text-brand cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              class="accent-brand size-4"
+                              [checked]="todosDistritosSeleccionados()"
+                              [disabled]="!ambitoProvincia() || distritosFiltrados().length === 0"
+                              (change)="toggleTodosDistritos($any($event.target).checked)"
+                            />
+                            <span>Seleccionar todos</span>
+                          </label>
+                          <span class="shrink-0 rounded-full bg-card px-2 py-0.5 text-[10px] font-bold text-brand tabular-nums ring-1 ring-brand/20">
                             {{ distritosSeleccionados().length }} seleccionados
                           </span>
-                        </button>
-                        @if (distritosPanelAbierto()) {
-                          <div class="fixed inset-0 z-40" (click)="distritosPanelAbierto.set(false)"></div>
-                          <div class="absolute z-50 mt-1 w-full rounded-xl bg-popover ring-1 ring-border shadow-lg overflow-hidden animate-modal-in">
-                            <label class="flex items-center gap-2 px-3 py-2 text-xs font-bold text-brand bg-brand-soft border-b border-brand/10 cursor-pointer select-none">
+                        </div>
+                        <div class="max-h-52 overflow-y-auto p-2 space-y-0.5 thin-scroll" role="group" aria-label="Distritos disponibles">
+                          @if (!ambitoProvincia()) {
+                            <p class="px-2 py-2 text-sm text-muted-foreground italic">Seleccione una Región y una Provincia para listar los distritos.</p>
+                          } @else if (distritosFiltrados().length === 0) {
+                            <p class="px-2 py-2 text-sm text-muted-foreground italic">Sin coincidencias para "{{ distritoFiltro() }}".</p>
+                          }
+                          @for (d of distritosFiltrados(); track d) {
+                            <label class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-foreground/90 hover:bg-secondary/60 cursor-pointer select-none">
                               <input
                                 type="checkbox"
                                 class="accent-brand size-4"
-                                [checked]="todosDistritosSeleccionados()"
-                                (change)="toggleTodosDistritos($any($event.target).checked)"
+                                [checked]="distritosSeleccionados().includes(d)"
+                                (change)="toggleDistrito(d, $any($event.target).checked)"
                               />
-                              <span>Seleccionar todos</span>
+                              <span>{{ d }}</span>
                             </label>
-                            <div class="max-h-52 overflow-y-auto p-2 space-y-0.5 thin-scroll">
-                              @for (d of distritosDisponibles(); track d) {
-                                <label class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-foreground/90 hover:bg-secondary/60 cursor-pointer select-none">
-                                  <input
-                                    type="checkbox"
-                                    class="accent-brand size-4"
-                                    [checked]="distritosSeleccionados().includes(d)"
-                                    (change)="toggleDistrito(d, $any($event.target).checked)"
-                                  />
-                                  <span>{{ d }}</span>
-                                </label>
-                              }
-                            </div>
-                          </div>
-                        }
-                      } @else {
-                        <select
-                          [value]="ambitoDistrito()"
-                          (change)="ambitoDistrito.set($any($event.target).value)"
-                          [disabled]="soloRegion() || !ambitoProvincia()"
-                          class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none transition-colors disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
-                        >
-                          <option value="">Seleccione</option>
-                          @for (d of distritosDisponibles(); track d) {
-                            <option [value]="d">{{ d }}</option>
                           }
-                        </select>
-                      }
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  } @else {
+                    <div class="md:col-span-4">
+                      <label for="ambito-distrito" class="block text-[11px] font-medium text-muted-foreground mb-1">Distrito</label>
+                      <select
+                        id="ambito-distrito"
+                        [value]="ambitoDistrito()"
+                        (change)="ambitoDistrito.set($any($event.target).value)"
+                        [disabled]="soloRegion() || !ambitoProvincia()"
+                        class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none transition-colors disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
+                      >
+                        <option value="">Seleccione</option>
+                        @for (d of distritosDisponibles(); track d) {
+                          <option [value]="d">{{ d }}</option>
+                        }
+                      </select>
+                    </div>
+                  }
 
-                  <div class="flex justify-end">
-                    <button
-                      type="button"
-                      (click)="agregarAmbito()"
-                      class="btn-secondary"
-                    >
-                      <span>Agregar</span>
-                      <lucide-angular [img]="SquarePlusIcon" class="size-4 text-muted-foreground" />
-                    </button>
+                    <div class="md:col-span-2">
+                      <!-- Espaciador con la altura del label para alinear el botón con los campos. -->
+                      <span class="hidden md:block text-[11px] font-medium mb-1" aria-hidden="true">&nbsp;</span>
+                      <button
+                        type="button"
+                        (click)="agregarAmbito()"
+                        class="btn-secondary w-full"
+                      >
+                        <span>Agregar</span>
+                        <lucide-angular [img]="SquarePlusIcon" class="size-4 text-muted-foreground" />
+                      </button>
+                    </div>
                   </div>
 
                   <div class="mt-2 bg-card rounded-xl ring-1 ring-border shadow-sm overflow-hidden">
@@ -609,7 +626,8 @@ export class UsuarioFormComponent implements OnInit {
   readonly ambitoDistrito = signal('');
   /** Multi-selección de distritos (solo perfil objetivo Técnico). */
   readonly distritosSeleccionados = signal<string[]>([]);
-  readonly distritosPanelAbierto = signal(false);
+  /** Filtro en vivo del buscador de distritos (sobre el selector múltiple). */
+  readonly distritoFiltro = signal('');
   readonly alerta = signal<{ titulo: string; mensaje: string; cerrarYSalir?: boolean } | null>(null);
   readonly formTick = signal(0);
   /** Permisos de menú en edición (esquema del perfil seleccionado). */
@@ -902,16 +920,10 @@ export class UsuarioFormComponent implements OnInit {
     );
   });
 
-  readonly textoDistritosSeleccionados = computed(() => {
-    const sel = this.distritosSeleccionados();
-    if (sel.length === 0) return 'Seleccione distritos';
-    if (sel.length === 1) return sel[0];
-    return `${sel.length} distritos seleccionados`;
-  });
-
+  /** "Seleccionar todos" opera sobre los distritos visibles (filtrados). */
   readonly todosDistritosSeleccionados = computed(() => {
-    const disponibles = this.distritosDisponibles();
-    return disponibles.length > 0 && disponibles.every((d) => this.distritosSeleccionados().includes(d));
+    const visibles = this.distritosFiltrados();
+    return visibles.length > 0 && visibles.every((d) => this.distritosSeleccionados().includes(d));
   });
 
   /* ===== Presupuesto obligatorio para el Admin General (nuevo registro) ===== */
@@ -957,6 +969,13 @@ export class UsuarioFormComponent implements OnInit {
     const r = this.ambitoRegion();
     const p = this.ambitoProvincia();
     return r && p ? UBIGEO_SODEGA[r]?.[p] ?? [] : [];
+  });
+
+  /** Distritos visibles en el selector múltiple según el buscador en vivo. */
+  readonly distritosFiltrados = computed(() => {
+    const filtro = normalizarBusqueda(this.distritoFiltro());
+    const disponibles = this.distritosDisponibles();
+    return filtro ? disponibles.filter((d) => normalizarBusqueda(d).includes(filtro)) : disponibles;
   });
 
   /* ===== Acciones ===== */
@@ -1032,13 +1051,32 @@ export class UsuarioFormComponent implements OnInit {
     );
   }
 
+  /** Marca/desmarca los distritos visibles sin perder selecciones ocultas por el filtro. */
   toggleTodosDistritos(seleccionar: boolean): void {
-    this.distritosSeleccionados.set(seleccionar ? [...this.distritosDisponibles()] : []);
+    const visibles = this.distritosFiltrados();
+    this.distritosSeleccionados.update((prev) =>
+      seleccionar ? [...new Set([...prev, ...visibles])] : prev.filter((d) => !visibles.includes(d)),
+    );
   }
 
   limpiarDistritosSeleccionados(): void {
     this.distritosSeleccionados.set([]);
-    this.distritosPanelAbierto.set(false);
+    this.distritoFiltro.set('');
+  }
+
+  /* ===== Buscadores de ámbito territorial (Región / Provincia) ===== */
+
+  onRegionSeleccionada(region: string): void {
+    this.ambitoRegion.set(region);
+    this.ambitoProvincia.set('');
+    this.ambitoDistrito.set('');
+    this.limpiarDistritosSeleccionados();
+  }
+
+  onProvinciaSeleccionada(provincia: string): void {
+    this.ambitoProvincia.set(provincia);
+    this.ambitoDistrito.set('');
+    this.limpiarDistritosSeleccionados();
   }
 
   agregarAmbito(): void {
