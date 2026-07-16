@@ -12,6 +12,7 @@ import {
 import { permisosCompletos } from '../models/permisos-menu.model';
 import { ESQUEMAS_PERMISOS_MENU } from '../constants/permisos-menu.const';
 import { obtenerUbigeoTextoSimulado } from '../constants/sodega.const';
+import { TECNICOS_DEMO_REASIGNACION } from '../constants/mock-data.const';
 
 /** Cuenta master: ingresa con todos los permisos de menú activos. */
 const PERMISOS_MASTER = permisosCompletos(ESQUEMAS_PERMISOS_MENU['Administrador General']!);
@@ -64,6 +65,9 @@ export class UsuariosService {
       ambitos: [],
       permisosMenu: PERMISOS_MASTER,
     },
+    // Datos de prueba (solo desarrollo): técnicos con registros para el
+    // modal "Reasignar registros" — ver core/constants/mock-data.const.ts.
+    ...TECNICOS_DEMO_REASIGNACION,
   ]);
 
   readonly usuarios = this._usuarios.asReadonly();

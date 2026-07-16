@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { LucideAngularModule, Search, TriangleAlert, UserCheck } from 'lucide-angular';
 import { AuthService } from '../../core/services/auth.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { CursosService } from '../../core/services/cursos.service';
 import { UsuarioSodega, toTitleCase } from '../../core/models/usuario-sodega.model';
+import { Curso } from '../../core/models/curso.model';
 import { normalizarNombreCatalogo } from '../../shared/utils/texto.util';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
+import { EstadoBadgeComponent } from '../../shared/components/estado-badge/estado-badge.component';
 
 /** Resultado emitido al completar la transferencia de registros. */
 export interface ResultadoReasignacion {
@@ -24,102 +24,172 @@ export interface ResultadoReasignacion {
 @Component({
   selector: 'app-reasignar-registro-modal',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, LucideAngularModule, ModalComponent],
+  imports: [LucideAngularModule, ModalComponent, EstadoBadgeComponent],
   template: `
-    <app-modal title="Reasignar Registro" maxWidth="max-w-3xl" (closed)="closed.emit()">
+    <app-modal title="Reasignar registros" maxWidth="max-w-5xl" (closed)="closed.emit()">
       @if (paso() === 'seleccion') {
-        <div class="space-y-5">
-          <!-- Registro de origen (solo lectura) -->
-          <div class="bg-secondary/60 rounded-xl ring-1 ring-border p-4">
-            <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Registro de origen</p>
-            <p class="text-sm font-semibold text-foreground">{{ etiquetaOrigen() }}</p>
-          </div>
-
-          <!-- Personal asignado -->
-          <div class="flex items-center gap-2 border-b border-border pb-2 text-brand">
-            <lucide-angular [img]="UserCheckIcon" class="size-4" />
-            <div>
-              <h3 class="text-[11px] font-semibold uppercase tracking-wider">Personal asignado</h3>
-              <p class="text-xs text-muted-foreground normal-case tracking-normal font-normal">
-                Persona que asumirá todos los registros del técnico seleccionado.
-              </p>
+        <div class="space-y-4">
+          <!-- Encabezado: registro de origen (solo lectura) + botón que carga sus registros -->
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 md:items-center">
+            <p class="md:col-span-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Registro de origen
+            </p>
+            <div class="md:col-span-6">
+              <input
+                type="text"
+                readonly
+                tabindex="-1"
+                [value]="etiquetaOrigen()"
+                aria-label="Registro de origen (solo lectura)"
+                class="w-full px-4 py-2 bg-secondary/60 ring-1 ring-border rounded-lg text-sm font-semibold text-foreground cursor-default focus:outline-none"
+              />
+            </div>
+            <div class="md:col-span-3">
+              <button
+                type="button"
+                (click)="buscarRegistrosOrigen()"
+                [disabled]="!origen()"
+                aria-label="Buscar registros del personal de origen"
+                class="btn-primary w-full"
+              >
+                <span>Buscar Registros</span>
+                <lucide-angular [img]="SearchIcon" class="size-4" />
+              </button>
             </div>
           </div>
 
-          <!-- Buscador de trabajadores (mismo patrón de la grilla de usuarios) -->
-          <div class="relative">
-            <lucide-angular [img]="SearchIcon" class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <input
-              type="text"
-              [formControl]="busqueda"
-              placeholder="Buscar por DNI, Apellidos, Nombres o Profesión..."
-              class="w-full pl-10 pr-4 py-2 bg-card ring-1 ring-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring"
-            />
-          </div>
-
-          <!-- Resultados: solo técnicos activos (fila seleccionable) -->
+          <!-- Sección 1: grilla de registros del personal de origen -->
           <div class="rounded-xl ring-1 ring-border overflow-hidden">
-            <div class="overflow-auto max-h-[38vh]">
-              <table class="w-full text-left min-w-[680px]">
+            <div class="overflow-auto max-h-[23vh] thin-scroll">
+              <table class="w-full text-left min-w-[760px]" aria-label="Registros del personal de origen">
                 <thead class="bg-secondary sticky top-0 z-10">
                   <tr class="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
                     <th class="px-4 py-3 w-24">DNI</th>
                     <th class="px-4 py-3">Apellidos y Nombres</th>
-                    <th class="px-4 py-3">Profesión</th>
-                    <th class="px-4 py-3">Especialidad</th>
-                    <th class="px-4 py-3 w-28">Celular</th>
-                    <th class="px-4 py-3 w-28 text-center">Estado</th>
+                    <th class="px-4 py-3">Profesión - Especialidad</th>
+                    <th class="px-4 py-3">Temática</th>
+                    <th class="px-4 py-3 w-36">Tipo</th>
+                    <th class="px-4 py-3 w-32 text-center">Estado</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-border">
-                  @if (resultados().length === 0) {
+                  @if (!busquedaOrigenEjecutada()) {
                     <tr>
                       <td colspan="6" class="px-4 py-6 text-center text-sm text-muted-foreground italic">
-                        No se encontraron técnicos activos disponibles para la reasignación.
+                        Pulse "Buscar Registros" para cargar las Capacitaciones y Asistencias Técnicas del personal de origen.
+                      </td>
+                    </tr>
+                  } @else if (registrosOrigen().length === 0) {
+                    <tr>
+                      <td colspan="6" class="px-4 py-6 text-center text-sm text-muted-foreground italic">
+                        El trabajador de origen no tiene Capacitaciones ni Asistencias Técnicas registradas.
                       </td>
                     </tr>
                   }
-                  @for (c of resultados(); track c.id) {
-                    <tr
-                      (click)="seleccionar(c)"
-                      class="cursor-pointer transition-colors"
-                      [class]="seleccionadoDni() === c.dni ? 'bg-brand-soft ring-1 ring-inset ring-brand/30' : 'hover:bg-secondary/40'"
-                      [attr.aria-selected]="seleccionadoDni() === c.dni"
-                    >
-                      <td class="px-4 py-3 text-sm font-mono tabular-nums text-foreground/80">
-                        <span class="inline-flex items-center gap-2">
-                          <span
-                            class="size-3.5 rounded-full ring-2 shrink-0 transition-colors"
-                            [class]="seleccionadoDni() === c.dni ? 'bg-brand ring-brand' : 'bg-card ring-border'"
-                          ></span>
-                          {{ c.dni }}
-                        </span>
-                      </td>
-                      <td class="px-4 py-3 text-sm font-semibold text-foreground">{{ nombreDe(c) }}</td>
-                      <td class="px-4 py-3 text-sm text-muted-foreground">{{ profesionDe(c) }}</td>
-                      <td class="px-4 py-3 text-sm text-muted-foreground">{{ especialidadDe(c) }}</td>
-                      <td class="px-4 py-3 text-sm font-mono tabular-nums text-foreground/80">{{ c.celular || '-' }}</td>
-                      <td class="px-4 py-3 text-center">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 whitespace-nowrap tracking-wide bg-state-aprobado-soft text-state-aprobado-foreground ring-state-aprobado/30">
-                          {{ c.estado }}
-                        </span>
-                      </td>
+                  @for (r of registrosOrigenVisibles(); track r.id) {
+                    <tr class="hover:bg-secondary/40 transition-colors">
+                      <td class="px-4 py-3 text-sm font-mono tabular-nums text-foreground/80">{{ origen().dni }}</td>
+                      <td class="px-4 py-3 text-sm font-semibold text-foreground">{{ nombreDe(origen()) }}</td>
+                      <td class="px-4 py-3 text-sm text-muted-foreground">{{ origen().profesion }}</td>
+                      <td class="px-4 py-3 text-sm text-foreground/80">{{ tematicaDe(r) }}</td>
+                      <td class="px-4 py-3 text-sm text-muted-foreground">{{ tipoDe(r) }}</td>
+                      <td class="px-4 py-3 text-center"><app-estado-badge [estado]="r.estado" /></td>
                     </tr>
                   }
                 </tbody>
               </table>
             </div>
           </div>
+          <p class="text-xs text-muted-foreground">
+            Registros encontrados del personal de origen:
+            <span class="font-bold text-foreground tabular-nums">{{ registrosOrigenVisibles().length }}</span>
+          </p>
+
+          <!-- Sección 2: trabajador asignado (autocomplete sobre los candidatos habilitados) -->
+          <div class="flex items-center gap-2 border-b border-border pb-2 text-brand">
+            <lucide-angular [img]="UserCheckIcon" class="size-4" />
+            <div>
+              <h3 class="text-[11px] font-semibold uppercase tracking-wider">Trabajador asignado (Personal que tomará el cargo)</h3>
+              <p class="text-xs text-muted-foreground normal-case tracking-normal font-normal">
+                Persona que asumirá todos los registros del técnico seleccionado.
+              </p>
+            </div>
+          </div>
+
+          <!-- Selector directo de candidatos habilitados (sin buscador manual) -->
+          <select
+            aria-label="Seleccionar trabajador asignado"
+            [value]="seleccionadoDni() ?? ''"
+            [disabled]="candidatos().length === 0"
+            (change)="onDestinoChange($any($event.target).value)"
+            class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none transition-colors disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
+          >
+            @if (candidatos().length === 0) {
+              <option value="">No existen técnicos habilitados para recibir registros en esta Unidad.</option>
+            } @else {
+              <option value="">-- Seleccionar usuario --</option>
+              @for (c of candidatos(); track c.dni) {
+                <option [value]="c.dni">{{ nombreDe(c) }} — DNI {{ c.dni }}</option>
+              }
+            }
+          </select>
+
+          <!-- Sección 3: grilla de registros del personal asignado -->
+          <div class="rounded-xl ring-1 ring-border overflow-hidden">
+            <div class="overflow-auto max-h-[23vh] thin-scroll">
+              <table class="w-full text-left min-w-[760px]" aria-label="Registros del personal asignado">
+                <thead class="bg-secondary sticky top-0 z-10">
+                  <tr class="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+                    <th class="px-4 py-3 w-24">DNI</th>
+                    <th class="px-4 py-3">Apellidos y Nombres</th>
+                    <th class="px-4 py-3">Profesión - Especialidad</th>
+                    <th class="px-4 py-3">Temática</th>
+                    <th class="px-4 py-3 w-36">Tipo</th>
+                    <th class="px-4 py-3 w-32 text-center">Estado</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-border">
+                  @if (!seleccionado()) {
+                    <tr>
+                      <td colspan="6" class="px-4 py-6 text-center text-sm text-muted-foreground italic">
+                        Busque y seleccione al trabajador asignado para visualizar sus registros.
+                      </td>
+                    </tr>
+                  } @else if (registrosDestino().length === 0) {
+                    <tr>
+                      <td colspan="6" class="px-4 py-6 text-center text-sm text-muted-foreground italic">
+                        El trabajador asignado aún no tiene Capacitaciones ni Asistencias Técnicas registradas.
+                      </td>
+                    </tr>
+                  }
+                  @for (r of registrosDestino(); track r.id) {
+                    <tr class="hover:bg-secondary/40 transition-colors">
+                      <td class="px-4 py-3 text-sm font-mono tabular-nums text-foreground/80">{{ seleccionado()?.dni }}</td>
+                      <td class="px-4 py-3 text-sm font-semibold text-foreground">{{ nombreDe(seleccionado()!) }}</td>
+                      <td class="px-4 py-3 text-sm text-muted-foreground">{{ seleccionado()?.profesion }}</td>
+                      <td class="px-4 py-3 text-sm text-foreground/80">{{ tematicaDe(r) }}</td>
+                      <td class="px-4 py-3 text-sm text-muted-foreground">{{ tipoDe(r) }}</td>
+                      <td class="px-4 py-3 text-center"><app-estado-badge [estado]="r.estado" /></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <p class="text-xs text-muted-foreground">
+            Registros encontrados del personal asignado:
+            <span class="font-bold text-foreground tabular-nums">{{ registrosDestino().length }}</span>
+          </p>
 
           @if (error()) {
-            <p class="text-xs text-destructive font-medium flex items-center gap-1.5">
+            <p class="text-xs text-destructive font-medium flex items-center gap-1.5" role="alert">
               <lucide-angular [img]="AlertIcon" class="size-3.5" /> {{ error() }}
             </p>
           }
 
           <div class="flex justify-end gap-2 pt-1">
             <button (click)="closed.emit()" class="btn-secondary">Cancelar</button>
-            <button (click)="solicitarConfirmacion()" class="btn-primary px-5">Guardar</button>
+            <button (click)="solicitarConfirmacion()" class="btn-primary px-5">Reasignar</button>
           </div>
         </div>
       } @else {
@@ -160,12 +230,11 @@ export class ReasignarRegistroModalComponent {
   readonly AlertIcon = TriangleAlert;
   readonly UserCheckIcon = UserCheck;
 
-  readonly busqueda = new FormControl('', { nonNullable: true });
-  private readonly termino = toSignal(this.busqueda.valueChanges, { initialValue: '' });
-
   readonly seleccionadoDni = signal<string | null>(null);
   readonly error = signal('');
   readonly paso = signal<'seleccion' | 'confirmacion'>('seleccion');
+  /** La grilla de origen se puebla al pulsar "Buscar Registros". */
+  readonly busquedaOrigenEjecutada = signal(false);
 
   private static readonly PERFIL_RECEPTOR = 'Técnico Capacitación y Asistencia Técnica';
 
@@ -192,18 +261,6 @@ export class ReasignarRegistroModalComponent {
     return [...unicos.values()];
   });
 
-  readonly resultados = computed(() => {
-    const t = this.termino().toLowerCase().trim();
-    if (!t) return this.candidatos();
-    return this.candidatos().filter(
-      (c) =>
-        c.dni.includes(t) ||
-        `${c.apePat} ${c.apeMat} ${c.nombres}`.toLowerCase().includes(t) ||
-        c.profesion.toLowerCase().includes(t) ||
-        c.celular.includes(t),
-    );
-  });
-
   readonly seleccionado = computed(
     () => this.candidatos().find((c) => c.dni === this.seleccionadoDni()) ?? null,
   );
@@ -227,18 +284,67 @@ export class ReasignarRegistroModalComponent {
     return toTitleCase(`${u.apePat} ${u.apeMat}, ${u.nombres}`);
   }
 
-  /** El catálogo guarda "Profesión - Especialidad" en un solo campo. */
-  profesionDe(u: UsuarioSodega): string {
-    return u.profesion.split(' - ')[0]?.trim() || '-';
+  /* ===== Registros (cursos) por trabajador: mismas reglas de coincidencia
+     por responsable que usa CursosService.reasignarResponsable(). ===== */
+
+  /** Normalización idéntica a la de la transferencia (mayúsculas/tildes/espacios). */
+  private normalizarNombre(nombre: string): string {
+    return nombre
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/\s+/g, ' ');
   }
 
-  especialidadDe(u: UsuarioSodega): string {
-    return u.profesion.split(' - ')[1]?.trim() || '-';
+  private registrosDe(u: UsuarioSodega | null): Curso[] {
+    if (!u) return [];
+    const clave = this.normalizarNombre(this.nombreCompletoDe(u));
+    return this.cursosService.cursos().filter((c) => this.normalizarNombre(c.extensionista) === clave);
+  }
+
+  /** Capacitaciones y Asistencias Técnicas a cargo del trabajador de origen. */
+  readonly registrosOrigen = computed(() => this.registrosDe(this.origen()));
+
+  /** Filas visibles de la grilla de origen (vacía hasta pulsar "Buscar Registros"). */
+  readonly registrosOrigenVisibles = computed(() =>
+    this.busquedaOrigenEjecutada() ? this.registrosOrigen() : [],
+  );
+
+  /** Registros ya a cargo del trabajador asignado (destino). */
+  readonly registrosDestino = computed(() => this.registrosDe(this.seleccionado()));
+
+  tematicaDe(c: Curso): string {
+    return c.detalle?.tematica || c.nombreTema;
+  }
+
+  tipoDe(c: Curso): string {
+    return c.tipo === 'capacitacion' ? 'Capacitación' : 'Asistencia Técnica';
   }
 
   seleccionar(c: UsuarioSodega): void {
     this.seleccionadoDni.set(c.dni);
     this.error.set('');
+  }
+
+  /** Carga la grilla de origen validando que exista el registro de origen. */
+  buscarRegistrosOrigen(): void {
+    if (!this.origen()) {
+      this.error.set('Debe seleccionar un registro de origen antes de buscar sus registros.');
+      return;
+    }
+    this.error.set('');
+    this.busquedaOrigenEjecutada.set(true);
+  }
+
+  /** Selección directa del trabajador asignado desde el selector. */
+  onDestinoChange(dni: string): void {
+    if (!dni) {
+      this.seleccionadoDni.set(null);
+      return;
+    }
+    const candidato = this.candidatos().find((c) => c.dni === dni);
+    if (candidato) this.seleccionar(candidato);
   }
 
   /** Valida la selección y muestra el diálogo de confirmación. */
