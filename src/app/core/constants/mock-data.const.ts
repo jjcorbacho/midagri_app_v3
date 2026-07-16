@@ -8,8 +8,113 @@
 import { Curso, EstadoCurso } from '../models/curso.model';
 import { CampoPersonalizado } from '../models/campo.model';
 import { Participante, ProductorBD } from '../models/participante.model';
+import { UsuarioSodega } from '../models/usuario-sodega.model';
+
+// ============================================================
+// DATOS DE PRUEBA — Modal "Reasignar registros" (solo desarrollo).
+// Dos Técnicos de la misma Unidad Responsable/Funcional con
+// Capacitaciones y Asistencias Técnicas a su nombre, para validar
+// el flujo completo de reasignación. Eliminar junto con este archivo
+// cuando los servicios consuman el API real.
+// ============================================================
+
+const TECNICO_DEMO_BASE = {
+  estCivil: 'Soltero',
+  direccion: 'Av. Los Incas 1250',
+  ubigeo: 'Lima/Lima/San Isidro',
+  restricciones: 'Ninguna',
+  fechaNac: '10/03/1990',
+  edad: '36',
+  unidad: 'Dirección Gral. de Ganadería',
+  regimen: 'Régimen CAS' as const,
+  estado: 'HABILITADO' as const,
+  fechaIni: '',
+  fechaFin: '',
+  nroOrden: '',
+  perfil: 'Técnico Capacitación y Asistencia Técnica' as const,
+  opa: 'DGGA',
+  fuenteFinanc: 'Recursos Ordinarios',
+  categoriaPresup: 'Categoría',
+  programaPresup: '',
+  unidadFuncional: 'Unidad Funcional Opas',
+  creadoPor: 'ccandelaria',
+  ambitos: [{ region: 'Lima', provincia: 'Lima', distrito: 'San Isidro' }],
+};
+
+export const TECNICOS_DEMO_REASIGNACION: UsuarioSodega[] = [
+  {
+    ...TECNICO_DEMO_BASE,
+    id: 'demo-tec-1',
+    dni: '41111111',
+    nombres: 'Marcos',
+    apePat: 'Torres',
+    apeMat: 'Quispe',
+    profesion: 'Ingeniero Agrónomo',
+    sexo: 'Masculino',
+    celular: '911111111',
+    userGen: 'mtorres',
+    correo: 'mtorres@midagri.gob.pe',
+  },
+  {
+    ...TECNICO_DEMO_BASE,
+    id: 'demo-tec-2',
+    dni: '42222222',
+    nombres: 'Lucia',
+    apePat: 'Ramos',
+    apeMat: 'Perez',
+    profesion: 'Médico Veterinario',
+    sexo: 'Femenino',
+    celular: '922222222',
+    userGen: 'lramos',
+    correo: 'lramos@midagri.gob.pe',
+  },
+];
+
+/** Registros de prueba del técnico origen (5 capacitaciones + 3 asistencias)
+ *  y del técnico destino (2 capacitaciones + 1 asistencia). El nombre del
+ *  `extensionista` coincide con "Nombres ApePat ApeMat" de los técnicos demo. */
+const cursoDemoReasignacion = (
+  n: number,
+  extensionista: string,
+  tipo: Curso['tipo'],
+  nombreTema: string,
+  estado: EstadoCurso,
+): Curso => ({
+  id: `demo-reasig-${n}`,
+  codigo: `${tipo === 'capacitacion' ? 'CAP' : 'AST'}-DEMO-${String(n).padStart(3, '0')}`,
+  nombreTema,
+  estado,
+  fecha: '10 Jul 2026',
+  hora: '09:00',
+  horas: 6,
+  participantes: 15,
+  region: 'Lima',
+  provincia: 'Lima',
+  distrito: 'San Isidro',
+  area: 'SODEGA',
+  tipo,
+  extensionista,
+});
+
+export const CURSOS_DEMO_REASIGNACION: Curso[] = [
+  // Origen: Marcos Torres Quispe — 5 Capacitaciones + 3 Asistencias Técnicas
+  cursoDemoReasignacion(1, 'Marcos Torres Quispe', 'capacitacion', 'Sanidad animal en camélidos sudamericanos', 'Aprobado'),
+  cursoDemoReasignacion(2, 'Marcos Torres Quispe', 'capacitacion', 'Manejo de pastos altoandinos', 'Validado'),
+  cursoDemoReasignacion(3, 'Marcos Torres Quispe', 'capacitacion', 'Mejoramiento genético de ganado vacuno', 'Enviado'),
+  cursoDemoReasignacion(4, 'Marcos Torres Quispe', 'capacitacion', 'Elaboración de derivados lácteos', 'Registrado'),
+  cursoDemoReasignacion(5, 'Marcos Torres Quispe', 'capacitacion', 'Buenas prácticas pecuarias', 'Observado'),
+  cursoDemoReasignacion(6, 'Marcos Torres Quispe', 'asistencia', 'Vacunación de ganado vacuno', 'Aprobado'),
+  cursoDemoReasignacion(7, 'Marcos Torres Quispe', 'asistencia', 'Dosificación antiparasitaria en ovinos', 'Enviado'),
+  cursoDemoReasignacion(8, 'Marcos Torres Quispe', 'asistencia', 'Manejo sanitario de cuyes', 'Registrado'),
+  // Destino: Lucia Ramos Perez — 2 Capacitaciones + 1 Asistencia Técnica
+  cursoDemoReasignacion(9, 'Lucia Ramos Perez', 'capacitacion', 'Buenas prácticas de ordeño', 'Aprobado'),
+  cursoDemoReasignacion(10, 'Lucia Ramos Perez', 'capacitacion', 'Conservación de forrajes', 'Validado'),
+  cursoDemoReasignacion(11, 'Lucia Ramos Perez', 'asistencia', 'Diagnóstico de mastitis bovina', 'Registrado'),
+];
 
 export const CURSOS_INICIALES: Curso[] = [
+  // Datos de prueba del modal "Reasignar registros" (ver bloque superior).
+  ...CURSOS_DEMO_REASIGNACION,
   {
     id: '1',
     codigo: 'CAP-2024-001',
