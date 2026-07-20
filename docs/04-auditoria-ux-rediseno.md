@@ -92,3 +92,22 @@ Se auditó todo `src/app` en busca de clases Tailwind de paleta fija (`bg-blue-5
 - **Seguimiento fusionado**: `SeguimientoComponent` única vista para revisión y aprobación (pestañas según rol; el Admin General alterna sin navegar). Ambas rutas cargan el mismo componente, por lo que guards, sidebar y permisos no cambiaron; los wrappers antiguos fueron eliminados.
 - **Stepper N1**: declaración jurada obligatoria al final del Paso 1 (bloquea el avance con mensaje; prellenada al editar eventos ya guardados); sección DNI a ancho completo en una fila; geolocalización con botón "Obtener mi ubicación" y botón flotante en el mapa (`app-peru-map` ganó arrastre de marcador, centrado bajo demanda y botón de localización; los errores de permisos/GPS usan el sistema unificado de modales).
 - **Bandeja N1**: buscador acotado por campo (Código/Tema/Ubicación/Extensionista/Nombres/Apellidos/DNI, en tiempo real) y exportación a Excel (`shared/utils/excel.util.ts`, sin dependencias) que exporta **todas** las filas filtradas —no solo la página visible— con encabezados formateados, anchos automáticos y nombre `Capacitaciones_N1_YYYY-MM-DD_HH-mm.xls`.
+
+## 8. Navegación, formularios y bandeja (julio 2026, 2ª entrega)
+
+- **Menú lateral**: entrada única **"Seguimiento"** (elimina "Seguimiento y aprobación"); cada rol entra por la ruta que su guard permite y la botonera interna Revisión/Aprobación alterna los modos. `matchPrefix: ['/seguimiento']` mantiene el ítem activo en ambos modos.
+- **Paso 1**: `mt-4` (escala global) suma al `space-y-5` del contenedor para separar Coordenadas de la Declaración jurada.
+- **Bandeja de Control** (referencia `filtros.xlsx`): fila 1 con indicadores Todos/Capacitaciones/Asistencias con contadores en vivo + "Buscar por" + buscador + Excel al lado; fila 2 con cinco filtros uniformes (Estado, Región, Provincia, Distrito en cascada desde el catálogo UBIGEO, y Rango de fechas). El filtrado por fecha usa `parseFechaCurso` (fecha.util) que interpreta tanto ISO como el formato corto "12 May 2024" del seed.
+- **`app-date-range-picker`** (shared): calendario flotante propio (el proyecto no usa librerías de componentes) con selección inicio→fin, rango resaltado, limpiar, autocierre al completar, cierre por Escape/blur y tokens del tema.
+
+## 9. Auditoría de estandarización total (julio 2026, cierre)
+
+Barridos automatizados sobre todo `src/app` (botones con colores directos, `alert()`/`confirm()`, modales de confirmación fuera del sistema, constantes de input duplicadas). Resultado y correcciones:
+
+- **Botones**: los 3 últimos botones "a mano" (Buscar RENIEC, Buscar DNI y Limpiar de participantes) migrados a la jerarquía `btn-*`; barrido final sin botones con colores directos. Jerarquía vigente: `btn-primary` (acción principal) · `btn-secondary` (cancelar/volver) · `btn-danger` (eliminar/rechazar/observar) · `btn-success` (aprobación final) · `btn-ghost`/`btn-icon` (terciarias), todas con la misma métrica de `btn-base`.
+- **Modales**: las dos confirmaciones que quedaban con `app-modal` propio (validación en Seguimiento y transferencia en Reasignar registros) migradas a `ModalService.openConfirm`; los únicos `app-modal` directos restantes son diálogos funcionales con formulario (observación con texto/fecha, sustento, opciones de listas), que usan el mismo shell visual.
+- **Componentes flotantes centrados**: el date range picker abre ahora centrado en el viewport con overlay oscurecido, desenfoque y animaciones uniformes (mismo patrón que los modales). Decisión documentada: los dropdowns de tipeo (autocomplete) permanecen anclados a su campo — centrarlos rompería el flujo de escritura — y el panel de apariencia se mantiene como drawer lateral con overlay.
+- **Formularios**: eliminadas las 2 familias de constantes de input locales (curso-form y participante-form) en favor de `INPUT_BASE/INPUT_REQUIRED/INPUT_DISABLED` compartidas — todos los formularios comparten ahora altura, borde, radio, focus, disabled y estado de error.
+- **Limpieza**: señales y plantillas muertas retiradas (`validarOpen`, paso de confirmación de reasignar, icono ShieldCheck del sidebar).
+
+**Pendientes recomendados** (sin riesgo de regresión inmediata): migrar los `th`/`td` inline de las tablas a `th-ds`/`td-ds`; unificar los selects de filtro (`bg-card`) con `INPUT_BASE` (`bg-background`); y objetivo táctil ≥44 px para `btn-icon` en móvil.

@@ -7,7 +7,6 @@ import {
   Home,
   GraduationCap,
   ClipboardCheck,
-  ShieldCheck,
   FileText,
   Settings,
   Sliders,
@@ -90,8 +89,8 @@ const NAV_FULL: NavItem[] = [
     icon: GraduationCap,
     matchPrefix: ['/capacitaciones-n1'],
   },
-  { to: '/seguimiento/revision', label: 'Seguimiento y revisión', icon: ClipboardCheck },
-  { to: '/seguimiento/aprobacion', label: 'Seguimiento y aprobación', icon: ShieldCheck },
+  // Vista unificada: la botonera interna Revisión/Aprobación cambia de modo.
+  { to: '/seguimiento/revision', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] },
   { to: '/reportes', label: 'Reportes', icon: FileText },
   grupoAdministracion([CHILD_USUARIOS, CHILD_LISTAS]),
   {
@@ -231,7 +230,7 @@ export class SidebarComponent {
     if (this.auth.isJefeArea()) {
       const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
       if (this.registra(PERMISO_APROBACION_EVALUACION_UO)) {
-        items.push({ to: '/seguimiento/aprobacion', label: 'Aprobación de Evaluaciones UO', icon: ShieldCheck });
+        items.push({ to: '/seguimiento/aprobacion', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] });
       }
       if (this.puedeVerReportes()) {
         items.push({ to: '/reportes', label: 'Reportes', icon: FileText });
@@ -243,7 +242,7 @@ export class SidebarComponent {
     if (this.auth.isAdminDZ()) {
       const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
       if (this.registra(PERMISO_EVALUACION_TECNICOS)) {
-        items.push({ to: '/seguimiento/revision', label: 'Evaluación de Técnicos', icon: ClipboardCheck });
+        items.push({ to: '/seguimiento/revision', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] });
       }
       if (this.puedeVerReportes()) {
         items.push({ to: '/reportes', label: 'Reportes', icon: FileText });
@@ -255,7 +254,7 @@ export class SidebarComponent {
     if (this.auth.isAdminUE()) {
       const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
       if (this.registra(PERMISO_EVALUACION_ADMIN_DZ)) {
-        items.push({ to: '/seguimiento/aprobacion', label: 'Evaluación de Administrador DZ', icon: ShieldCheck });
+        items.push({ to: '/seguimiento/aprobacion', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] });
       }
       if (this.puedeVerReportes()) {
         items.push({ to: '/reportes', label: 'Reportes', icon: FileText });
@@ -290,11 +289,12 @@ export class SidebarComponent {
           matchPrefix: ['/capacitaciones-n1'],
         });
       }
+      // Entrada única "Seguimiento": abre revisión si el permiso lo cubre;
+      // de lo contrario, aprobación. La botonera interna alterna los modos.
       if (this.registra(PERMISO_SEGUIMIENTO_REVISION)) {
-        items.push({ to: '/seguimiento/revision', label: 'Seguimiento y revisión', icon: ClipboardCheck });
-      }
-      if (this.registra(PERMISO_SEGUIMIENTO_APROBACION)) {
-        items.push({ to: '/seguimiento/aprobacion', label: 'Seguimiento y aprobación', icon: ShieldCheck });
+        items.push({ to: '/seguimiento/revision', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] });
+      } else if (this.registra(PERMISO_SEGUIMIENTO_APROBACION)) {
+        items.push({ to: '/seguimiento/aprobacion', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] });
       }
       if (this.puedeVerReportes()) {
         items.push({ to: '/reportes', label: 'Reportes', icon: FileText });

@@ -13,6 +13,7 @@ import { Participante, TipoParticipante } from '../../../core/models/participant
 import { ProductoresService } from '../../../core/services/productores.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { calcEdad } from '../../../shared/utils/fecha.util';
+import { INPUT_BASE, INPUT_DISABLED, INPUT_REQUIRED } from '../../../shared/utils/input-styles.const';
 import {
   ACTIVIDAD_OTRO_PARTICIPANTE,
   CRIANZAS_PARTICIPANTE,
@@ -33,10 +34,10 @@ export interface ParticipanteFormSubmit {
   primActividad: string;
 }
 
-const LOCKED_INPUT = 'w-full px-3 py-2 bg-surface-2 border border-border rounded-md text-muted-foreground text-sm cursor-not-allowed';
-const ACTIVE_INPUT = 'w-full px-3 py-2 border border-border rounded-md focus:ring-2 focus:ring-ring focus:outline-none text-sm bg-card transition';
-/** Campo obligatorio: resaltado ámbar hasta recibir foco (convención del sistema). */
-const REQUIRED_INPUT = 'w-full px-3 py-2 bg-warning-soft border border-warning/40 rounded-md focus:bg-card focus:ring-2 focus:ring-ring focus:outline-none text-sm transition';
+/* Estilos de input del design system compartido (sin variantes locales). */
+const LOCKED_INPUT = INPUT_DISABLED;
+const ACTIVE_INPUT = INPUT_BASE;
+const REQUIRED_INPUT = INPUT_REQUIRED;
 
 @Component({
   selector: 'app-participante-form',
@@ -65,12 +66,12 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-warning-soft border border-warning/4
                   />
                 </div>
                 <button type="button" (click)="buscarDNI()" [disabled]="dniLocked()"
-                  class="shrink-0 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed text-primary-foreground px-5 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm">
+                  class="btn-primary shrink-0 px-5">
                   <lucide-angular [img]="SearchIcon" class="size-4" />
                   Buscar
                 </button>
                 <button type="button" (click)="limpiar()"
-                  class="shrink-0 px-4 py-2 text-muted-foreground hover:text-foreground text-sm font-medium border border-border rounded-md bg-card hover:bg-surface-2">
+                  class="btn-secondary shrink-0">
                   Limpiar
                 </button>
               </div>
