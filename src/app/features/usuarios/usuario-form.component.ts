@@ -10,6 +10,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { ListasAdminService } from '../../core/services/listas-admin.service';
 import { PermisosMenuService } from '../../core/services/permisos-menu.service';
+import { ModalService } from '../../core/services/modal.service';
 import {
   AmbitoTerritorial,
   MetaAmbitoTerritorial,
@@ -108,7 +109,7 @@ const INP_NORMAL = INPUT_BASE;
                     type="button"
                     (click)="consultarReniec()"
                     [disabled]="!reniecEditable() || buscandoReniec()"
-                    class="w-1/3 bg-foreground hover:bg-foreground/85 text-background rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="w-1/3 bg-primary hover:bg-primary/85 text-primary-foreground rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span>{{ buscandoReniec() ? 'Buscando...' : 'Buscar' }}</span>
                     <lucide-angular [img]="buscandoReniec() ? LoaderIcon : SearchIcon" class="size-3 ml-1" [class.animate-spin]="buscandoReniec()" />
@@ -393,7 +394,8 @@ const INP_NORMAL = INPUT_BASE;
                             {{ distritosSeleccionados().length }} seleccionados
                           </span>
                         </div>
-                        <div class="max-h-52 overflow-y-auto p-2 space-y-0.5 thin-scroll" role="group" aria-label="Distritos disponibles">
+                        <!-- Máx. 4 distritos visibles: el resto se alcanza con el scroll interno. -->
+                        <div class="max-h-[150px] overflow-y-auto p-2 space-y-0.5 thin-scroll" role="group" aria-label="Distritos disponibles">
                           @if (!ambitoProvincia()) {
                             <p class="px-2 py-2 text-sm text-muted-foreground italic">Seleccione una Región y una Provincia para listar los distritos.</p>
                           } @else if (distritosFiltrados().length === 0) {
@@ -561,17 +563,6 @@ const INP_NORMAL = INPUT_BASE;
         </div>
       }
 
-      <!-- Modal de alerta -->
-      @if (alerta(); as a) {
-        <app-modal [title]="a.titulo" maxWidth="max-w-md" (closed)="cerrarAlerta()">
-          <p class="text-sm text-foreground leading-relaxed">{{ a.mensaje }}</p>
-          <div class="flex justify-center mt-5">
-            <button (click)="cerrarAlerta()" class="btn-primary px-6 min-w-[120px]">
-              Aceptar
-            </button>
-          </div>
-        </app-modal>
-      }
     </section>
   `,
 })
@@ -583,6 +574,7 @@ export class UsuarioFormComponent implements OnInit {
   private readonly usuariosService = inject(UsuariosService);
   private readonly listasAdmin = inject(ListasAdminService);
   private readonly permisosService = inject(PermisosMenuService);
+  private readonly modales = inject(ModalService);
 
   readonly IdCardIcon = IdCard;
   readonly KeyRoundIcon = KeyRound;
@@ -628,7 +620,6 @@ export class UsuarioFormComponent implements OnInit {
   readonly distritosSeleccionados = signal<string[]>([]);
   /** Filtro en vivo del buscador de distritos (sobre el selector múltiple). */
   readonly distritoFiltro = signal('');
-  readonly alerta = signal<{ titulo: string; mensaje: string; cerrarYSalir?: boolean } | null>(null);
   readonly formTick = signal(0);
   /** Permisos de menú en edición (esquema del perfil seleccionado). */
   readonly permisosMenuEdit = signal<PermisosMenu>({});
@@ -1013,7 +1004,7 @@ export class UsuarioFormComponent implements OnInit {
   consultarReniec(): void {
     const dni = this.form.controls.dni.value.trim();
     if (dni.length !== 8 || isNaN(Number(dni))) {
-      this.alerta.set({ titulo: 'Error RENIEC', mensaje: 'Debe ingresar un número de DNI válido de 8 dígitos.' });
+      this.mostrarAlerta({ titulo: 'Error RENIEC', mensaje: 'Debe ingresar un número de DNI válido de 8 dígitos.' });
       return;
     }
     this.buscandoReniec.set(true);
@@ -1036,7 +1027,7 @@ export class UsuarioFormComponent implements OnInit {
       if (!this.form.controls.celular.value) {
         this.form.controls.celular.setValue(datos.celularSugerido);
       }
-      this.alerta.set({
+      this.mostrarAlerta({
         titulo: 'Datos Recuperados',
         mensaje: `Se obtuvo correctamente la información desde el Web Service de RENIEC para el DNI N° ${dni}.`,
       });
@@ -1087,7 +1078,7 @@ export class UsuarioFormComponent implements OnInit {
     const distrito = soloRegion || (opcional && !this.ambitoDistrito()) ? '-' : this.ambitoDistrito();
 
     if (!region) {
-      this.alerta.set({ titulo: 'Ámbito Incompleto', mensaje: 'Debe seleccionar una Región para poder agregar.' });
+      this.mostrarAlerta({ titulo: 'Ámbito Incompleto', mensaje: 'Debe seleccionar una Región para poder agregar.' });
       return;
     }
 
@@ -1096,7 +1087,7 @@ export class UsuarioFormComponent implements OnInit {
       const provinciaSeleccionada = this.ambitoProvincia();
       const seleccionados = this.distritosSeleccionados();
       if (!provinciaSeleccionada || seleccionados.length === 0) {
-        this.alerta.set({
+        this.mostrarAlerta({
           titulo: 'Ámbito Incompleto',
           mensaje: 'Debe seleccionar Provincia y al menos un Distrito para poder agregar.',
         });
@@ -1117,7 +1108,7 @@ export class UsuarioFormComponent implements OnInit {
         this.limpiarDistritosSeleccionados();
       }
       if (duplicados.length) {
-        this.alerta.set({
+        this.mostrarAlerta({
           titulo: 'Distritos Duplicados',
           mensaje: `No se agregaron los distritos ya existentes: ${duplicados.join(', ')}.`,
         });
@@ -1126,14 +1117,14 @@ export class UsuarioFormComponent implements OnInit {
     }
 
     if (!soloRegion && !opcional && (!provincia || !distrito)) {
-      this.alerta.set({ titulo: 'Ámbito Incompleto', mensaje: 'Debe seleccionar Región, Provincia y Distrito para poder agregar.' });
+      this.mostrarAlerta({ titulo: 'Ámbito Incompleto', mensaje: 'Debe seleccionar Región, Provincia y Distrito para poder agregar.' });
       return;
     }
     const existe = this.ambitos().some(
       (a) => a.region === region && a.provincia === provincia && a.distrito === distrito,
     );
     if (existe) {
-      this.alerta.set({ titulo: 'Ámbito Duplicado', mensaje: 'Este ámbito territorial ya se encuentra asignado en el listado.' });
+      this.mostrarAlerta({ titulo: 'Ámbito Duplicado', mensaje: 'Este ámbito territorial ya se encuentra asignado en el listado.' });
       return;
     }
     this.ambitos.update((prev) => [...prev, { region, provincia, distrito }]);
@@ -1206,7 +1197,7 @@ export class UsuarioFormComponent implements OnInit {
     if (tab === 'permisos') {
       const v = this.form.getRawValue();
       if (!v.dni.trim() || !v.apePat) {
-        this.alerta.set({
+        this.mostrarAlerta({
           titulo: 'Acceso Restringido',
           mensaje: 'Debe ingresar el DNI y validar los datos de RENIEC antes de configurar los permisos.',
         });
@@ -1220,26 +1211,26 @@ export class UsuarioFormComponent implements OnInit {
   guardarYContinuar(): void {
     const v = this.form.getRawValue();
     if (!v.dni.trim()) {
-      this.alerta.set({ titulo: 'DNI Requerido', mensaje: 'Por favor, ingrese el número de DNI.' });
+      this.mostrarAlerta({ titulo: 'DNI Requerido', mensaje: 'Por favor, ingrese el número de DNI.' });
       return;
     }
     if (!v.apePat || !v.nombres) {
-      this.alerta.set({
+      this.mostrarAlerta({
         titulo: 'Verificación RENIEC Pendiente',
         mensaje: 'Debe completar la consulta a RENIEC mediante el botón Buscar antes de avanzar.',
       });
       return;
     }
     if (!v.profesion) {
-      this.alerta.set({ titulo: 'Profesión Requerida', mensaje: 'Debe seleccionar una Profesión o Especialidad.' });
+      this.mostrarAlerta({ titulo: 'Profesión Requerida', mensaje: 'Debe seleccionar una Profesión o Especialidad.' });
       return;
     }
     if (!v.sexo) {
-      this.alerta.set({ titulo: 'Sexo Requerido', mensaje: 'Debe seleccionar el Sexo del colaborador.' });
+      this.mostrarAlerta({ titulo: 'Sexo Requerido', mensaje: 'Debe seleccionar el Sexo del colaborador.' });
       return;
     }
     if (!v.unidad) {
-      this.alerta.set({ titulo: 'Unidad Responsable Vacía', mensaje: 'Debe definir la Unidad Responsable del MIDAGRI.' });
+      this.mostrarAlerta({ titulo: 'Unidad Responsable Vacía', mensaje: 'Debe definir la Unidad Responsable del MIDAGRI.' });
       return;
     }
     if (!this.validarPresupuesto(v)) return;
@@ -1258,11 +1249,11 @@ export class UsuarioFormComponent implements OnInit {
     if (!this.mostrarPresupuesto() || esAdminGeneral || omitir) return true;
     const modoJefe = this.modoJefeArea();
     if (!v.fuenteFinanc) {
-      this.alerta.set({ titulo: 'Fuente de Financiamiento Requerida', mensaje: 'Debe seleccionar una Fuente de Financiamiento válida.' });
+      this.mostrarAlerta({ titulo: 'Fuente de Financiamiento Requerida', mensaje: 'Debe seleccionar una Fuente de Financiamiento válida.' });
       return false;
     }
     if (!modoJefe && !v.categoriaPresup) {
-      this.alerta.set({ titulo: 'Categoría Presupuestal Requerida', mensaje: 'Debe seleccionar una Categoría Presupuestal.' });
+      this.mostrarAlerta({ titulo: 'Categoría Presupuestal Requerida', mensaje: 'Debe seleccionar una Categoría Presupuestal.' });
       return false;
     }
     if (
@@ -1270,7 +1261,7 @@ export class UsuarioFormComponent implements OnInit {
       !v.programaPresup &&
       !this.programaOpasOpcional(v.perfil)
     ) {
-      this.alerta.set(
+      this.mostrarAlerta(
         modoJefe
           ? { titulo: 'Categoría Requerida', mensaje: 'Debe seleccionar una Categoría.' }
           : { titulo: 'Programa Presupuestal Requerido', mensaje: 'Debe seleccionar un Programa Presupuestal estratégico.' },
@@ -1278,7 +1269,7 @@ export class UsuarioFormComponent implements OnInit {
       return false;
     }
     if (!v.unidadFuncional && !this.programaOpasOpcional(v.perfil)) {
-      this.alerta.set({ titulo: 'Unidad Funcional Requerida', mensaje: 'Debe seleccionar una Unidad Funcional.' });
+      this.mostrarAlerta({ titulo: 'Unidad Funcional Requerida', mensaje: 'Debe seleccionar una Unidad Funcional.' });
       return false;
     }
     return true;
@@ -1291,7 +1282,7 @@ export class UsuarioFormComponent implements OnInit {
     if (!s) return;
 
     if (this.guardarBloqueado()) {
-      this.alerta.set({
+      this.mostrarAlerta({
         titulo: 'Datos Presupuestales requeridos',
         mensaje: 'Debe completar los Datos Presupuestales obligatorios antes de guardar el registro.',
       });
@@ -1299,7 +1290,7 @@ export class UsuarioFormComponent implements OnInit {
     }
 
     if (!v.correo.trim() || !v.regimen || !v.perfil || !v.unidad) {
-      this.alerta.set({
+      this.mostrarAlerta({
         titulo: 'Campos Incompletos',
         mensaje: 'Por favor complete todos los campos obligatorios (*) de Cuenta de Acceso, Unidad Responsable y Perfil Funcional.',
       });
@@ -1307,7 +1298,7 @@ export class UsuarioFormComponent implements OnInit {
     }
 
     if (this.modo() === 'presupuesto' && this.usuariosService.existeUnidadParaDni(v.dni, v.unidad)) {
-      this.alerta.set({
+      this.mostrarAlerta({
         titulo: 'Unidad Presupuestal Duplicada',
         mensaje: 'El colaborador ya tiene asignada esta Unidad Responsable. Seleccione una unidad diferente para esta nueva partida.',
       });
@@ -1315,7 +1306,7 @@ export class UsuarioFormComponent implements OnInit {
     }
 
     if (this.modo() === 'nuevo' && this.usuariosService.existeDni(v.dni)) {
-      this.alerta.set({
+      this.mostrarAlerta({
         titulo: 'Usuario Existente',
         mensaje: 'El número de DNI ingresado ya se encuentra registrado en el sistema SODEGA.',
       });
@@ -1324,7 +1315,7 @@ export class UsuarioFormComponent implements OnInit {
 
     if (this.regimenTemporal()) {
       if (!v.fechaIni || !v.fechaFin) {
-        this.alerta.set({
+        this.mostrarAlerta({
           titulo: 'Campos Incompletos',
           mensaje: 'Para locadores de servicio (OS) o regímenes CAS Temporales es obligatorio registrar las fechas de inicio y fin de contrato.',
         });
@@ -1332,14 +1323,14 @@ export class UsuarioFormComponent implements OnInit {
       }
       const diasContrato = calcularDiasCalendarioEntre(v.fechaIni, v.fechaFin);
       if (diasContrato === null || diasContrato <= 30) {
-        this.alerta.set({
+        this.mostrarAlerta({
           titulo: 'Vigencia no permitida',
           mensaje: 'La fecha de inicio y la fecha de fin deben tener una vigencia mayor a 30 días calendario.',
         });
         return;
       }
       if (this.esLocador() && !v.nroOrden.trim()) {
-        this.alerta.set({
+        this.mostrarAlerta({
           titulo: 'Orden de Servicio Requerida',
           mensaje: 'Para locadores de servicio (OS) es obligatorio registrar el Nro. de Orden (O.S.).',
         });
@@ -1350,14 +1341,14 @@ export class UsuarioFormComponent implements OnInit {
     // Nueva partida presupuestal: fechas y Nro. de Orden distintos a los ya registrados.
     if (this.modo() === 'presupuesto') {
       if (this.usuariosService.existeFechaContratoParaDni(v.dni, v.fechaIni, v.fechaFin)) {
-        this.alerta.set({
+        this.mostrarAlerta({
           titulo: 'Fechas ya registradas',
           mensaje: 'La fecha de inicio y la fecha fin deben ser diferentes a las fechas ya registradas para este usuario.',
         });
         return;
       }
       if (this.esLocador() && this.usuariosService.existeOrdenParaDni(v.dni, v.nroOrden)) {
-        this.alerta.set({
+        this.mostrarAlerta({
           titulo: 'Orden ya registrada',
           mensaje: 'El Nro. de Orden (O.S.) debe ser diferente al que ya fue registrado para este usuario.',
         });
@@ -1366,7 +1357,7 @@ export class UsuarioFormComponent implements OnInit {
     }
 
     if (perfilRequiereAmbito(v.perfil) && this.ambitos().length === 0) {
-      this.alerta.set({
+      this.mostrarAlerta({
         titulo: 'Jurisdicción Vacía',
         mensaje: 'Debe asignar al menos un ámbito territorial de Región, Provincia y Distrito.',
       });
@@ -1374,7 +1365,7 @@ export class UsuarioFormComponent implements OnInit {
     }
 
     if (this.aplicaMetas() && this.metasAmbito.invalid) {
-      this.alerta.set({
+      this.mostrarAlerta({
         titulo: 'Metas por Ámbito Inválidas',
         mensaje: 'Las cantidades de Capacitaciones y Asistencia Técnica deben ser números enteros mayores o iguales a 0.',
       });
@@ -1431,7 +1422,7 @@ export class UsuarioFormComponent implements OnInit {
     const nombreCompleto = `${datos.nombres} ${datos.apePat}`;
     if (this.modo() === 'presupuesto') {
       this.usuariosService.create(datos);
-      this.alerta.set({
+      this.mostrarAlerta({
         titulo: 'Nuevo Presupuesto Asignado',
         mensaje: `Se ha asignado con éxito el nuevo presupuesto en '${v.unidad}' para el servidor ${nombreCompleto}.`,
         cerrarYSalir: true,
@@ -1441,14 +1432,14 @@ export class UsuarioFormComponent implements OnInit {
         ...datos,
         creadoPor: this.usuarioBase.creadoPor || s.userGen,
       });
-      this.alerta.set({
+      this.mostrarAlerta({
         titulo: 'Registro Actualizado',
         mensaje: `El colaborador ${nombreCompleto} ha sido actualizado correctamente.`,
         cerrarYSalir: true,
       });
     } else {
       this.usuariosService.create(datos);
-      this.alerta.set({
+      this.mostrarAlerta({
         titulo: 'Registro Guardado',
         mensaje: `El colaborador ${nombreCompleto} ha sido registrado de manera exitosa.`,
         cerrarYSalir: true,
@@ -1456,10 +1447,19 @@ export class UsuarioFormComponent implements OnInit {
     }
   }
 
-  cerrarAlerta(): void {
-    const salir = this.alerta()?.cerrarYSalir;
-    this.alerta.set(null);
-    if (salir) this.cancelar();
+  /**
+   * Puente al sistema unificado de modales: éxito para operaciones
+   * completadas, error para validaciones y avisos bloqueantes. Si el aviso
+   * cierra el flujo (cerrarYSalir) se navega al aceptar.
+   */
+  private mostrarAlerta(a: { titulo: string; mensaje: string; cerrarYSalir?: boolean }): void {
+    const esExito = /(recuperad|guardad|actualizad|asignad|completad|exitos)/i.test(a.titulo);
+    const promesa = esExito
+      ? this.modales.openSuccess(a.titulo, a.mensaje)
+      : this.modales.openError(a.titulo, a.mensaje);
+    void promesa.then(() => {
+      if (a.cerrarYSalir) this.cancelar();
+    });
   }
 
   cancelar(): void {

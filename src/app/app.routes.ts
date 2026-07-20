@@ -58,17 +58,21 @@ export const routes: Routes = [
           },
         ],
       },
+      // Vista unificada de Seguimiento: ambas rutas cargan el mismo componente
+      // (los guards y permisos por ruta se conservan); la ruta fija la pestaña.
       {
         path: 'seguimiento/revision',
         loadComponent: () =>
-          import('./features/seguimiento/revision.component').then((m) => m.RevisionComponent),
-        title: 'Seguimiento y revisión — MIDAGRI',
+          import('./features/seguimiento/seguimiento.component').then((m) => m.SeguimientoComponent),
+        data: { modo: 'revision' },
+        title: 'Seguimiento — MIDAGRI',
       },
       {
         path: 'seguimiento/aprobacion',
         loadComponent: () =>
-          import('./features/seguimiento/aprobacion.component').then((m) => m.AprobacionComponent),
-        title: 'Seguimiento y aprobación — MIDAGRI',
+          import('./features/seguimiento/seguimiento.component').then((m) => m.SeguimientoComponent),
+        data: { modo: 'aprobacion' },
+        title: 'Seguimiento — MIDAGRI',
       },
       {
         path: 'configuracion',

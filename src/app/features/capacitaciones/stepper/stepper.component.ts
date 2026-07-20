@@ -71,7 +71,7 @@ type Paso = 1 | 2 | 3;
               <span
                 class="size-8 rounded-full flex items-center justify-center text-xs font-bold ring-2 transition-colors"
                 [class]="paso() === s.n
-                  ? 'bg-brand text-white ring-brand'
+                  ? 'bg-brand text-brand-foreground ring-brand'
                   : paso() > s.n
                     ? 'bg-success text-success-foreground ring-success'
                     : 'bg-card text-muted-foreground ring-border'"

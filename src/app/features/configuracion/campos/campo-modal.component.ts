@@ -3,13 +3,15 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { LucideAngularModule, X, Trash2 } from 'lucide-angular';
 import { CampoPersonalizado, CampoTipo } from '../../../core/models/campo.model';
 
+/* Chips por tipo de campo: tonos derivados de los tokens del tema activo
+   (sin colores fijos de la paleta Tailwind). */
 export const TIPOS_CAMPO: { value: CampoTipo; label: string; chip: string }[] = [
-  { value: 'text', label: 'Texto corto', chip: 'bg-blue-50 text-blue-700 border-blue-100' },
-  { value: 'number', label: 'Número', chip: 'bg-cyan-50 text-cyan-700 border-cyan-100' },
-  { value: 'select', label: 'Lista desplegable', chip: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
-  { value: 'date', label: 'Fecha', chip: 'bg-purple-50 text-purple-700 border-purple-100' },
-  { value: 'radio', label: 'Opción única', chip: 'bg-pink-50 text-pink-700 border-pink-100' },
-  { value: 'checkbox', label: 'Casillas', chip: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100' },
+  { value: 'text', label: 'Texto corto', chip: 'bg-info-soft text-info border-info/20' },
+  { value: 'number', label: 'Número', chip: 'bg-brand-soft text-brand border-brand/20' },
+  { value: 'select', label: 'Lista desplegable', chip: 'bg-state-validado-soft text-state-validado-foreground border-state-validado/20' },
+  { value: 'date', label: 'Fecha', chip: 'bg-warning-soft text-warning-foreground border-warning/20' },
+  { value: 'radio', label: 'Opción única', chip: 'bg-state-observado-soft text-state-observado-foreground border-state-observado/20' },
+  { value: 'checkbox', label: 'Casillas', chip: 'bg-brand-accent-soft text-brand-accent border-brand-accent/20' },
   { value: 'textarea', label: 'Texto largo', chip: 'bg-success-soft text-success border-success/20' },
 ];
 
@@ -21,7 +23,7 @@ export type CampoModalResult = Omit<CampoPersonalizado, 'id' | 'area' | 'formula
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule, LucideAngularModule],
   template: `
-    <div class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+    <div class="fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-4">
       <div class="bg-card rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
         <div class="p-4 border-b border-border flex items-center justify-between">
           <h3 class="text-base font-bold text-foreground">

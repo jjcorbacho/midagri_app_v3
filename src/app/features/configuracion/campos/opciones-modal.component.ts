@@ -8,7 +8,7 @@ import { CampoPersonalizado } from '../../../core/models/campo.model';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule],
   template: `
-    <div class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+    <div class="fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-4">
       <div class="bg-card rounded-xl shadow-2xl w-full max-w-md">
         <div class="p-4 border-b border-border flex items-center justify-between">
           <div>

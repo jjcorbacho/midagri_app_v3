@@ -84,7 +84,7 @@ let siguienteId = 0;
           [id]="listboxId"
           role="listbox"
           [attr.aria-label]="'Coincidencias de ' + (label() || 'búsqueda')"
-          class="absolute z-50 mt-1 w-full max-h-52 overflow-y-auto thin-scroll rounded-xl bg-popover ring-1 ring-border shadow-lg p-2 space-y-0.5 animate-modal-in"
+          class="absolute z-50 mt-1 w-full max-h-[150px] overflow-y-auto thin-scroll rounded-xl bg-popover ring-1 ring-border shadow-lg p-2 space-y-0.5 animate-modal-in"
         >
           @if (opcionesFiltradas().length === 0) {
             <li class="px-2 py-2 text-sm text-muted-foreground italic" role="presentation">

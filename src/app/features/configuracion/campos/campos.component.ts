@@ -203,7 +203,7 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
             <div class="mb-2">
               <div class="flex items-center gap-3 mb-3 pb-2 border-b border-brand/25">
                 <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                  <lucide-angular [img]="SparklesIcon" class="size-4 text-white" />
+                  <lucide-angular [img]="SparklesIcon" class="size-4 text-primary-foreground" />
                 </div>
                 <h3 class="text-sm font-bold text-brand uppercase tracking-tight">Campos personalizados</h3>
                 <span class="text-[10px] text-brand ml-auto font-semibold">{{ customsVisibles().length }} campos</span>
@@ -357,11 +357,11 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
             </div>
 
             @if (previewDevice() === 'mobile') {
-              <div class="w-full max-w-[340px] bg-card rounded-[40px] border-[8px] border-slate-800 shadow-2xl h-[600px] overflow-hidden flex flex-col">
-                <div class="h-6 bg-slate-800 flex justify-center items-end pb-1">
-                  <div class="w-12 h-1 bg-slate-700 rounded-full"></div>
+              <div class="w-full max-w-[340px] bg-card rounded-[40px] border-[8px] border-foreground shadow-2xl h-[600px] overflow-hidden flex flex-col">
+                <div class="h-6 bg-foreground flex justify-center items-end pb-1">
+                  <div class="w-12 h-1 bg-muted-foreground rounded-full"></div>
                 </div>
-                <div class="bg-primary p-4 text-white">
+                <div class="bg-primary p-4 text-primary-foreground">
                   <div class="text-[10px] font-medium opacity-80 mb-1">
                     {{ area().code }} › {{ formLabel() }}
                   </div>

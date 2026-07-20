@@ -12,6 +12,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { UsuarioSodega, esUsuarioPermanente, toTitleCase } from '../../core/models/usuario-sodega.model';
 import { formatearUbigeoTexto } from '../../core/constants/sodega.const';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
+import { ModalService } from '../../core/services/modal.service';
 import {
   ReasignarRegistroModalComponent,
   ResultadoReasignacion,
@@ -26,9 +27,9 @@ const BADGE_PILL =
 /** Tonos de los iconos de acción (mismo patrón ICON_TONES de la bandeja N1). */
 const ICON_TONES: Record<string, string> = {
   teal: 'bg-brand-soft text-brand hover:bg-brand hover:text-brand-foreground',
-  blue: 'bg-state-validado-soft text-state-validado-foreground hover:bg-state-validado hover:text-white',
+  blue: 'bg-state-validado-soft text-state-validado-foreground hover:bg-state-validado hover:text-primary-foreground',
   red: 'bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground',
-  amber: 'bg-state-subsanado-soft text-state-subsanado-foreground hover:bg-state-subsanado hover:text-white',
+  amber: 'bg-state-subsanado-soft text-state-subsanado-foreground hover:bg-state-subsanado hover:text-primary-foreground',
   slate: 'bg-muted text-muted-foreground hover:bg-foreground hover:text-background',
 };
 
@@ -243,23 +244,12 @@ const ICON_TONES: Record<string, string> = {
         />
       }
 
-      <!-- Modal alerta (equivalente a la alerta personalizada del prototipo) -->
-      @if (alerta(); as a) {
-        <app-modal [title]="a.titulo" maxWidth="max-w-md" (closed)="alerta.set(null)">
-          <p class="text-sm text-foreground leading-relaxed">{{ a.mensaje }}</p>
-          <div class="flex justify-center mt-5">
-            <button
-              (click)="alerta.set(null)"
-              class="btn-primary px-6 min-w-[120px]"
-            >Aceptar</button>
-          </div>
-        </app-modal>
-      }
     </section>
   `,
 })
 export class GestionUsuariosComponent {
   private readonly auth = inject(AuthService);
+  private readonly modales = inject(ModalService);
   private readonly usuariosService = inject(UsuariosService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
@@ -274,7 +264,7 @@ export class GestionUsuariosComponent {
   readonly WorkflowIcon = Workflow;
 
   readonly kpiDefs = [
-    { filtro: 'TOTAL' as FiltroKpi, label: 'Total usuarios', icon: Users, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-blue-50 text-blue-600' },
+    { filtro: 'TOTAL' as FiltroKpi, label: 'Total usuarios', icon: Users, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-info-soft text-info' },
     { filtro: 'HABILITADO' as FiltroKpi, label: 'Habilitados', icon: UserCheck, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-success-soft text-success' },
     { filtro: 'INHABILITADO' as FiltroKpi, label: 'Inhabilitados', icon: UserX, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-destructive/10 text-destructive' },
     { filtro: 'PERMANENTE' as FiltroKpi, label: 'Permanente', icon: InfinityIcon, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-brand-soft text-brand' },
@@ -287,7 +277,6 @@ export class GestionUsuariosComponent {
   readonly page = signal(1);
   readonly pageSize = signal(5);
   readonly toastExcel = signal('');
-  readonly alerta = signal<{ titulo: string; mensaje: string } | null>(null);
   /** Registro de origen del modal "Reasignar Registro" (null = cerrado). */
   readonly reasignarOrigen = signal<UsuarioSodega | null>(null);
 
@@ -444,10 +433,10 @@ export class GestionUsuariosComponent {
       case 'CLAVE': {
         // TODO(backend): POST /usuarios/{id}/restablecer-clave
         const clave = this.usuariosService.restablecerClave();
-        this.alerta.set({
-          titulo: 'Restablecer clave',
-          mensaje: `Se ha generado una clave temporal de seguridad para el usuario unificado '${u.userGen}'. Clave Provisional: ${clave}`,
-        });
+        void this.modales.openInfo(
+          'Restablecer clave',
+          `Se ha generado una clave temporal de seguridad para el usuario unificado '${u.userGen}'. Clave Provisional: ${clave}`,
+        );
         break;
       }
       case 'REASIGNAR_REGISTRO':
@@ -455,10 +444,10 @@ export class GestionUsuariosComponent {
         break;
       case 'ESTADO': {
         const actualizado = this.usuariosService.toggleEstado(u.id);
-        this.alerta.set({
-          titulo: 'Estado Modificado',
-          mensaje: `El estado de la cuenta del servidor ${u.nombres} ${u.apePat} ahora es: ${actualizado?.estado}`,
-        });
+        void this.modales.openSuccess(
+          'Estado Modificado',
+          `El estado de la cuenta del servidor ${u.nombres} ${u.apePat} ahora es: ${actualizado?.estado}`,
+        );
         break;
       }
     }
@@ -470,12 +459,11 @@ export class GestionUsuariosComponent {
     this.reasignarOrigen.set(null);
     const nombreOrigen = origen ? toTitleCase(`${origen.nombres} ${origen.apePat}`) : '';
     const nombreDestino = toTitleCase(`${r.destino.nombres} ${r.destino.apePat}`);
-    this.alerta.set({
-      titulo: 'Reasignación Completada',
-      mensaje:
-        `Se transfirieron ${r.capacitaciones} capacitación(es) y ${r.asistencias} asistencia(s) técnica(s) ` +
+    void this.modales.openSuccess(
+      'Reasignación Completada',
+      `Se transfirieron ${r.capacitaciones} capacitación(es) y ${r.asistencias} asistencia(s) técnica(s) ` +
         `de ${nombreOrigen} hacia ${nombreDestino}. El historial institucional se conserva íntegro bajo el nuevo responsable.`,
-    });
+    );
   }
 
   /** Exportación simulada (mensajes progresivos del prototipo). */

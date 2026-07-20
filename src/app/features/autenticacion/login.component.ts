@@ -21,10 +21,10 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
   template: `
     <div class="min-h-screen flex bg-background">
       <!-- Panel institucional -->
-      <div class="hidden lg:flex flex-1 bg-sidebar text-white p-12 flex-col justify-between relative overflow-hidden">
+      <div class="hidden lg:flex flex-1 bg-sidebar text-sidebar-foreground p-12 flex-col justify-between relative overflow-hidden">
         <div
           class="absolute inset-0 opacity-10"
-          style="background-image: radial-gradient(circle at 20% 80%, #4FA6B1 0%, transparent 40%), radial-gradient(circle at 80% 20%, #327490 0%, transparent 40%)"
+          style="background-image: radial-gradient(circle at 20% 80%, var(--brand-secondary) 0%, transparent 40%), radial-gradient(circle at 80% 20%, var(--brand) 0%, transparent 40%)"
         ></div>
         <div class="relative">
           <div class="flex items-center gap-3">
@@ -195,7 +195,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
         <div class="bg-card rounded-2xl shadow-lg ring-1 ring-border w-[460px] max-w-full text-foreground overflow-hidden animate-modal-in">
           <div class="px-6 py-4 bg-primary text-primary-foreground flex items-center justify-between">
             <div class="flex items-center gap-3">
-              <div class="size-10 rounded-xl bg-white/15 flex items-center justify-center">
+              <div class="size-10 rounded-xl bg-primary-foreground/15 flex items-center justify-center">
                 <lucide-angular [img]="KeyRoundIcon" class="size-5" />
               </div>
               <div>
@@ -203,7 +203,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
                 <p class="text-[10px] opacity-80 font-semibold mt-0.5">Sistema SODEGA</p>
               </div>
             </div>
-            <button (click)="recuperarOpen.set(false)" class="size-8 rounded-lg bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center" title="Cerrar" aria-label="Cerrar">
+            <button (click)="recuperarOpen.set(false)" class="size-8 rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 transition-colors flex items-center justify-center" title="Cerrar" aria-label="Cerrar">
               <lucide-angular [img]="XIcon" class="size-4" />
             </button>
           </div>

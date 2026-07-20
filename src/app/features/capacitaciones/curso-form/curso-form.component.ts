@@ -9,7 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormBuilder, FormControl, ReactiveFormsModule } from '@angular/forms';
-import { LucideAngularModule, Info, MapPin, Compass, Sparkles } from 'lucide-angular';
+import { LucideAngularModule, LocateFixed, Info, MapPin, Compass, Sparkles } from 'lucide-angular';
 import { AreaService } from '../../../core/services/area.service';
 import { ReglasService } from '../../../core/services/reglas.service';
 import { CamposService } from '../../../core/services/campos.service';
@@ -25,6 +25,7 @@ import {
   getCentrosPoblados,
 } from '../../../core/constants/catalogos.const';
 import { PeruMapComponent } from '../../../shared/components/peru-map/peru-map.component';
+import { ModalService } from '../../../core/services/modal.service';
 import { lngLatToUTM } from '../../../shared/utils/utm.util';
 
 /** Estado completo del formulario del Paso 1 (mismo shape que el original). */
@@ -250,8 +251,22 @@ const INP_REQ = 'w-full bg-warning-soft ring-1 ring-warning/40 rounded-lg px-3 p
                 [region]="regionSeleccionada()"
                 [value]="coordsActuales()"
                 [disabled]="readOnly()"
+                [centro]="centroMapa()"
+                [showLocate]="!readOnly()"
                 (picked)="onMapPick($event)"
+                (locate)="obtenerUbicacion()"
               />
+              @if (!readOnly()) {
+                <button
+                  type="button"
+                  (click)="obtenerUbicacion()"
+                  [disabled]="buscandoUbicacion()"
+                  class="btn-secondary w-full mt-2"
+                >
+                  <lucide-angular [img]="LocateFixedIcon" class="size-4 text-brand" [class.animate-spin]="buscandoUbicacion()" />
+                  {{ buscandoUbicacion() ? 'Obteniendo ubicación…' : 'Obtener mi ubicación' }}
+                </button>
+              }
             </div>
 
             <!-- Campos -->
@@ -371,6 +386,30 @@ const INP_REQ = 'w-full bg-warning-soft ring-1 ring-warning/40 rounded-lg px-3 p
         }
       </fieldset>
 
+      @if (!readOnly()) {
+        <!-- Declaración jurada: obligatoria para continuar al siguiente paso -->
+        <section class="bg-card rounded-xl ring-1 ring-border p-5">
+          <label class="flex items-start gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              class="accent-brand size-4 mt-0.5 shrink-0"
+              [checked]="declaracionJurada()"
+              (change)="toggleDeclaracion($any($event.target).checked)"
+              aria-describedby="error-declaracion"
+            />
+            <span class="text-sm text-foreground leading-relaxed">
+              Declaro bajo juramento que la información proporcionada es correcta.
+              <span class="text-destructive">*</span>
+            </span>
+          </label>
+          @if (errores()['declaracion']) {
+            <p id="error-declaracion" class="text-[11px] text-destructive mt-2 pl-7" role="alert">
+              {{ errores()['declaracion'] }}
+            </p>
+          }
+        </section>
+      }
+
       <div class="flex justify-end gap-2 pt-2">
         <button type="button" (click)="cancelled.emit()" class="btn-secondary">
           {{ cancelLabel() ?? (readOnly() ? 'Volver' : 'Cancelar') }}
@@ -393,6 +432,7 @@ export class CursoFormComponent implements OnInit {
   private readonly areaService = inject(AreaService);
   private readonly reglasService = inject(ReglasService);
   private readonly camposService = inject(CamposService);
+  private readonly modales = inject(ModalService);
 
   readonly tipo = input.required<TipoCurso>();
   readonly initial = input<Partial<CursoFormState> | undefined>(undefined);
@@ -405,6 +445,7 @@ export class CursoFormComponent implements OnInit {
   readonly cancelled = output<void>();
 
   readonly SparklesIcon = Sparkles;
+  readonly LocateFixedIcon = LocateFixed;
   readonly MapPinIcon = MapPin;
   readonly CompassIcon = Compass;
   readonly InfoIcon = Info;
@@ -418,6 +459,8 @@ export class CursoFormComponent implements OnInit {
   readonly ubigeo = UBIGEO;
 
   readonly errores = signal<Record<string, string>>({});
+  /** Declaración jurada del Paso 1 (prellenada al editar un evento ya guardado). */
+  readonly declaracionJurada = signal(false);
   /** Valores de los campos personalizados del área (fase B). */
   readonly custom = signal<Record<string, string>>({});
   private readonly formTick = signal(0);
@@ -474,6 +517,8 @@ export class CursoFormComponent implements OnInit {
       `${this.tipo() === 'capacitacion' ? 'CAP' : 'AST'}-2026-${String(Math.floor(Math.random() * 900) + 100)}`;
     this.form.patchValue({ ...EMPTY, ...initial, codigo: codigoAuto });
     this.custom.set({ ...(initial?.custom ?? {}) });
+    // Un evento ya guardado implica que la declaración jurada fue aceptada.
+    if (initial) this.declaracionJurada.set(true);
     this.form.valueChanges.subscribe(() => this.formTick.update((t) => t + 1));
   }
 
@@ -519,6 +564,58 @@ export class CursoFormComponent implements OnInit {
   }
 
   /* ===== Mapa ===== */
+  /** Centro solicitado para el mapa (se fija al usar la geolocalización). */
+  readonly centroMapa = signal<{ lng: number; lat: number } | null>(null);
+  readonly buscandoUbicacion = signal(false);
+
+  /**
+   * Obtiene la ubicación GPS del navegador, completa Longitud/Latitud (con su
+   * conversión UTM) y centra el mapa colocando el marcador, que luego puede
+   * arrastrarse manualmente. Los errores usan el sistema unificado de modales.
+   */
+  obtenerUbicacion(): void {
+    if (this.readOnly() || this.buscandoUbicacion()) return;
+    if (!('geolocation' in navigator)) {
+      void this.modales.openError(
+        'Geolocalización no disponible',
+        'Su navegador no soporta la captura de ubicación. Ingrese las coordenadas manualmente o seleccione el punto en el mapa.',
+      );
+      return;
+    }
+    this.buscandoUbicacion.set(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        this.buscandoUbicacion.set(false);
+        const punto = {
+          lng: Number(pos.coords.longitude.toFixed(4)),
+          lat: Number(pos.coords.latitude.toFixed(4)),
+        };
+        this.onMapPick(punto);
+        this.centroMapa.set(punto);
+      },
+      (err) => {
+        this.buscandoUbicacion.set(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          void this.modales.openWarning(
+            'Permiso de ubicación denegado',
+            'El navegador no tiene permiso para acceder a su ubicación. Actívelo en la configuración del sitio y vuelva a intentarlo, o seleccione el punto directamente en el mapa.',
+          );
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          void this.modales.openError(
+            'Ubicación no disponible',
+            'No fue posible determinar su posición (GPS deshabilitado o sin señal). Verifique el GPS del dispositivo o seleccione el punto en el mapa.',
+          );
+        } else {
+          void this.modales.openError(
+            'Tiempo de espera agotado',
+            'La captura de ubicación tardó demasiado. Inténtelo nuevamente o seleccione el punto en el mapa.',
+          );
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    );
+  }
+
   onMapPick({ lng, lat }: { lng: number; lat: number }): void {
     const utm = lngLatToUTM(lng, lat);
     this.form.patchValue({
@@ -623,6 +720,8 @@ export class CursoFormComponent implements OnInit {
     if (!s.distrito) e['distrito'] = 'Distrito obligatorio.';
     if (s.latitud && Number.isNaN(Number(s.latitud))) e['latitud'] = 'Latitud no válida.';
     if (s.longitud && Number.isNaN(Number(s.longitud))) e['longitud'] = 'Longitud no válida.';
+    if (!this.declaracionJurada())
+      e['declaracion'] = 'Debe aceptar la declaración jurada para continuar al siguiente paso.';
     this.customs()
       .filter((c) => c.requerido)
       .forEach((c) => {
@@ -630,6 +729,13 @@ export class CursoFormComponent implements OnInit {
       });
     this.errores.set(e);
     return Object.keys(e).length === 0;
+  }
+
+  toggleDeclaracion(aceptada: boolean): void {
+    this.declaracionJurada.set(aceptada);
+    if (aceptada) {
+      this.errores.update(({ declaracion: _descartado, ...resto }) => resto);
+    }
   }
 
   guardar(): void {

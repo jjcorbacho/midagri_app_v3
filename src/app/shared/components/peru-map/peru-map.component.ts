@@ -7,7 +7,7 @@ import {
   output,
   signal,
 } from '@angular/core';
-import { LucideAngularModule, MapPin, Plus, Minus, RotateCcw } from 'lucide-angular';
+import { LucideAngularModule, LocateFixed, MapPin, Plus, Minus, RotateCcw } from 'lucide-angular';
 import {
   PERU_OUTLINE_D,
   REGION_LNGLAT_BBOX,
@@ -48,7 +48,10 @@ const PERU_VIEW: ViewBox = { x: 0, y: 0, w: SVG_WIDTH, h: SVG_HEIGHT };
         #svgEl
         [attr.viewBox]="viewBoxAttr()"
         (click)="handleClick($event, $any(svgEl))"
-        class="w-full aspect-[13/19] block"
+        (pointermove)="moverArrastre($event, $any(svgEl))"
+        (pointerup)="finalizarArrastre()"
+        (pointerleave)="finalizarArrastre()"
+        class="w-full aspect-[13/19] block touch-none"
         [class.cursor-not-allowed]="disabled()"
         [class.cursor-crosshair]="!disabled() && !!region()"
         style="transition-property: all; transition-duration: 400ms"
@@ -65,17 +68,29 @@ const PERU_VIEW: ViewBox = { x: 0, y: 0, w: SVG_WIDTH, h: SVG_HEIGHT };
           />
         }
 
-        <!-- Pin -->
+        <!-- Pin (arrastrable: cada movimiento actualiza las coordenadas) -->
         @if (pinSvg(); as p) {
-          <g [attr.transform]="'translate(' + p.x + ', ' + p.y + ')'">
-            <circle [attr.r]="4" class="fill-brand/25 animate-ping" />
-            <circle [attr.r]="2.2" class="fill-brand stroke-white" [attr.stroke-width]="0.6" />
+          <g
+            [attr.transform]="'translate(' + p.x + ', ' + p.y + ')'"
+            (pointerdown)="iniciarArrastre($event)"
+            [class.cursor-grab]="!disabled()"
+            [class.cursor-grabbing]="arrastrando()"
+          >
+            <circle [attr.r]="6" class="fill-transparent" />
+            <circle [attr.r]="4" class="fill-brand/25 animate-ping pointer-events-none" />
+            <circle [attr.r]="2.2" class="fill-brand stroke-card pointer-events-none" [attr.stroke-width]="0.6" />
           </g>
         }
       </svg>
 
       <!-- Controles zoom -->
       <div class="absolute bottom-2 right-2 z-10 flex flex-col gap-1">
+        @if (showLocate()) {
+          <button type="button" (click)="locate.emit()" aria-label="Centrar en mi ubicación" title="Centrar en mi ubicación"
+            class="size-7 rounded-md bg-primary text-primary-foreground shadow-sm flex items-center justify-center hover:bg-primary/85 transition-colors">
+            <lucide-angular [img]="LocateFixedIcon" class="size-3.5" />
+          </button>
+        }
         <button type="button" (click)="zoomBy(0.7)" aria-label="Acercar" title="Acercar"
           class="size-7 rounded-md bg-card ring-1 ring-border shadow-sm flex items-center justify-center text-foreground/70 hover:text-brand hover:ring-brand transition-colors">
           <lucide-angular [img]="PlusIcon" class="size-3.5" />
@@ -103,15 +118,23 @@ export class PeruMapComponent {
   readonly region = input<string | undefined>(undefined);
   readonly value = input<{ lng: number; lat: number } | null>(null);
   readonly disabled = input(false);
+  /** Punto sobre el que centrar la vista (p. ej. la ubicación GPS del usuario). */
+  readonly centro = input<{ lng: number; lat: number } | null>(null);
+  /** Muestra el botón flotante de localización dentro del mapa. */
+  readonly showLocate = input(false);
   readonly picked = output<{ lng: number; lat: number }>();
+  /** El usuario pulsó el botón flotante de localización. */
+  readonly locate = output<void>();
 
   readonly MapPinIcon = MapPin;
+  readonly LocateFixedIcon = LocateFixed;
   readonly PlusIcon = Plus;
   readonly MinusIcon = Minus;
   readonly RotateCcwIcon = RotateCcw;
   readonly outlineD = PERU_OUTLINE_D;
 
   private readonly view = signal<ViewBox>(PERU_VIEW);
+  readonly arrastrando = signal(false);
 
   readonly viewBoxAttr = computed(() => {
     const v = this.view();
@@ -132,6 +155,13 @@ export class PeruMapComponent {
   });
 
   constructor() {
+    // Centrado bajo demanda (conserva el nivel de zoom actual)
+    effect(() => {
+      const c = this.centro();
+      if (!c) return;
+      const p = lngLatToSvg(c.lng, c.lat);
+      this.view.update((v) => ({ x: p.x - v.w / 2, y: p.y - v.h / 2, w: v.w, h: v.h }));
+    });
     // Zoom automático a la región seleccionada
     effect(() => {
       const rect = this.regionRect();
@@ -164,6 +194,28 @@ export class PeruMapComponent {
   }
 
   handleClick(e: MouseEvent, svg: SVGSVGElement): void {
+    this.emitirPuntoDesdeEvento(e, svg);
+  }
+
+  /* ===== Arrastre del pin: cada movimiento emite las nuevas coordenadas ===== */
+
+  iniciarArrastre(e: PointerEvent): void {
+    if (this.disabled()) return;
+    e.stopPropagation();
+    e.preventDefault();
+    this.arrastrando.set(true);
+  }
+
+  moverArrastre(e: PointerEvent, svg: SVGSVGElement): void {
+    if (!this.arrastrando()) return;
+    this.emitirPuntoDesdeEvento(e, svg);
+  }
+
+  finalizarArrastre(): void {
+    this.arrastrando.set(false);
+  }
+
+  private emitirPuntoDesdeEvento(e: MouseEvent, svg: SVGSVGElement): void {
     if (this.disabled()) return;
     const rect = svg.getBoundingClientRect();
     const relX = (e.clientX - rect.left) / rect.width;
@@ -172,7 +224,7 @@ export class PeruMapComponent {
     const svgX = v.x + relX * v.w;
     const svgY = v.y + relY * v.h;
 
-    // Si hay región activa, ignorar clics fuera de su bbox
+    // Si hay región activa, ignorar puntos fuera de su bbox
     const regionRect = this.regionRect();
     if (regionRect) {
       const inside =
