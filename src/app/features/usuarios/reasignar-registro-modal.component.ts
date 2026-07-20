@@ -7,6 +7,7 @@ import { UsuarioSodega, toTitleCase } from '../../core/models/usuario-sodega.mod
 import { Curso } from '../../core/models/curso.model';
 import { normalizarNombreCatalogo } from '../../shared/utils/texto.util';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
+import { ModalService } from '../../core/services/modal.service';
 import { EstadoBadgeComponent } from '../../shared/components/estado-badge/estado-badge.component';
 
 /** Resultado emitido al completar la transferencia de registros. */
@@ -27,7 +28,6 @@ export interface ResultadoReasignacion {
   imports: [LucideAngularModule, ModalComponent, EstadoBadgeComponent],
   template: `
     <app-modal title="Reasignar registros" maxWidth="max-w-5xl" (closed)="closed.emit()">
-      @if (paso() === 'seleccion') {
         <div class="space-y-4">
           <!-- Encabezado: registro de origen (solo lectura) + botón que carga sus registros -->
           <div class="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 md:items-center">
@@ -192,27 +192,6 @@ export interface ResultadoReasignacion {
             <button (click)="solicitarConfirmacion()" class="btn-primary px-5">Reasignar</button>
           </div>
         </div>
-      } @else {
-        <!-- Confirmación previa a la transferencia -->
-        <div class="space-y-4">
-          <div class="flex items-start gap-3 bg-warning-soft ring-1 ring-warning/40 rounded-xl p-4">
-            <lucide-angular [img]="AlertIcon" class="size-5 text-warning-foreground shrink-0 mt-0.5" />
-            <p class="text-sm text-foreground leading-relaxed">
-              Está a punto de transferir todas las Capacitaciones y Asistencias Técnicas del trabajador
-              seleccionado hacia otro técnico activo. Esta acción modificará el responsable de todos los
-              registros asociados. ¿Desea continuar?
-            </p>
-          </div>
-          <div class="text-sm text-foreground bg-secondary/60 rounded-xl ring-1 ring-border p-4 space-y-1">
-            <p><span class="font-semibold text-muted-foreground">Origen:</span> {{ etiquetaOrigen() }}</p>
-            <p><span class="font-semibold text-muted-foreground">Destino:</span> {{ etiquetaDestino() }}</p>
-          </div>
-          <div class="flex justify-end gap-2">
-            <button (click)="paso.set('seleccion')" class="btn-secondary">Volver</button>
-            <button (click)="confirmarReasignacion()" class="btn-success px-5">Sí, continuar</button>
-          </div>
-        </div>
-      }
     </app-modal>
   `,
 })
@@ -220,6 +199,7 @@ export class ReasignarRegistroModalComponent {
   private readonly auth = inject(AuthService);
   private readonly usuariosService = inject(UsuariosService);
   private readonly cursosService = inject(CursosService);
+  private readonly modales = inject(ModalService);
 
   /** Registro de origen seleccionado en la grilla de usuarios. */
   readonly origen = input.required<UsuarioSodega>();
@@ -232,7 +212,6 @@ export class ReasignarRegistroModalComponent {
 
   readonly seleccionadoDni = signal<string | null>(null);
   readonly error = signal('');
-  readonly paso = signal<'seleccion' | 'confirmacion'>('seleccion');
   /** La grilla de origen se puebla al pulsar "Buscar Registros". */
   readonly busquedaOrigenEjecutada = signal(false);
 
@@ -366,7 +345,17 @@ export class ReasignarRegistroModalComponent {
       this.error.set('El trabajador seleccionado no tiene permisos para recibir Capacitaciones ni Asistencias Técnicas.');
       return;
     }
-    this.paso.set('confirmacion');
+    // Confirmación mediante el sistema unificado de modales.
+    void this.modales
+      .openConfirm(
+        'Reasignar registros',
+        `Está a punto de transferir todas las Capacitaciones y Asistencias Técnicas de ` +
+          `${this.etiquetaOrigen()} hacia ${this.etiquetaDestino()}. Esta acción modificará el ` +
+          `responsable de todos los registros asociados. ¿Desea continuar?`,
+      )
+      .then((ok) => {
+        if (ok) this.confirmarReasignacion();
+      });
   }
 
   /** Ejecuta la transferencia completa y notifica al componente padre. */

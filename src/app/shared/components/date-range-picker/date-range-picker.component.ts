@@ -48,7 +48,7 @@ const isoADdmm = (iso: string): string => {
   imports: [LucideAngularModule],
   host: { '(document:keydown.escape)': 'cerrar()' },
   template: `
-    <div class="relative" (focusout)="onFocusOut($event)">
+    <div class="relative">
       <!-- Disparador con apariencia de input del sistema -->
       <button
         type="button"
@@ -77,10 +77,17 @@ const isoADdmm = (iso: string): string => {
       </button>
 
       @if (abierto()) {
+        <!-- Overlay: los componentes flotantes se abren centrados en el viewport -->
+        <div
+          class="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-[2px] flex items-center justify-center p-4 animate-overlay-in"
+          (click)="cerrar()"
+          aria-hidden="true"
+        ></div>
         <div
           role="dialog"
+          aria-modal="true"
           aria-label="Seleccionar rango de fechas"
-          class="absolute z-50 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-xl bg-popover ring-1 ring-border shadow-lg p-3 animate-modal-in"
+          class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-72 max-w-[calc(100vw-2rem)] rounded-xl bg-popover ring-1 ring-border shadow-lg p-3 animate-modal-in"
         >
           <!-- Cabecera de mes -->
           <div class="flex items-center justify-between mb-2">
@@ -235,8 +242,4 @@ export class DateRangePickerComponent {
     return base + 'text-foreground/85 hover:bg-secondary rounded-md';
   }
 
-  onFocusOut(ev: FocusEvent): void {
-    const contenedor = ev.currentTarget as HTMLElement;
-    if (!contenedor.contains(ev.relatedTarget as Node | null)) this.cerrar();
-  }
 }

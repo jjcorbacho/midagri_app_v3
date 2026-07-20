@@ -45,7 +45,7 @@ const ICON_TONES: Record<string, string> = {
         </div>
         <div class="flex gap-2">
           <button
-            (click)="validarOpen.set(true)"
+            (click)="confirmarValidacionSeleccion()"
             [disabled]="sel().size === 0"
             class="btn-primary"
           >
@@ -282,29 +282,6 @@ const ICON_TONES: Record<string, string> = {
         </app-modal>
       }
 
-      <!-- Modal confirmar validación -->
-      @if (validarOpen()) {
-        <app-modal title="Confirmar validación" (closed)="validarOpen.set(false)">
-          <p class="text-sm text-foreground">
-            ¿Está seguro de {{ labelAprobar().toLowerCase() }}
-            <span class="font-bold">{{ sel().size }}</span> registro(s)?
-          </p>
-          <p class="text-xs text-muted-foreground mt-2">
-            Esta acción cambiará el estado de todos los registros seleccionados a
-            <span class="font-semibold">{{ estadoAprobar() }}</span>.
-          </p>
-          <div class="flex justify-end gap-2 mt-6">
-            <button
-              (click)="validarOpen.set(false)"
-              class="btn-secondary h-8"
-            >Cancelar</button>
-            <button
-              (click)="confirmarValidar()"
-              class="btn-primary h-8"
-            >Sí, {{ labelAprobar().toLowerCase() }}</button>
-          </div>
-        </app-modal>
-      }
 
       <!-- Modal observar -->
       @if (observarOpen()) {
@@ -389,7 +366,6 @@ export class SeguimientoPanelComponent {
   readonly sel = signal<Set<string>>(new Set());
   readonly obsView = signal<Curso | null>(null);
   readonly expanded = signal<Set<string>>(new Set());
-  readonly validarOpen = signal(false);
   readonly observarOpen = signal(false);
   readonly observarTexto = signal('');
   readonly observarFecha = signal(todayISO());
@@ -515,10 +491,24 @@ export class SeguimientoPanelComponent {
     this.router.navigate(['/capacitaciones-n1', c.id], { queryParams: { paso } });
   }
 
+  /** Confirmación mediante el sistema unificado de modales. */
+  confirmarValidacionSeleccion(): void {
+    const n = this.sel().size;
+    if (!n) return;
+    void this.modales
+      .openConfirm(
+        'Confirmar validación',
+        `¿Está seguro de ${this.labelAprobar().toLowerCase()} ${n} registro(s)? ` +
+          `Esta acción cambiará el estado de todos los registros seleccionados a "${this.estadoAprobar()}".`,
+      )
+      .then((ok) => {
+        if (ok) this.confirmarValidar();
+      });
+  }
+
   confirmarValidar(): void {
     this.sel().forEach((id) => this.cursosService.updateEstado(id, this.estadoAprobar()));
     this.sel.set(new Set());
-    this.validarOpen.set(false);
   }
 
   confirmarObservar(): void {

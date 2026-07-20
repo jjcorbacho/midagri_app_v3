@@ -109,7 +109,7 @@ const INP_NORMAL = INPUT_BASE;
                     type="button"
                     (click)="consultarReniec()"
                     [disabled]="!reniecEditable() || buscandoReniec()"
-                    class="w-1/3 bg-primary hover:bg-primary/85 text-primary-foreground rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="btn-primary w-1/3 px-2"
                   >
                     <span>{{ buscandoReniec() ? 'Buscando...' : 'Buscar' }}</span>
                     <lucide-angular [img]="buscandoReniec() ? LoaderIcon : SearchIcon" class="size-3 ml-1" [class.animate-spin]="buscandoReniec()" />

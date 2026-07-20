@@ -26,6 +26,7 @@ import {
 } from '../../../core/constants/catalogos.const';
 import { PeruMapComponent } from '../../../shared/components/peru-map/peru-map.component';
 import { ModalService } from '../../../core/services/modal.service';
+import { INPUT_BASE, INPUT_DISABLED, INPUT_REQUIRED } from '../../../shared/utils/input-styles.const';
 import { lngLatToUTM } from '../../../shared/utils/utm.util';
 
 /** Estado completo del formulario del Paso 1 (mismo shape que el original). */
@@ -58,10 +59,10 @@ const EMPTY: CursoFormState = {
   custom: {},
 };
 
-const INP = 'w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/60 hover:ring-muted-foreground/30 focus:ring-2 focus:ring-ring focus:outline-none transition-[box-shadow,background-color] duration-150';
-const INP_DISABLED = 'w-full bg-muted/40 ring-1 ring-border rounded-lg px-3 py-2 text-sm text-muted-foreground cursor-not-allowed';
-/** Campo obligatorio: resaltado ámbar (misma convención que INPUT_REQUIRED compartido). */
-const INP_REQ = 'w-full bg-warning-soft ring-1 ring-warning/40 rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus:bg-card focus:ring-2 focus:ring-ring focus:outline-none transition-[box-shadow,background-color] duration-150';
+/* Estilos de input del design system compartido (sin variantes locales). */
+const INP = INPUT_BASE;
+const INP_DISABLED = INPUT_DISABLED;
+const INP_REQ = INPUT_REQUIRED;
 
 @Component({
   selector: 'app-curso-form',
