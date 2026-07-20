@@ -387,8 +387,10 @@ const INP_REQ = 'w-full bg-warning-soft ring-1 ring-warning/40 rounded-lg px-3 p
       </fieldset>
 
       @if (!readOnly()) {
-        <!-- Declaración jurada: obligatoria para continuar al siguiente paso -->
-        <section class="bg-card rounded-xl ring-1 ring-border p-5">
+        <!-- Declaración jurada: obligatoria para continuar al siguiente paso.
+             El mt-4 (escala global) se suma al space-y-5 del contenedor para
+             dar más aire entre Coordenadas y este bloque de cierre. -->
+        <section class="bg-card rounded-xl ring-1 ring-border p-5 mt-4">
           <label class="flex items-start gap-3 cursor-pointer select-none">
             <input
               type="checkbox"

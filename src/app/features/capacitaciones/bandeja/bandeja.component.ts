@@ -18,6 +18,9 @@ import { KpiCardComponent } from '../../../shared/components/kpi-card/kpi-card.c
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { SustentoModalComponent } from '../sustento-modal/sustento-modal.component';
 import { exportarTablaExcel } from '../../../shared/utils/excel.util';
+import { parseFechaCurso } from '../../../shared/utils/fecha.util';
+import { UBIGEO, getProvincias, getDistritos } from '../../../core/constants/catalogos.const';
+import { DateRangePickerComponent, RangoFechas } from '../../../shared/components/date-range-picker/date-range-picker.component';
 
 type Tab = 'todos' | 'capacitacion' | 'asistencia';
 /** Campo único sobre el que opera el buscador de la bandeja. */
@@ -49,7 +52,7 @@ const ICON_TONES: Record<string, string> = {
 @Component({
   selector: 'app-bandeja',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, EstadoBadgeComponent, KpiCardComponent, ModalComponent, SustentoModalComponent],
+  imports: [LucideAngularModule, EstadoBadgeComponent, KpiCardComponent, ModalComponent, SustentoModalComponent, DateRangePickerComponent],
   template: `
     <section class="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6 animate-page-in">
       <!-- KPIs -->
@@ -103,59 +106,126 @@ const ICON_TONES: Record<string, string> = {
           </div>
         </div>
 
-        <!-- Filtros -->
-        <div class="p-4 bg-secondary/40 border-b border-border flex flex-col md:flex-row gap-3 flex-wrap">
-          <div class="inline-flex p-1 bg-card ring-1 ring-border rounded-lg">
-            @for (t of tabs; track t.k) {
-              <button
-                (click)="setTab(t.k)"
-                class="h-8 px-3 rounded-md text-xs font-bold transition-colors"
-                [class]="tab() === t.k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'"
-              >{{ t.label }}</button>
-            }
+        <!-- Filtros (organización según la referencia filtros.xlsx) -->
+        <div class="p-4 bg-secondary/40 border-b border-border space-y-3">
+          <!-- Fila 1: indicadores por tipo + buscador por campo + exportación -->
+          <div class="flex flex-col lg:flex-row gap-3 lg:items-center">
+            <div class="inline-flex p-1 bg-card ring-1 ring-border rounded-lg self-start shrink-0" role="tablist" aria-label="Filtrar por tipo">
+              @for (t of tabs; track t.k) {
+                <button
+                  role="tab"
+                  [attr.aria-selected]="tab() === t.k"
+                  (click)="setTab(t.k)"
+                  class="h-8 px-3 rounded-md text-xs font-bold transition-colors flex items-center gap-1.5"
+                  [class]="tab() === t.k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'"
+                >
+                  {{ t.label }}
+                  <span
+                    class="px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums"
+                    [class]="tab() === t.k ? 'bg-primary-foreground/25' : 'bg-secondary ring-1 ring-border'"
+                  >{{ conteoTipos()[t.k] }}</span>
+                </button>
+              }
+            </div>
+
+            <select
+              [value]="campoBusqueda()"
+              (change)="setCampoBusqueda($event)"
+              aria-label="Campo de búsqueda"
+              class="px-3 py-2 bg-card ring-1 ring-border rounded-lg text-sm font-medium shrink-0"
+            >
+              @for (c of camposBusqueda; track c.k) {
+                <option [value]="c.k">Buscar por: {{ c.label }}</option>
+              }
+            </select>
+
+            <div class="relative flex-1 min-w-[200px]">
+              <lucide-angular [img]="SearchIcon" class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <input
+                [value]="q()"
+                (input)="setQ($event)"
+                type="text"
+                [placeholder]="'Buscar por ' + etiquetaCampoBusqueda() + '…'"
+                class="w-full pl-10 pr-4 py-2 bg-card ring-1 ring-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring"
+              />
+            </div>
+
+            <!-- Exportación junto al buscador -->
+            <button
+              (click)="exportarExcel()"
+              title="Exportar Excel"
+              aria-label="Exportar la tabla a Excel"
+              class="p-2 rounded-lg transition-all bg-success text-success-foreground hover:bg-success/85 shadow-sm shrink-0"
+            >
+              <lucide-angular [img]="FileSpreadsheetIcon" class="size-4" />
+            </button>
           </div>
 
-          <select
-            [value]="campoBusqueda()"
-            (change)="setCampoBusqueda($event)"
-            aria-label="Campo de búsqueda"
-            class="px-3 py-2 bg-card ring-1 ring-border rounded-lg text-sm font-medium"
-          >
-            @for (c of camposBusqueda; track c.k) {
-              <option [value]="c.k">Buscar por: {{ c.label }}</option>
-            }
-          </select>
-
-          <div class="relative flex-1 min-w-[200px]">
-            <lucide-angular [img]="SearchIcon" class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <input
-              [value]="q()"
-              (input)="setQ($event)"
-              type="text"
-              [placeholder]="'Buscar por ' + etiquetaCampoBusqueda() + '…'"
-              class="w-full pl-10 pr-4 py-2 bg-card ring-1 ring-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring"
-            />
+          <!-- Fila 2: filtros uniformes y alineados -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
+            <div>
+              <label for="filtro-estado" class="block text-[11px] font-medium text-muted-foreground mb-1">Estado</label>
+              <select
+                id="filtro-estado"
+                [value]="estado()"
+                (change)="setEstado($event)"
+                class="w-full px-3 py-2 bg-card ring-1 ring-border rounded-lg text-sm font-medium"
+              >
+                <option value="TODOS">Todos</option>
+                @for (e of estados; track e) {
+                  <option [value]="e">{{ e }}</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label for="filtro-region" class="block text-[11px] font-medium text-muted-foreground mb-1">Región</label>
+              <select
+                id="filtro-region"
+                [value]="fRegion()"
+                (change)="setFiltroRegion($event)"
+                class="w-full px-3 py-2 bg-card ring-1 ring-border rounded-lg text-sm font-medium"
+              >
+                <option value="">Todas</option>
+                @for (r of regionesFiltro; track r) {
+                  <option [value]="r">{{ r }}</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label for="filtro-provincia" class="block text-[11px] font-medium text-muted-foreground mb-1">Provincia</label>
+              <select
+                id="filtro-provincia"
+                [value]="fProvincia()"
+                (change)="setFiltroProvincia($event)"
+                [disabled]="!fRegion()"
+                class="w-full px-3 py-2 bg-card ring-1 ring-border rounded-lg text-sm font-medium disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
+              >
+                <option value="">Todas</option>
+                @for (pr of provinciasFiltro(); track pr) {
+                  <option [value]="pr">{{ pr }}</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label for="filtro-distrito" class="block text-[11px] font-medium text-muted-foreground mb-1">Distrito</label>
+              <select
+                id="filtro-distrito"
+                [value]="fDistrito()"
+                (change)="setFiltroDistrito($event)"
+                [disabled]="!fProvincia()"
+                class="w-full px-3 py-2 bg-card ring-1 ring-border rounded-lg text-sm font-medium disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
+              >
+                <option value="">Todos</option>
+                @for (d of distritosFiltro(); track d) {
+                  <option [value]="d">{{ d }}</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Rango de fechas</label>
+              <app-date-range-picker [desde]="fDesde()" [hasta]="fHasta()" (rangoChange)="setRangoFechas($event)" />
+            </div>
           </div>
-
-          <select
-            [value]="estado()"
-            (change)="setEstado($event)"
-            class="px-3 py-2 bg-card ring-1 ring-border rounded-lg text-sm font-medium"
-          >
-            <option value="TODOS">Estado: Todos</option>
-            @for (e of estados; track e) {
-              <option [value]="e">{{ e }}</option>
-            }
-          </select>
-
-          <button
-            (click)="exportarExcel()"
-            title="Exportar Excel"
-            aria-label="Exportar la tabla a Excel"
-            class="p-2 rounded-lg transition-all bg-success text-success-foreground hover:bg-success/85 shadow-sm"
-          >
-            <lucide-angular [img]="FileSpreadsheetIcon" class="size-4" />
-          </button>
         </div>
 
         <!-- Tabla -->
@@ -401,6 +471,21 @@ export class BandejaComponent {
     () => CAMPOS_BUSQUEDA.find((c) => c.k === this.campoBusqueda())?.label ?? 'Código',
   );
   readonly estado = signal<EstadoFiltro>('TODOS');
+  /* Filtros territoriales y de rango de fechas (referencia filtros.xlsx). */
+  readonly fRegion = signal('');
+  readonly fProvincia = signal('');
+  readonly fDistrito = signal('');
+  readonly fDesde = signal('');
+  readonly fHasta = signal('');
+  readonly regionesFiltro = UBIGEO.map((r) => r.nombre);
+  readonly provinciasFiltro = computed(() =>
+    this.fRegion() ? getProvincias(this.fRegion()).map((pr) => pr.nombre) : [],
+  );
+  readonly distritosFiltro = computed(() =>
+    this.fRegion() && this.fProvincia()
+      ? getDistritos(this.fRegion(), this.fProvincia()).map((d) => d.nombre)
+      : [],
+  );
   readonly pageSize = signal(10);
   readonly page = signal(1);
   readonly obsModal = signal<string | null>(null);
@@ -423,6 +508,16 @@ export class BandejaComponent {
     };
   });
 
+  /** Contadores de los indicadores Todos / Capacitaciones / Asistencias. */
+  readonly conteoTipos = computed(() => {
+    const base = this.cursosService.cursos().filter((c) => c.area === this.areaService.currentArea());
+    return {
+      todos: base.length,
+      capacitacion: base.filter((c) => c.tipo === 'capacitacion').length,
+      asistencia: base.filter((c) => c.tipo === 'asistencia').length,
+    };
+  });
+
   readonly queryActive = computed(() => this.q().trim().length > 0);
   private readonly queryLower = computed(() => this.q().trim().toLowerCase());
 
@@ -430,6 +525,19 @@ export class BandejaComponent {
     let base = this.cursosService.cursos().filter((c) => c.area === this.areaService.currentArea());
     if (this.tab() !== 'todos') base = base.filter((c) => c.tipo === this.tab());
     if (this.estado() !== 'TODOS') base = base.filter((c) => c.estado === this.estado());
+    if (this.fRegion()) base = base.filter((c) => c.region === this.fRegion());
+    if (this.fProvincia()) base = base.filter((c) => c.provincia === this.fProvincia());
+    if (this.fDistrito()) base = base.filter((c) => c.distrito === this.fDistrito());
+    const desde = this.fDesde();
+    const hasta = this.fHasta();
+    if (desde || hasta) {
+      const min = desde ? (parseFechaCurso(desde) ?? Number.NEGATIVE_INFINITY) : Number.NEGATIVE_INFINITY;
+      const max = hasta ? (parseFechaCurso(hasta) ?? Number.POSITIVE_INFINITY) + 86_399_999 : Number.POSITIVE_INFINITY;
+      base = base.filter((c) => {
+        const t = parseFechaCurso(c.fecha);
+        return t !== null && t >= min && t <= max;
+      });
+    }
     if (this.queryActive()) {
       const s = this.queryLower();
       base = base.filter((c) => {
@@ -540,6 +648,31 @@ export class BandejaComponent {
 
   setTab(t: Tab): void { this.tab.set(t); this.page.set(1); }
   setQ(e: Event): void { this.q.set((e.target as HTMLInputElement).value); this.page.set(1); }
+  setFiltroRegion(e: Event): void {
+    this.fRegion.set((e.target as HTMLSelectElement).value);
+    this.fProvincia.set('');
+    this.fDistrito.set('');
+    this.page.set(1);
+  }
+
+  setFiltroProvincia(e: Event): void {
+    this.fProvincia.set((e.target as HTMLSelectElement).value);
+    this.fDistrito.set('');
+    this.page.set(1);
+  }
+
+  setFiltroDistrito(e: Event): void {
+    this.fDistrito.set((e.target as HTMLSelectElement).value);
+    this.page.set(1);
+  }
+
+  /** La tabla se recalcula automáticamente al cambiar el rango (signals). */
+  setRangoFechas(r: RangoFechas): void {
+    this.fDesde.set(r.desde);
+    this.fHasta.set(r.hasta);
+    this.page.set(1);
+  }
+
   setCampoBusqueda(e: Event): void {
     this.campoBusqueda.set((e.target as HTMLSelectElement).value as CampoBusqueda);
     this.page.set(1);
