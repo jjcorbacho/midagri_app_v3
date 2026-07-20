@@ -120,16 +120,16 @@ const COLLAPSE_KEY = 'midagri.sidebar.collapsed';
       <div class="flex items-center mb-3 w-full" [class]="collapsed() ? 'justify-center' : 'justify-between px-3'">
         <a
           routerLink="/dashboard"
-          class="size-10 rounded-md flex items-center justify-center ring-1 ring-white/20 bg-brand text-white font-bold text-sm shrink-0"
+          class="size-10 rounded-md flex items-center justify-center ring-1 ring-sidebar-foreground/20 bg-brand text-brand-foreground font-bold text-sm shrink-0"
           aria-label="MIDAGRI - Inicio"
         >M</a>
         @if (!collapsed()) {
-          <span class="text-[11px] font-semibold tracking-wider text-white/70 uppercase">MIDAGRI</span>
+          <span class="text-[11px] font-semibold tracking-wider text-sidebar-foreground/70 uppercase">MIDAGRI</span>
         }
         <button
           (click)="toggle()"
-          class="p-1.5 rounded-md hover:bg-white/10 text-white/70 hover:text-white transition-colors"
-          [class]="collapsed() ? 'absolute top-3 right-[-12px] bg-sidebar ring-1 ring-white/15' : ''"
+          class="p-1.5 rounded-md hover:bg-sidebar-foreground/10 text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors"
+          [class]="collapsed() ? 'absolute top-3 right-[-12px] bg-sidebar ring-1 ring-sidebar-foreground/15' : ''"
           [attr.aria-label]="collapsed() ? 'Expandir menú' : 'Colapsar menú'"
           [title]="collapsed() ? 'Expandir menú' : 'Colapsar menú'"
         >
@@ -144,7 +144,7 @@ const COLLAPSE_KEY = 'midagri.sidebar.collapsed';
               <button
                 (click)="toggleGroup(item.to)"
                 class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors w-full text-left"
-                [class]="isActive(item) ? 'bg-brand text-white' : 'text-sidebar-muted hover:text-white hover:bg-white/10'"
+                [class]="isActive(item) ? 'bg-brand text-brand-foreground' : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-foreground/10'"
               >
                 <lucide-angular [img]="item.icon" class="size-5 shrink-0" [strokeWidth]="1.75" />
                 <span class="text-sm flex-1">{{ item.label }}</span>
@@ -156,7 +156,7 @@ const COLLAPSE_KEY = 'midagri.sidebar.collapsed';
                     <a
                       [routerLink]="sub.to"
                       class="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs transition-colors"
-                      [class]="isChildActive(sub) ? 'bg-white/15 text-white' : 'text-sidebar-muted hover:text-white hover:bg-white/5'"
+                      [class]="isChildActive(sub) ? 'bg-sidebar-foreground/15 text-sidebar-foreground' : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-foreground/5'"
                     >
                       <lucide-angular [img]="sub.icon" class="size-4" [strokeWidth]="1.75" />
                       <span>{{ sub.label }}</span>
@@ -169,13 +169,13 @@ const COLLAPSE_KEY = 'midagri.sidebar.collapsed';
             <a
               [routerLink]="item.to"
               class="group relative flex items-center gap-3 rounded-lg transition-colors"
-              [class]="(collapsed() ? 'p-2.5 justify-center ' : 'px-3 py-2 ') + (isActive(item) ? 'bg-brand text-white' : 'text-sidebar-muted hover:text-white hover:bg-white/10')"
+              [class]="(collapsed() ? 'p-2.5 justify-center ' : 'px-3 py-2 ') + (isActive(item) ? 'bg-brand text-brand-foreground' : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-foreground/10')"
             >
               <lucide-angular [img]="item.icon" class="size-5 shrink-0" [strokeWidth]="1.75" />
               @if (!collapsed()) {
                 <span class="text-sm">{{ item.label }}</span>
               } @else {
-                <span class="pointer-events-none absolute left-14 top-1/2 -translate-y-1/2 scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all bg-foreground text-white text-xs font-medium px-2.5 py-1.5 rounded whitespace-nowrap z-50 shadow-lg">
+                <span class="pointer-events-none absolute left-14 top-1/2 -translate-y-1/2 scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all bg-foreground text-background text-xs font-medium px-2.5 py-1.5 rounded whitespace-nowrap z-50 shadow-lg">
                   {{ item.label }}
                 </span>
               }
@@ -187,7 +187,7 @@ const COLLAPSE_KEY = 'midagri.sidebar.collapsed';
       <div class="flex flex-col gap-1 w-full" [class]="collapsed() ? 'items-center px-0' : 'px-2'">
         <button
           (click)="logout()"
-          class="group relative flex items-center gap-3 rounded-lg text-sidebar-muted hover:text-white hover:bg-white/10 transition-colors"
+          class="group relative flex items-center gap-3 rounded-lg text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-foreground/10 transition-colors"
           [class]="collapsed() ? 'p-2.5 justify-center' : 'px-3 py-2'"
           aria-label="Cerrar sesión"
         >
@@ -195,7 +195,7 @@ const COLLAPSE_KEY = 'midagri.sidebar.collapsed';
           @if (!collapsed()) {
             <span class="text-sm">Cerrar sesión</span>
           } @else {
-            <span class="pointer-events-none absolute left-14 top-1/2 -translate-y-1/2 scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all bg-foreground text-white text-xs font-medium px-2.5 py-1.5 rounded whitespace-nowrap z-50 shadow-lg">
+            <span class="pointer-events-none absolute left-14 top-1/2 -translate-y-1/2 scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all bg-foreground text-background text-xs font-medium px-2.5 py-1.5 rounded whitespace-nowrap z-50 shadow-lg">
               Cerrar sesión
             </span>
           }

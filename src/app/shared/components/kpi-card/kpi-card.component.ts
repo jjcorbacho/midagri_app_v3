@@ -5,10 +5,10 @@ import type { LucideIconData } from 'lucide-angular';
 export type KpiTone = 'blue' | 'teal' | 'emerald' | 'indigo' | 'slate' | 'amber';
 
 const TONE_MAP: Record<KpiTone, string> = {
-  blue: 'bg-blue-50 text-blue-600',
+  blue: 'bg-info-soft text-info',
   teal: 'bg-brand-soft text-brand',
   emerald: 'bg-success-soft text-success',
-  indigo: 'bg-indigo-50 text-indigo-600',
+  indigo: 'bg-state-validado-soft text-state-validado',
   slate: 'bg-muted text-muted-foreground',
   amber: 'bg-warning-soft text-warning-foreground',
 };

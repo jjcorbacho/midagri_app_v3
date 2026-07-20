@@ -47,36 +47,37 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-warning-soft border border-warning/4
       <form class="p-6 space-y-8" [formGroup]="form" (ngSubmit)="guardar()">
         <section class="space-y-4">
           <div class="flex items-center gap-2 border-b border-brand/15 pb-2">
-            <span class="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded-full">1</span>
+            <span class="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">1</span>
             <h3 class="text-brand font-bold uppercase text-sm tracking-wide">Identidad y Demográficos</h3>
           </div>
 
           @if (mode() === 'nuevo') {
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-brand-soft/60 p-4 rounded-lg border border-brand/15">
-              <div class="md:col-span-4">
-                <label class="block text-xs font-semibold text-foreground mb-1">DNI (8 dígitos) <span class="text-destructive">*</span></label>
-                <input
-                  type="text" inputmode="numeric" maxlength="8" placeholder="Ingrese DNI"
-                  formControlName="dni"
-                  (input)="soloDigitos()"
-                  [class]="(dniLocked() ? lockedInput : requiredCls(false)) + ' font-mono'"
-                />
-                @if (errors()['dni']) {
-                  <p class="text-[11px] text-destructive mt-1">{{ errors()['dni'] }}</p>
-                }
-              </div>
-              <div class="md:col-span-4 flex gap-2">
+            <!-- DNI a ancho completo en una única fila (apila en móvil) -->
+            <div class="bg-brand-soft/60 p-4 rounded-lg border border-brand/15 space-y-2">
+              <div class="flex flex-col md:flex-row md:items-end gap-3">
+                <div class="flex-1 min-w-0">
+                  <label class="block text-xs font-semibold text-foreground mb-1">DNI (8 dígitos) <span class="text-destructive">*</span></label>
+                  <input
+                    type="text" inputmode="numeric" maxlength="8" placeholder="Ingrese DNI"
+                    formControlName="dni"
+                    (input)="soloDigitos()"
+                    [class]="(dniLocked() ? lockedInput : requiredCls(false)) + ' font-mono w-full'"
+                  />
+                </div>
                 <button type="button" (click)="buscarDNI()" [disabled]="dniLocked()"
-                  class="flex-1 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm">
+                  class="shrink-0 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed text-primary-foreground px-5 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm">
                   <lucide-angular [img]="SearchIcon" class="size-4" />
                   Buscar
                 </button>
                 <button type="button" (click)="limpiar()"
-                  class="px-4 py-2 text-muted-foreground hover:text-foreground text-sm font-medium border border-border rounded-md bg-card hover:bg-surface-2">
+                  class="shrink-0 px-4 py-2 text-muted-foreground hover:text-foreground text-sm font-medium border border-border rounded-md bg-card hover:bg-surface-2">
                   Limpiar
                 </button>
               </div>
-              <div class="md:col-span-4 text-xs font-medium italic">
+              @if (errors()['dni']) {
+                <p class="text-[11px] text-destructive">{{ errors()['dni'] }}</p>
+              }
+              <p class="text-xs font-medium italic">
                 @switch (busqueda()) {
                   @case ('ok') {
                     <span class="text-success">✓ Encontrado en la base de datos de Productores</span>
@@ -88,7 +89,7 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-warning-soft border border-warning/4
                     <span class="text-brand">* Ingrese el DNI para autocompletar.</span>
                   }
                 }
-              </div>
+              </p>
             </div>
           } @else {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -163,7 +164,7 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-warning-soft border border-warning/4
 
         <section class="space-y-4 pt-2">
           <div class="flex items-center gap-2 border-b border-brand/15 pb-2">
-            <span class="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded-full">2</span>
+            <span class="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">2</span>
             <h3 class="text-brand font-bold uppercase text-sm tracking-wide">Datos técnicos y comerciales</h3>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -234,7 +235,7 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-warning-soft border border-warning/4
 
         <section class="space-y-4 pt-2">
           <div class="flex items-center gap-2 border-b border-brand/15 pb-2">
-            <span class="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded-full">3</span>
+            <span class="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">3</span>
             <h3 class="text-brand font-bold uppercase text-sm tracking-wide">Organización y participación social</h3>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -277,7 +278,7 @@ const REQUIRED_INPUT = 'w-full px-3 py-2 bg-warning-soft border border-warning/4
 
         <section class="space-y-4 pt-2">
           <div class="flex items-center gap-2 border-b border-brand/15 pb-2">
-            <span class="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded-full">4</span>
+            <span class="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">4</span>
             <h3 class="text-brand font-bold uppercase text-sm tracking-wide">Información adicional</h3>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

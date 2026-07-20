@@ -95,7 +95,7 @@ const MOSTRAR_SELECTOR_AREA = false;
       </div>
 
       @if (pwdOpen()) {
-        <div class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4 animate-overlay-in" (click)="pwdOpen.set(false)">
+        <div class="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-[2px] flex items-center justify-center p-4 animate-overlay-in" (click)="pwdOpen.set(false)">
           <div class="bg-card rounded-xl ring-1 ring-border shadow-lg w-full max-w-md p-6 animate-modal-in" (click)="$event.stopPropagation()">
             <h2 class="text-h3 mb-1">Cambiar clave</h2>
             <p class="text-xs text-muted-foreground mb-5">

@@ -7,6 +7,7 @@ import {
 } from 'lucide-angular';
 import { AreaService } from '../../core/services/area.service';
 import { CursosService } from '../../core/services/cursos.service';
+import { ModalService } from '../../core/services/modal.service';
 import { ParticipantesService } from '../../core/services/participantes.service';
 import { Curso, EstadoCurso } from '../../core/models/curso.model';
 import { Participante } from '../../core/models/participante.model';
@@ -18,8 +19,8 @@ const ACCIONABLES_DZ: EstadoCurso[] = ['Enviado', 'Enviado-Subsanado'];
 const ACCIONABLES_UE: EstadoCurso[] = ['Enviado', 'Enviado-Subsanado', 'Validado'];
 
 const ICON_TONES: Record<string, string> = {
-  blue: 'bg-state-validado-soft text-state-validado-foreground hover:bg-state-validado hover:text-white',
-  amber: 'bg-state-subsanado-soft text-state-subsanado-foreground hover:bg-state-subsanado hover:text-white',
+  blue: 'bg-state-validado-soft text-state-validado-foreground hover:bg-state-validado hover:text-primary-foreground',
+  amber: 'bg-state-subsanado-soft text-state-subsanado-foreground hover:bg-state-subsanado hover:text-primary-foreground',
   indigo: 'bg-brand-soft text-brand hover:bg-brand hover:text-brand-foreground',
 };
 
@@ -350,6 +351,7 @@ const ICON_TONES: Record<string, string> = {
 export class SeguimientoPanelComponent {
   private readonly areaService = inject(AreaService);
   private readonly cursosService = inject(CursosService);
+  private readonly modales = inject(ModalService);
   private readonly participantesService = inject(ParticipantesService);
   private readonly router = inject(Router);
 
@@ -521,7 +523,7 @@ export class SeguimientoPanelComponent {
 
   confirmarObservar(): void {
     if (!this.observarTexto().trim()) {
-      alert('Ingrese una descripción para la observación.');
+      void this.modales.openError('Observación incompleta', 'Ingrese una descripción para la observación.');
       return;
     }
     const fechaTxt = this.fechaObservacionTexto();
@@ -534,6 +536,6 @@ export class SeguimientoPanelComponent {
   }
 
   descargaSimulada(): void {
-    alert('Descarga simulada');
+    void this.modales.openInfo('Descarga de sustento', 'Descarga simulada (disponible al conectar el API real).');
   }
 }

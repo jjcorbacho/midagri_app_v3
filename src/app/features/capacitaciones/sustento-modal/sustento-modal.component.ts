@@ -12,7 +12,7 @@ const MAX_MB = 15;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule],
   template: `
-    <div class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4 animate-overlay-in" (click)="closed.emit()">
+    <div class="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-[2px] flex items-center justify-center p-4 animate-overlay-in" (click)="closed.emit()">
       <div class="bg-card text-foreground rounded-xl ring-1 ring-border shadow-lg w-full max-w-3xl max-h-[90vh] flex flex-col animate-modal-in" (click)="$event.stopPropagation()">
         <!-- Header -->
         <div class="flex items-start justify-between p-6 border-b border-border">

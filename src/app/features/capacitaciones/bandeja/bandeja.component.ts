@@ -4,30 +4,46 @@ import {
   LucideAngularModule,
   Plus, Search, BookOpen, ClipboardCheck, Wrench, Users, UserPlus, Pencil,
   Trash2, Download, AlertTriangle, MapPin, UploadCloud, ChevronDown, ChevronUp,
-  FileEdit, SendHorizonal, AlertOctagon, BadgeCheck, FileText,
+  FileEdit, SendHorizonal, AlertOctagon, BadgeCheck, FileText, FileSpreadsheet,
 } from 'lucide-angular';
 import { AreaService } from '../../../core/services/area.service';
 import { CursosService } from '../../../core/services/cursos.service';
 import { ParticipantesService } from '../../../core/services/participantes.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { ModalService } from '../../../core/services/modal.service';
 import { Curso, ESTADOS, EstadoCurso, canDeleteCurso } from '../../../core/models/curso.model';
 import { Participante } from '../../../core/models/participante.model';
 import { EstadoBadgeComponent } from '../../../shared/components/estado-badge/estado-badge.component';
 import { KpiCardComponent } from '../../../shared/components/kpi-card/kpi-card.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { SustentoModalComponent } from '../sustento-modal/sustento-modal.component';
+import { exportarTablaExcel } from '../../../shared/utils/excel.util';
 
 type Tab = 'todos' | 'capacitacion' | 'asistencia';
+/** Campo único sobre el que opera el buscador de la bandeja. */
+type CampoBusqueda = 'codigo' | 'tema' | 'ubicacion' | 'extensionista' | 'nombres' | 'apellidos' | 'dni';
+
+const CAMPOS_BUSQUEDA: { k: CampoBusqueda; label: string }[] = [
+  { k: 'codigo', label: 'Código' },
+  { k: 'tema', label: 'Tema' },
+  { k: 'ubicacion', label: 'Ubicación' },
+  { k: 'extensionista', label: 'Extensionista' },
+  { k: 'nombres', label: 'Nombres' },
+  { k: 'apellidos', label: 'Apellidos' },
+  { k: 'dni', label: 'DNI' },
+];
 type EstadoFiltro = 'TODOS' | EstadoCurso;
 
 const ICON_TONES: Record<string, string> = {
   teal: 'bg-brand-soft text-brand hover:bg-brand hover:text-brand-foreground',
-  blue: 'bg-state-validado-soft text-state-validado-foreground hover:bg-state-validado hover:text-white',
+  blue: 'bg-state-validado-soft text-state-validado-foreground hover:bg-state-validado hover:text-primary-foreground',
   red: 'bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground',
-  amber: 'bg-state-subsanado-soft text-state-subsanado-foreground hover:bg-state-subsanado hover:text-white',
+  amber: 'bg-state-subsanado-soft text-state-subsanado-foreground hover:bg-state-subsanado hover:text-primary-foreground',
   slate: 'bg-muted text-muted-foreground hover:bg-foreground hover:text-background',
-  indigo: 'bg-brand-soft text-brand hover:bg-brand hover:text-brand-foreground',
-  dark: 'bg-foreground text-background hover:bg-foreground/85 ring-1 ring-foreground/20 shadow-sm',
+  /* Descargar: azul informativo, distinto del teal de marca de la misma fila. */
+  indigo: 'bg-info-soft text-info hover:bg-info hover:text-primary-foreground',
+  /* Subir documentos: color primario del tema activo (nunca negro fijo). */
+  dark: 'bg-primary text-primary-foreground hover:bg-primary/85 ring-1 ring-primary/25 shadow-sm',
 };
 
 @Component({
@@ -99,13 +115,24 @@ const ICON_TONES: Record<string, string> = {
             }
           </div>
 
+          <select
+            [value]="campoBusqueda()"
+            (change)="setCampoBusqueda($event)"
+            aria-label="Campo de búsqueda"
+            class="px-3 py-2 bg-card ring-1 ring-border rounded-lg text-sm font-medium"
+          >
+            @for (c of camposBusqueda; track c.k) {
+              <option [value]="c.k">Buscar por: {{ c.label }}</option>
+            }
+          </select>
+
           <div class="relative flex-1 min-w-[200px]">
             <lucide-angular [img]="SearchIcon" class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <input
               [value]="q()"
               (input)="setQ($event)"
               type="text"
-              placeholder="Buscar por código, tema, ubicación, extensionista, nombres, apellidos o DNI…"
+              [placeholder]="'Buscar por ' + etiquetaCampoBusqueda() + '…'"
               class="w-full pl-10 pr-4 py-2 bg-card ring-1 ring-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring"
             />
           </div>
@@ -120,6 +147,15 @@ const ICON_TONES: Record<string, string> = {
               <option [value]="e">{{ e }}</option>
             }
           </select>
+
+          <button
+            (click)="exportarExcel()"
+            title="Exportar Excel"
+            aria-label="Exportar la tabla a Excel"
+            class="p-2 rounded-lg transition-all bg-success text-success-foreground hover:bg-success/85 shadow-sm"
+          >
+            <lucide-angular [img]="FileSpreadsheetIcon" class="size-4" />
+          </button>
         </div>
 
         <!-- Tabla -->
@@ -328,6 +364,7 @@ const ICON_TONES: Record<string, string> = {
 })
 export class BandejaComponent {
   readonly areaService = inject(AreaService);
+  private readonly modales = inject(ModalService);
   private readonly cursosService = inject(CursosService);
   private readonly participantesService = inject(ParticipantesService);
   private readonly toast = inject(ToastService);
@@ -341,6 +378,7 @@ export class BandejaComponent {
   readonly UploadCloudIcon = UploadCloud; readonly ChevronDownIcon = ChevronDown; readonly ChevronUpIcon = ChevronUp;
   readonly FileEditIcon = FileEdit; readonly SendHorizonalIcon = SendHorizonal; readonly AlertOctagonIcon = AlertOctagon;
   readonly BadgeCheckIcon = BadgeCheck; readonly FileTextIcon = FileText;
+  readonly FileSpreadsheetIcon = FileSpreadsheet;
 
   readonly tabs: { k: Tab; label: string }[] = [
     { k: 'todos', label: 'Todos' },
@@ -357,6 +395,11 @@ export class BandejaComponent {
   readonly tab = signal<Tab>('todos');
   readonly kpiView = signal<'general' | 'estados'>('general');
   readonly q = signal('');
+  readonly camposBusqueda = CAMPOS_BUSQUEDA;
+  readonly campoBusqueda = signal<CampoBusqueda>('codigo');
+  readonly etiquetaCampoBusqueda = computed(
+    () => CAMPOS_BUSQUEDA.find((c) => c.k === this.campoBusqueda())?.label ?? 'Código',
+  );
   readonly estado = signal<EstadoFiltro>('TODOS');
   readonly pageSize = signal(10);
   readonly page = signal(1);
@@ -390,15 +433,23 @@ export class BandejaComponent {
     if (this.queryActive()) {
       const s = this.queryLower();
       base = base.filter((c) => {
-        const cursoMatch =
-          c.codigo.toLowerCase().includes(s) ||
-          c.nombreTema.toLowerCase().includes(s) ||
-          c.region.toLowerCase().includes(s) ||
-          c.provincia.toLowerCase().includes(s) ||
-          c.distrito.toLowerCase().includes(s) ||
-          c.extensionista.toLowerCase().includes(s);
-        if (cursoMatch) return true;
-        return this.matchesDe(c.id).length > 0;
+        switch (this.campoBusqueda()) {
+          case 'codigo':
+            return c.codigo.toLowerCase().includes(s);
+          case 'tema':
+            return c.nombreTema.toLowerCase().includes(s);
+          case 'ubicacion':
+            return (
+              c.region.toLowerCase().includes(s) ||
+              c.provincia.toLowerCase().includes(s) ||
+              c.distrito.toLowerCase().includes(s)
+            );
+          case 'extensionista':
+            return c.extensionista.toLowerCase().includes(s);
+          // Campos de participante: el registro coincide si algún participante coincide.
+          default:
+            return this.matchesDe(c.id).length > 0;
+        }
       });
     }
     return base;
@@ -412,22 +463,24 @@ export class BandejaComponent {
     return this.filtered().slice((p - 1) * size, p * size);
   });
 
-  /** Participantes del curso que coinciden con la búsqueda activa. */
+  /** Participantes del curso que coinciden con la búsqueda por el campo elegido. */
   matchesDe(cursoId: string): Participante[] {
     if (!this.queryActive()) return [];
+    const campo = this.campoBusqueda();
+    if (campo !== 'nombres' && campo !== 'apellidos' && campo !== 'dni') return [];
     const s = this.queryLower();
-    return this.participantesService.participantesDe(cursoId).filter(
-      (p) =>
-        p.nombres.toLowerCase().includes(s) ||
-        p.apellidos.toLowerCase().includes(s) ||
-        `${p.nombres} ${p.apellidos}`.toLowerCase().includes(s) ||
-        `${p.apellidos} ${p.nombres}`.toLowerCase().includes(s) ||
-        p.dni.toLowerCase().includes(s),
-    );
+    return this.participantesService.participantesDe(cursoId).filter((p) => {
+      if (campo === 'nombres') return p.nombres.toLowerCase().includes(s);
+      if (campo === 'apellidos') return p.apellidos.toLowerCase().includes(s);
+      return p.dni.toLowerCase().includes(s);
+    });
   }
 
   subRows(c: Curso): Participante[] {
-    return this.queryActive() ? this.matchesDe(c.id) : this.participantesService.participantesDe(c.id);
+    const campo = this.campoBusqueda();
+    const filtraParticipantes =
+      this.queryActive() && (campo === 'nombres' || campo === 'apellidos' || campo === 'dni');
+    return filtraParticipantes ? this.matchesDe(c.id) : this.participantesService.participantesDe(c.id);
   }
 
   showCount(c: Curso): number {
@@ -487,6 +540,11 @@ export class BandejaComponent {
 
   setTab(t: Tab): void { this.tab.set(t); this.page.set(1); }
   setQ(e: Event): void { this.q.set((e.target as HTMLInputElement).value); this.page.set(1); }
+  setCampoBusqueda(e: Event): void {
+    this.campoBusqueda.set((e.target as HTMLSelectElement).value as CampoBusqueda);
+    this.page.set(1);
+  }
+
   setEstado(e: Event): void { this.estado.set((e.target as HTMLSelectElement).value as EstadoFiltro); this.page.set(1); }
   setPageSize(e: Event): void { this.pageSize.set(Number((e.target as HTMLSelectElement).value)); this.page.set(1); }
   prevPage(): void { this.page.update((p) => Math.max(1, p - 1)); }
@@ -527,13 +585,39 @@ export class BandejaComponent {
       this.toast.info("No es posible eliminar: el registro tiene participantes o no está en estado 'Registrado'.");
       return;
     }
-    if (confirm(`¿Eliminar el registro ${c.codigo}?`)) {
-      this.cursosService.delete(c.id);
-      this.toast.success('Registro eliminado');
-    }
+    void this.modales
+      .openConfirm('Eliminar registro', `¿Eliminar el registro ${c.codigo}?`)
+      .then((ok) => {
+        if (!ok) return;
+        this.cursosService.delete(c.id);
+        this.toast.success('Registro eliminado');
+      });
+  }
+
+  /**
+   * Exporta a Excel los registros actualmente filtrados (pestaña, estado,
+   * búsqueda por campo) en el orden mostrado. Se exportan TODAS las páginas
+   * del resultado filtrado, no solo la página visible: es el comportamiento
+   * esperado de un reporte y evita exportaciones parciales accidentales.
+   */
+  exportarExcel(): void {
+    exportarTablaExcel('Capacitaciones_N1', [
+      { titulo: 'Código', valor: (c) => c.codigo },
+      { titulo: 'Tipo', valor: (c) => (c.tipo === 'capacitacion' ? 'Capacitación' : 'Asistencia Técnica') },
+      { titulo: 'Tema', valor: (c) => c.nombreTema },
+      { titulo: 'Estado', valor: (c) => c.estado },
+      { titulo: 'Fecha', valor: (c) => c.fecha },
+      { titulo: 'Hora', valor: (c) => c.hora },
+      { titulo: 'Horas', valor: (c) => c.horas },
+      { titulo: 'Participantes', valor: (c) => c.participantes },
+      { titulo: 'Región', valor: (c) => c.region },
+      { titulo: 'Provincia', valor: (c) => c.provincia },
+      { titulo: 'Distrito', valor: (c) => c.distrito },
+      { titulo: 'Extensionista', valor: (c) => c.extensionista },
+    ], this.filtered());
   }
 
   descargaSimulada(): void {
-    alert('Descarga simulada');
+    void this.modales.openInfo('Descarga de sustento', 'Descarga simulada (disponible al conectar el API real).');
   }
 }

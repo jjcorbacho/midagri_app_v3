@@ -1,12 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import {
   LucideAngularModule,
-  ListChecks, TableProperties, Search, Plus, FileSpreadsheet, Printer, RotateCw,
-  EllipsisVertical, Pencil, X, Check, Save,
+  ListChecks, TableProperties, Search, Plus, FileSpreadsheet, FileDown, RotateCw,
+  Pencil, X, Check, Save,
 } from 'lucide-angular';
 import { AuthService } from '../../../core/services/auth.service';
 import { ListasAdminService } from '../../../core/services/listas-admin.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { ModalService } from '../../../core/services/modal.service';
 import { OpcionLista, generarCodigoOpcion } from '../../../core/models/lista-admin.model';
 import { UNIDADES_RESPONSABLES } from '../../../core/constants/sodega.const';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
@@ -116,21 +117,22 @@ const INP_REQ = INPUT_REQUIRED;
               </h2>
               <p class="text-xs text-muted-foreground mt-0.5">{{ subtituloOpciones() }}</p>
             </div>
-            <div class="flex items-center gap-2">
+            <!-- Acciones de cabecera: cuadradas con bordes redondeados (patrón /usuarios) -->
+            <div class="flex items-center gap-1 flex-wrap">
               <button (click)="abrirModalOpcion(null)" title="Nuevo" aria-label="Nueva opción"
-                class="size-8 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm transition-colors">
+                class="p-2 rounded-lg transition-all bg-primary text-primary-foreground hover:bg-primary/85 shadow-sm">
                 <lucide-angular [img]="PlusIcon" class="size-4" />
               </button>
               <button (click)="exportarExcel()" title="Excel" aria-label="Exportar Excel"
-                class="size-8 inline-flex items-center justify-center rounded-full bg-success text-white hover:bg-success/90 shadow-sm transition-colors">
+                class="p-2 rounded-lg transition-all bg-success text-success-foreground hover:bg-success/85 shadow-sm">
                 <lucide-angular [img]="FileSpreadsheetIcon" class="size-4" />
               </button>
-              <button (click)="imprimir()" title="Imprimir" aria-label="Imprimir"
-                class="size-8 inline-flex items-center justify-center rounded-full bg-foreground text-background hover:bg-foreground/85 shadow-sm transition-colors">
-                <lucide-angular [img]="PrinterIcon" class="size-4" />
+              <button (click)="imprimir()" title="PDF" aria-label="Exportar PDF"
+                class="p-2 rounded-lg transition-all bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground shadow-sm">
+                <lucide-angular [img]="FileDownIcon" class="size-4" />
               </button>
               <button (click)="actualizar()" title="Actualizar" aria-label="Actualizar"
-                class="size-8 inline-flex items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-foreground hover:text-background shadow-sm transition-colors">
+                class="p-2 rounded-lg transition-all bg-muted text-muted-foreground hover:bg-foreground hover:text-background shadow-sm">
                 <lucide-angular [img]="RotateCwIcon" class="size-4" />
               </button>
             </div>
@@ -171,29 +173,23 @@ const INP_REQ = INPUT_REQUIRED;
                   }
                   @for (fila of opcionesFiltradas(); track fila.indice) {
                     <tr class="hover:bg-secondary/40 transition-colors">
-                      <td class="px-4 py-2.5 text-center relative">
-                        <button
-                          (click)="toggleMenuAcciones($event, fila.indice)"
-                          title="Acciones"
-                          aria-label="Acciones"
-                          class="p-2 rounded-lg transition-all bg-muted text-muted-foreground hover:bg-foreground hover:text-background"
-                        >
-                          <lucide-angular [img]="EllipsisIcon" class="size-4" />
-                        </button>
-                        @if (menuAccionesDe() === fila.indice) {
-                          <div class="fixed inset-0 z-40" (click)="menuAccionesDe.set(null)"></div>
-                          <div class="absolute left-1/2 -translate-x-1/2 top-11 z-50 w-44 bg-popover ring-1 ring-border rounded-xl shadow-lg text-left overflow-hidden animate-modal-in">
-                            <button (click)="abrirModalOpcion(fila.indice)"
-                              class="w-full px-3 py-2 text-xs text-foreground hover:bg-secondary font-medium flex items-center gap-2 border-b border-border transition-colors">
-                              <lucide-angular [img]="PencilIcon" class="size-3.5 text-muted-foreground" /> Editar
-                            </button>
-                            <button (click)="confirmarEstado(fila.indice)"
-                              class="w-full px-3 py-2 text-xs font-medium flex items-center gap-2 transition-colors"
-                              [class]="fila.opcion.activo ? 'text-destructive hover:bg-destructive/10' : 'text-state-aprobado-foreground hover:bg-state-aprobado-soft'">
-                              <lucide-angular [img]="fila.opcion.activo ? XIcon : CheckIcon" class="size-3.5" /> Cambiar Estado
-                            </button>
-                          </div>
-                        }
+                      <td class="px-4 py-2.5">
+                        <!-- Acciones visibles (mismo patrón de la columna Acciones de /usuarios) -->
+                        <div class="flex items-center justify-center gap-1 flex-wrap">
+                          <button (click)="abrirModalOpcion(fila.indice)" title="Editar" aria-label="Editar opción"
+                            class="p-2 rounded-lg transition-all bg-muted text-muted-foreground hover:bg-foreground hover:text-background">
+                            <lucide-angular [img]="PencilIcon" class="size-4" />
+                          </button>
+                          <button (click)="confirmarEstado(fila.indice)"
+                            [title]="fila.opcion.activo ? 'Inhabilitar' : 'Habilitar'"
+                            [attr.aria-label]="fila.opcion.activo ? 'Inhabilitar opción' : 'Habilitar opción'"
+                            class="p-2 rounded-lg transition-all"
+                            [class]="fila.opcion.activo
+                              ? 'bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground'
+                              : 'bg-state-aprobado-soft text-state-aprobado-foreground hover:bg-state-aprobado hover:text-primary-foreground'">
+                            <lucide-angular [img]="fila.opcion.activo ? XIcon : CheckIcon" class="size-4" />
+                          </button>
+                        </div>
                       </td>
                       <td
                         class="px-4 py-2.5 text-sm"
@@ -266,20 +262,6 @@ const INP_REQ = INPUT_REQUIRED;
         </app-modal>
       }
 
-      <!-- Modal confirmar cambio de estado -->
-      @if (estadoPendiente() !== null) {
-        <app-modal title="¿Está seguro?" maxWidth="max-w-md" (closed)="estadoPendiente.set(null)">
-          <p class="text-sm text-foreground leading-relaxed text-center">{{ textoConfirmarEstado() }}</p>
-          <div class="flex justify-center gap-3 pt-5 mt-5 border-t border-border">
-            <button (click)="estadoPendiente.set(null)" class="btn-secondary px-6">
-              No
-            </button>
-            <button (click)="aplicarCambioEstado()" class="btn-primary px-6">
-              Sí
-            </button>
-          </div>
-        </app-modal>
-      }
     </section>
   `,
 })
@@ -287,15 +269,15 @@ export class ListasComponent {
   private readonly auth = inject(AuthService);
   private readonly listasService = inject(ListasAdminService);
   private readonly toast = inject(ToastService);
+  private readonly modales = inject(ModalService);
 
   readonly ListChecksIcon = ListChecks;
   readonly TablePropertiesIcon = TableProperties;
   readonly SearchIcon = Search;
   readonly PlusIcon = Plus;
   readonly FileSpreadsheetIcon = FileSpreadsheet;
-  readonly PrinterIcon = Printer;
+  readonly FileDownIcon = FileDown;
   readonly RotateCwIcon = RotateCw;
-  readonly EllipsisIcon = EllipsisVertical;
   readonly PencilIcon = Pencil;
   readonly XIcon = X;
   readonly CheckIcon = Check;
@@ -304,7 +286,6 @@ export class ListasComponent {
   readonly nuevaLista = signal('');
   readonly qListas = signal('');
   readonly qOpciones = signal('');
-  readonly menuAccionesDe = signal<number | null>(null);
 
   /** Índice de la opción en edición (null = nueva) + estado del modal. */
   readonly opcionEnEdicion = signal<number | null>(null);
@@ -312,7 +293,6 @@ export class ListasComponent {
   readonly modalCodigo = signal('');
   readonly modalNombre = signal('');
   readonly modalUnidadResponsable = signal('');
-  readonly estadoPendiente = signal<number | null>(null);
 
   readonly perfilActivo = computed(() => this.auth.session()?.perfil ?? '');
   readonly listaActiva = this.listasService.listaActiva;
@@ -350,16 +330,6 @@ export class ListasComponent {
     `${this.opcionEnEdicion() !== null ? 'Editar Opción' : 'Nueva Opción'}: ${this.listaActiva()}`,
   );
 
-  readonly textoConfirmarEstado = computed(() => {
-    const indice = this.estadoPendiente();
-    const opcion = indice !== null ? this.listasService.activa()?.opciones[indice] : undefined;
-    if (!opcion) return '';
-    const descripcion = `${opcion.codigo} - ${opcion.nombre}`;
-    return opcion.activo
-      ? `¿Desea deshabilitar la descripción "${descripcion}"?`
-      : `¿Desea habilitar nuevamente la descripción "${descripcion}"?`;
-  });
-
   /* ===== Catálogo ===== */
 
   seleccionar(nombre: string): void {
@@ -380,13 +350,7 @@ export class ListasComponent {
 
   /* ===== Opciones ===== */
 
-  toggleMenuAcciones(e: Event, indice: number): void {
-    e.stopPropagation();
-    this.menuAccionesDe.update((actual) => (actual === indice ? null : indice));
-  }
-
   abrirModalOpcion(indice: number | null): void {
-    this.menuAccionesDe.set(null);
     const lista = this.listasService.activa();
     if (!lista) {
       this.toast.error('Lista no seleccionada', 'Seleccione una lista antes de agregar una opción.');
@@ -428,17 +392,18 @@ export class ListasComponent {
   }
 
   confirmarEstado(indice: number): void {
-    this.menuAccionesDe.set(null);
-    this.estadoPendiente.set(indice);
-  }
-
-  aplicarCambioEstado(): void {
-    const indice = this.estadoPendiente();
-    this.estadoPendiente.set(null);
-    if (indice === null) return;
-    const resultado = this.listasService.cambiarEstadoOpcion(indice);
-    if (resultado.ok) this.toast.success(resultado.titulo, resultado.mensaje);
-    else this.toast.error(resultado.titulo, resultado.mensaje);
+    const opcion = this.listasService.activa()?.opciones[indice];
+    if (!opcion) return;
+    const descripcion = `${opcion.codigo} - ${opcion.nombre}`;
+    const pregunta = opcion.activo
+      ? `¿Desea deshabilitar la descripción "${descripcion}"?`
+      : `¿Desea habilitar nuevamente la descripción "${descripcion}"?`;
+    void this.modales.openConfirm('¿Está seguro?', pregunta).then((ok) => {
+      if (!ok) return;
+      const resultado = this.listasService.cambiarEstadoOpcion(indice);
+      if (resultado.ok) this.toast.success(resultado.titulo, resultado.mensaje);
+      else this.toast.error(resultado.titulo, resultado.mensaje);
+    });
   }
 
   /* ===== Acciones simuladas (igual que el prototipo) ===== */
