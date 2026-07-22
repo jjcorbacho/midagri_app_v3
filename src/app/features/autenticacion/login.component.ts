@@ -127,9 +127,9 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
                 : 'Seleccione la Unidad Responsable para el Ingreso al Sistema' }}
             </h3>
             <p class="text-[11px] text-muted-foreground mt-2 leading-relaxed px-4 font-medium">
-              Se han detectado múltiples registros o privilegios activos vinculados a su cuenta de acceso
-              institucional. Por favor, seleccione la Unidad Responsable (OPA) y el perfil con el que desea
-              iniciar la presente sesión de trabajo.
+              Se ha detectado múltiples registros o privilegios activos a su cuenta de acceso
+              institucional. Por favor, seleccione el perfil con el que desea iniciar la presente
+              sesión de trabajo.
             </p>
           </div>
           <div class="space-y-4">

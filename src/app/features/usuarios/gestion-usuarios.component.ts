@@ -4,12 +4,12 @@ import {
   LucideAngularModule,
   Users, UserCheck, UserX, Infinity as InfinityIcon, Clock, TriangleAlert,
   FileSpreadsheet, UserPlus, Search, UserPen, FilePlus2,
-  KeyRound, MapPinned, Workflow,
+  KeyRound, MapPinned, Workflow, CirclePlus,
 } from 'lucide-angular';
 import { AuthService } from '../../core/services/auth.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { ToastService } from '../../core/services/toast.service';
-import { UsuarioSodega, esUsuarioPermanente, toTitleCase } from '../../core/models/usuario-sodega.model';
+import { estadoVigenciaDe, formatearPeriodo, mesesDeRango, UsuarioSodega, esUsuarioPermanente, toTitleCase } from '../../core/models/usuario-sodega.model';
 import { formatearUbigeoTexto } from '../../core/constants/sodega.const';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { ModalService } from '../../core/services/modal.service';
@@ -31,6 +31,8 @@ const ICON_TONES: Record<string, string> = {
   red: 'bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground',
   amber: 'bg-state-subsanado-soft text-state-subsanado-foreground hover:bg-state-subsanado hover:text-primary-foreground',
   slate: 'bg-muted text-muted-foreground hover:bg-foreground hover:text-background',
+  /* Agregar Nuevo Servicio (renovación de vigencia expirada). */
+  green: 'bg-state-aprobado-soft text-state-aprobado-foreground hover:bg-state-aprobado hover:text-primary-foreground',
 };
 
 /**
@@ -128,6 +130,7 @@ const ICON_TONES: Record<string, string> = {
                 <th class="px-4 py-3 w-48">Perfil</th>
                 <th class="px-4 py-3 w-64">Unidad Responsable</th>
                 <th class="px-4 py-3 w-64">Unidad Funcional</th>
+                <th class="px-4 py-3 w-40">Periodo de Gestión</th>
                 <th class="px-4 py-3 w-48">Vigencia</th>
                 <th class="px-4 py-3 w-28">Vencimiento</th>
                 <th class="px-4 py-3 w-64">Prog. presupuestal</th>
@@ -148,8 +151,8 @@ const ICON_TONES: Record<string, string> = {
               }
               @for (u of pageRows(); track u.id) {
                 <tr class="hover:bg-secondary/40 transition-colors">
-                  <td class="px-4 py-4">
-                    <div class="flex items-center justify-center gap-1 flex-wrap">
+                  <td class="px-4 py-4 whitespace-nowrap w-px">
+                    <div class="flex items-center justify-center gap-1 flex-nowrap">
                       <button title="Editar Datos" aria-label="Editar Datos" (click)="accion('EDITAR', u)"
                         class="p-2 rounded-lg transition-all" [class]="tone('slate')">
                         <lucide-angular [img]="UserPenIcon" class="size-4" />
@@ -172,6 +175,12 @@ const ICON_TONES: Record<string, string> = {
                         class="p-2 rounded-lg transition-all" [class]="tone('red')">
                         <lucide-angular [img]="WorkflowIcon" class="size-4" />
                       </button>
+                      @if (puedeAgregarServicio(u)) {
+                        <button title="Agregar Nuevo Servicio" aria-label="Agregar Nuevo Servicio" (click)="accion('NUEVO_SERVICIO', u)"
+                          class="p-2 rounded-lg transition-all" [class]="tone('green')">
+                          <lucide-angular [img]="CirclePlusIcon" class="size-4" />
+                        </button>
+                      }
                     </div>
                   </td>
                   <td class="px-4 py-4 text-sm font-semibold text-foreground leading-tight">{{ nombreFila(u) }}</td>
@@ -188,6 +197,22 @@ const ICON_TONES: Record<string, string> = {
                   <td class="px-4 py-4 text-sm font-semibold text-foreground">{{ u.perfil }}</td>
                   <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[220px]" [title]="unidadResponsableDe(u)">{{ unidadResponsableDe(u) }}</td>
                   <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[220px]" [title]="opasDe(u)">{{ opasDe(u) }}</td>
+                  <td class="px-4 py-4">
+                    @if (mesesContrato(u); as meses) {
+                      <!-- Temporales: meses comprendidos en el contrato -->
+                      <span class="text-xs text-foreground/80 leading-snug">{{ meses }}</span>
+                    } @else if (u.periodosGestion?.length) {
+                      <div class="flex flex-col gap-1">
+                        @for (pg of u.periodosGestion; track pg.anio) {
+                          <span class="inline-flex w-fit px-2 py-0.5 rounded-full bg-brand-soft text-brand text-[11px] font-bold ring-1 ring-brand/20 whitespace-nowrap">
+                            {{ formatearPeriodo(pg) }}
+                          </span>
+                        }
+                      </div>
+                    } @else {
+                      <span class="text-xs text-muted-foreground">—</span>
+                    }
+                  </td>
                   <td class="px-4 py-4 whitespace-nowrap"><span [class]="vigenciaCls(u)">{{ u.vigenciaCalculada }}</span></td>
                   <td class="px-4 py-4 whitespace-nowrap"><span [class]="vencimientoCls(u)">{{ vencimientoDe(u) }}</span></td>
                   <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[180px]" [title]="progPresupDe(u)">{{ progPresupDe(u) }}</td>
@@ -262,6 +287,8 @@ export class GestionUsuariosComponent {
   readonly KeyRoundIcon = KeyRound;
   readonly MapPinnedIcon = MapPinned;
   readonly WorkflowIcon = Workflow;
+  readonly CirclePlusIcon = CirclePlus;
+  readonly formatearPeriodo = formatearPeriodo;
 
   readonly kpiDefs = [
     { filtro: 'TOTAL' as FiltroKpi, label: 'Total usuarios', icon: Users, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-info-soft text-info' },
@@ -359,6 +386,24 @@ export class GestionUsuariosComponent {
    * La reasignación de registros solo aplica a técnicos de Capacitación y
    * Asistencia Técnica y la ejecuta el Administrador General.
    */
+  /**
+   * "Agregar Nuevo Servicio" aplica únicamente a contratos temporales
+   * (Régimen CAS Temporal / Locador de Servicio) cuyo servicio terminó:
+   * cuenta inhabilitada o vigencia expirada (función única del modelo).
+   * Nunca para 728/276/CAS, aunque estén inhabilitados.
+   */
+  /** Meses del contrato (solo CAS Temporal / Locador); '' para los demás. */
+  mesesContrato(u: UsuarioSodega): string {
+    const esTemporal = u.regimen === 'Régimen CAS Temporal' || u.regimen === 'Locador de Servicio (OS)';
+    return esTemporal ? mesesDeRango(u.fechaIni, u.fechaFin) : '';
+  }
+
+  puedeAgregarServicio(u: UsuarioSodega): boolean {
+    const esTemporal = u.regimen === 'Régimen CAS Temporal' || u.regimen === 'Locador de Servicio (OS)';
+    if (!esTemporal) return false;
+    return u.estado === 'INHABILITADO' || estadoVigenciaDe(u) === 'Expirado';
+  }
+
   puedeReasignar(u: UsuarioSodega): boolean {
     return (
       this.auth.session()?.perfil === 'Administrador General' &&
@@ -422,13 +467,17 @@ export class GestionUsuariosComponent {
     this.router.navigate(['/usuarios/nuevo']);
   }
 
-  accion(tipo: 'EDITAR' | 'PRESUPUESTO' | 'CLAVE' | 'REASIGNAR_REGISTRO' | 'ESTADO', u: UsuarioSodega): void {
+  accion(tipo: 'EDITAR' | 'PRESUPUESTO' | 'CLAVE' | 'REASIGNAR_REGISTRO' | 'ESTADO' | 'NUEVO_SERVICIO', u: UsuarioSodega): void {
     switch (tipo) {
       case 'EDITAR':
         this.router.navigate(['/usuarios', u.id], { queryParams: { modo: 'editar' } });
         break;
       case 'PRESUPUESTO':
         this.router.navigate(['/usuarios', u.id], { queryParams: { modo: 'presupuesto' } });
+        break;
+      case 'NUEVO_SERVICIO':
+        // Renovación: reutiliza el formulario existente en modo servicio (histórico).
+        this.router.navigate(['/usuarios', u.id], { queryParams: { modo: 'servicio' } });
         break;
       case 'CLAVE': {
         // TODO(backend): POST /usuarios/{id}/restablecer-clave

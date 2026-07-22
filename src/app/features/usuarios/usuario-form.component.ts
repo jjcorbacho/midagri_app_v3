@@ -16,11 +16,16 @@ import {
   MetaAmbitoTerritorial,
   PERFILES,
   Perfil,
+  PeriodoGestion,
+  TipoPeriodoGestion,
   UsuarioSodega,
   aplicaMetasPorAmbito,
   calcularDiasCalendarioEntre,
+  formatearPeriodo,
   perfilRequiereAmbito,
   perfilSoloRegion,
+  periodosDesdeRango,
+  regimenConPeriodo,
   toTitleCase,
 } from '../../core/models/usuario-sodega.model';
 import { PermisosMenu, combinarPermisos } from '../../core/models/permisos-menu.model';
@@ -43,7 +48,7 @@ import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { AutocompleteComponent } from '../../shared/components/autocomplete/autocomplete.component';
 import { normalizarBusqueda } from '../../shared/utils/texto.util';
 
-type ModoForm = 'nuevo' | 'editar' | 'presupuesto';
+type ModoForm = 'nuevo' | 'editar' | 'presupuesto' | 'servicio';
 
 /** Fila del FormArray de metas por ámbito territorial (cantidades enteras ≥ 0). */
 type MetaAmbitoForm = FormGroup<{
@@ -284,7 +289,7 @@ const INP_NORMAL = INPUT_BASE;
               </div>
               <div class="col-span-3">
                 <label class="block text-[11px] font-medium text-muted-foreground mb-1">Régimen laboral <span class="text-destructive">*</span></label>
-                <select formControlName="regimen" (change)="formTick.set(formTick() + 1)" [class]="inpMandatory">
+                <select formControlName="regimen" (change)="onRegimenChange()" [class]="inpMandatory">
                   <option value="">--Seleccione--</option>
                   @for (r of regimenes; track r) {
                     <option [value]="r">{{ r }}</option>
@@ -320,6 +325,57 @@ const INP_NORMAL = INPUT_BASE;
               </div>
             }
 
+            <!-- Periodo de Gestión según régimen laboral -->
+            @if (regimenRequierePeriodo()) {
+              <div class="grid grid-cols-12 gap-3 p-4 bg-brand-soft/50 rounded-xl ring-1 ring-brand/20">
+                <p class="col-span-12 text-[11px] font-semibold uppercase tracking-wider text-brand">
+                  Periodo de Gestión
+                </p>
+                <div class="col-span-12 md:col-span-6">
+                  <label for="periodo-tipo" class="block text-[11px] font-medium text-brand mb-1">
+                    Tipo de periodo <span class="text-destructive">*</span>
+                  </label>
+                  <select id="periodo-tipo" formControlName="periodoTipo" [class]="inpMandatory">
+                    <option value="">--Seleccione--</option>
+                    @for (t of tiposPeriodo; track t) {
+                      <option [value]="t">{{ t }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="col-span-12 md:col-span-6">
+                  <label for="periodo-anio" class="block text-[11px] font-medium text-brand mb-1">
+                    Año de gestión <span class="text-destructive">*</span>
+                  </label>
+                  <select id="periodo-anio" formControlName="periodoAnio" [class]="inpMandatory">
+                    <option value="">--Seleccione--</option>
+                    @for (a of aniosGestion(); track a) {
+                      <option [value]="a">{{ a }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+            } @else if (regimenTemporal()) {
+              <!-- Generado automáticamente del rango de fechas: solo lectura -->
+              <div class="p-4 bg-secondary/60 rounded-xl ring-1 ring-border space-y-2" aria-live="polite">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Periodo de Gestión
+                  <span class="normal-case tracking-normal font-normal">· generado automáticamente, no editable</span>
+                </p>
+                <div class="flex flex-wrap gap-1.5">
+                  @if (periodosGenerados().length === 0) {
+                    <span class="text-xs text-muted-foreground italic">
+                      Registre la fecha de inicio y la fecha fin para generar el periodo.
+                    </span>
+                  }
+                  @for (pg of periodosGenerados(); track pg.anio) {
+                    <span class="px-2.5 py-1 rounded-full bg-brand-soft text-brand text-[11px] font-bold ring-1 ring-brand/20 whitespace-nowrap">
+                      {{ formatearPeriodo(pg) }}
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+
             <!-- Perfil autorizado + Ámbito asignado (apilado a ancho completo) -->
             <div class="space-y-4 border-t border-border pt-5">
               <div class="space-y-1">
@@ -334,6 +390,12 @@ const INP_NORMAL = INPUT_BASE;
 
               @if (mostrarAmbito()) {
                 <div class="space-y-4">
+                  @if (esModoServicio()) {
+                    <p class="text-[11px] text-muted-foreground italic">
+                      Ámbitos territoriales del servicio anterior (solo lectura en un nuevo servicio).
+                    </p>
+                  }
+                  @if (!esModoServicio()) {
                   <!-- Fila territorial: Región | Provincia | Distrito | Agregar (apila en móvil) -->
                   <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
                     <div class="md:col-span-3">
@@ -447,6 +509,8 @@ const INP_NORMAL = INPUT_BASE;
                     </div>
                   </div>
 
+                  }
+
                   <div class="mt-2 bg-card rounded-xl ring-1 ring-border shadow-sm overflow-hidden">
                     <table class="w-full text-left">
                       <thead class="bg-secondary">
@@ -469,9 +533,11 @@ const INP_NORMAL = INPUT_BASE;
                             <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ amb.provincia }}</td>
                             <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ amb.distrito }}</td>
                             <td class="px-2 py-3 text-center">
-                              <button type="button" (click)="eliminarAmbito(i)" class="p-2 rounded-lg transition-all bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground" title="Eliminar ámbito">
-                                <lucide-angular [img]="Trash2Icon" class="size-3.5" />
-                              </button>
+                              @if (!esModoServicio()) {
+                                <button type="button" (click)="eliminarAmbito(i)" class="p-2 rounded-lg transition-all bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground" title="Eliminar ámbito">
+                                  <lucide-angular [img]="Trash2Icon" class="size-3.5" />
+                                </button>
+                              }
                             </td>
                           </tr>
                         }
@@ -653,6 +719,8 @@ export class UsuarioFormComponent implements OnInit {
     fechaFin: '',
     nroOrden: '',
     perfil: '' as Perfil | '',
+    periodoTipo: '' as TipoPeriodoGestion | '',
+    periodoAnio: '',
     metasAmbito: this.fb.array<MetaAmbitoForm>([]),
   });
 
@@ -670,7 +738,7 @@ export class UsuarioFormComponent implements OnInit {
     const modoQP = this.route.snapshot.queryParamMap.get('modo');
     if (id) {
       this.usuarioBase = this.usuariosService.findById(id) ?? null;
-      this.modo.set(modoQP === 'presupuesto' ? 'presupuesto' : 'editar');
+      this.modo.set(modoQP === 'presupuesto' ? 'presupuesto' : modoQP === 'servicio' ? 'servicio' : 'editar');
       if (this.usuarioBase) this.cargarUsuario(this.usuarioBase);
     }
     this.aplicarBloqueosPorPerfilActivo();
@@ -678,6 +746,8 @@ export class UsuarioFormComponent implements OnInit {
 
   private cargarUsuario(u: UsuarioSodega): void {
     const esPresupuesto = this.modo() === 'presupuesto';
+    const esServicio = this.modo() === 'servicio';
+    const nuevaPartida = esPresupuesto || esServicio;
     this.form.patchValue({
       dni: u.dni,
       apePat: u.apePat,
@@ -692,27 +762,33 @@ export class UsuarioFormComponent implements OnInit {
       fechaNac: u.fechaNac,
       edad: `${u.edad} AÑOS`,
       celular: u.celular,
-      unidad: esPresupuesto ? '' : u.unidad,
-      fuenteFinanc: esPresupuesto ? '' : u.fuenteFinanc,
-      categoriaPresup: esPresupuesto ? '' : u.categoriaPresup,
-      programaPresup: esPresupuesto ? '' : u.programaPresup,
-      unidadFuncional: esPresupuesto ? '' : u.unidadFuncional,
+      unidad: nuevaPartida ? '' : u.unidad,
+      fuenteFinanc: nuevaPartida ? '' : u.fuenteFinanc,
+      categoriaPresup: nuevaPartida ? '' : u.categoriaPresup,
+      programaPresup: nuevaPartida ? '' : u.programaPresup,
+      unidadFuncional: nuevaPartida ? '' : u.unidadFuncional,
       userGen: u.userGen,
       correo: u.correo,
       regimen: u.regimen,
       estado: u.estado,
-      fechaIni: u.fechaIni,
-      fechaFin: u.fechaFin,
-      nroOrden: u.nroOrden,
+      // Nuevo servicio: la vigencia y el periodo se registran desde cero.
+      fechaIni: esServicio ? '' : u.fechaIni,
+      fechaFin: esServicio ? '' : u.fechaFin,
+      nroOrden: esServicio ? '' : u.nroOrden,
       perfil: u.perfil,
+      periodoTipo: esServicio ? '' : (u.periodosGestion?.[0]?.tipo ?? ''),
+      periodoAnio: esServicio ? '' : String(u.periodosGestion?.[0]?.anio ?? ''),
     });
     this.ambitos.set([...(u.ambitos ?? [])]);
     this.reconstruirMetasAmbito(u.ambitos ?? [], u.metasAmbito);
     this.sincronizarPermisosMenu();
-    // En edición el DNI no cambia; en modo presupuesto la sección RENIEC queda bloqueada.
-    this.reniecEditable.set(!esPresupuesto && false ? true : !esPresupuesto);
+    // En edición el DNI no cambia; en nueva partida/servicio la sección RENIEC queda bloqueada.
+    this.reniecEditable.set(!nuevaPartida);
     if (this.modo() === 'editar') this.form.controls.dni.disable();
-    if (esPresupuesto) this.reniecEditable.set(false);
+    // Agregar Nuevo Servicio: identidad completa bloqueada, solo el celular es editable.
+    if (esServicio) {
+      ['dni', 'profesion', 'sexo', 'correo', 'perfil'].forEach((c) => this.form.get(c)?.disable());
+    }
   }
 
   /** Unidad Responsable bloqueada para perfiles subordinados (prototipo). */
@@ -722,7 +798,7 @@ export class UsuarioFormComponent implements OnInit {
     const bloqueaUnidad =
       !this.auth.esAdminGeneralAutenticado() &&
       ['Jefe de Área', 'Administrador Unidad Ejecutora(UE)', 'Administrador DZ_Cap_Asit.'].includes(s.perfil);
-    if (bloqueaUnidad && this.modo() !== 'presupuesto') {
+    if (bloqueaUnidad && this.modo() !== 'presupuesto' && this.modo() !== 'servicio') {
       this.form.controls.unidad.setValue(s.unidad);
       this.form.controls.unidad.disable();
     }
@@ -750,6 +826,7 @@ export class UsuarioFormComponent implements OnInit {
     const u = this.usuarioBase;
     if (this.modo() === 'editar' && u) return `MODIFICANDO REGISTRO: ${u.nombres} ${u.apePat}`;
     if (this.modo() === 'presupuesto' && u) return `ASIGNACIÓN DE NUEVO PRESUPUESTO: ${u.nombres} ${u.apePat}`;
+    if (this.modo() === 'servicio' && u) return `AGREGAR NUEVO SERVICIO: ${u.nombres} ${u.apePat}`;
     return 'GESTIÓN INTEGRAL DE USUARIOS';
   });
 
@@ -881,6 +958,36 @@ export class UsuarioFormComponent implements OnInit {
     const r = this.form.controls.regimen.value;
     return r === 'Locador de Servicio (OS)' || r === 'Régimen CAS Temporal';
   });
+
+  /* ===== Periodo de Gestión según régimen laboral ===== */
+
+  readonly tiposPeriodo: TipoPeriodoGestion[] = ['Regular', 'Extraordinario'];
+  readonly formatearPeriodo = formatearPeriodo;
+
+  readonly regimenRequierePeriodo = computed(() => {
+    this.formTick();
+    return regimenConPeriodo(this.form.controls.regimen.value);
+  });
+
+  /** Años elegibles (dinámico): del año actual hacia atrás, nunca futuros. */
+  readonly aniosGestion = computed(() => {
+    const actual = new Date().getFullYear();
+    return Array.from({ length: 6 }, (_, i) => actual - i);
+  });
+
+  /** Periodos generados automáticamente del rango (CAS Temporal / Locador). */
+  readonly periodosGenerados = computed<PeriodoGestion[]>(() => {
+    this.formTick();
+    const v = this.form.getRawValue();
+    return this.regimenTemporal() ? periodosDesdeRango(v.fechaIni, v.fechaFin) : [];
+  });
+
+  readonly esModoServicio = computed(() => this.modo() === 'servicio');
+
+  onRegimenChange(): void {
+    this.form.patchValue({ periodoTipo: '', periodoAnio: '' });
+    this.formTick.update((t) => t + 1);
+  }
 
   readonly esLocador = computed(() => {
     this.formTick();
@@ -1338,9 +1445,10 @@ export class UsuarioFormComponent implements OnInit {
       }
     }
 
-    // Nueva partida presupuestal: fechas y Nro. de Orden distintos a los ya registrados.
-    if (this.modo() === 'presupuesto') {
-      if (this.usuariosService.existeFechaContratoParaDni(v.dni, v.fechaIni, v.fechaFin)) {
+    // Nueva partida/servicio: fechas y Nro. de Orden distintos a los ya registrados
+    // (solo aplica a regímenes temporales, que son los que registran fechas).
+    if (this.modo() === 'presupuesto' || this.modo() === 'servicio') {
+      if (this.regimenTemporal() && this.usuariosService.existeFechaContratoParaDni(v.dni, v.fechaIni, v.fechaFin)) {
         this.mostrarAlerta({
           titulo: 'Fechas ya registradas',
           mensaje: 'La fecha de inicio y la fecha fin deben ser diferentes a las fechas ya registradas para este usuario.',
@@ -1351,6 +1459,23 @@ export class UsuarioFormComponent implements OnInit {
         this.mostrarAlerta({
           titulo: 'Orden ya registrada',
           mensaje: 'El Nro. de Orden (O.S.) debe ser diferente al que ya fue registrado para este usuario.',
+        });
+        return;
+      }
+    }
+
+    if (regimenConPeriodo(v.regimen)) {
+      if (!v.periodoTipo || !v.periodoAnio) {
+        this.mostrarAlerta({
+          titulo: 'Periodo de Gestión Requerido',
+          mensaje: 'Debe seleccionar el Tipo de periodo y el Año de gestión para el régimen laboral elegido.',
+        });
+        return;
+      }
+      if (Number(v.periodoAnio) > new Date().getFullYear()) {
+        this.mostrarAlerta({
+          titulo: 'Año de gestión no permitido',
+          mensaje: 'El Año de gestión no puede ser mayor al año actual del sistema.',
         });
         return;
       }
@@ -1400,6 +1525,12 @@ export class UsuarioFormComponent implements OnInit {
       fechaIni: this.regimenTemporal() ? v.fechaIni : '',
       fechaFin: this.regimenTemporal() ? v.fechaFin : '',
       nroOrden: this.esLocador() ? v.nroOrden.trim() : '',
+      // Periodo de Gestión: elegido (728/276/CAS) o generado del rango (temporales).
+      periodosGestion: regimenConPeriodo(v.regimen)
+        ? [{ tipo: v.periodoTipo as TipoPeriodoGestion, anio: Number(v.periodoAnio) }]
+        : this.regimenTemporal()
+          ? periodosDesdeRango(v.fechaIni, v.fechaFin)
+          : undefined,
       perfil: v.perfil as Perfil,
       opa: this.usuariosService.derivarOpa(v.unidad),
       fuenteFinanc: esAdminGeneral ? '' : v.fuenteFinanc,
@@ -1425,6 +1556,15 @@ export class UsuarioFormComponent implements OnInit {
       this.mostrarAlerta({
         titulo: 'Nuevo Presupuesto Asignado',
         mensaje: `Se ha asignado con éxito el nuevo presupuesto en '${v.unidad}' para el servidor ${nombreCompleto}.`,
+        cerrarYSalir: true,
+      });
+    } else if (this.modo() === 'servicio') {
+      this.usuariosService.create(datos);
+      this.mostrarAlerta({
+        titulo: 'Nuevo Servicio Registrado',
+        mensaje:
+          `Se registró un nuevo servicio para ${nombreCompleto} conservando el historial anterior. ` +
+          `El registro previo se mantiene como parte de la trazabilidad del colaborador.`,
         cerrarYSalir: true,
       });
     } else if (this.modo() === 'editar' && this.usuarioBase) {
