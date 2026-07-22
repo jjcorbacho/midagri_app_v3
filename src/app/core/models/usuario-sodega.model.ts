@@ -86,6 +86,13 @@ export interface UsuarioSodega {
   ambitos: AmbitoTerritorial[];
   /** Metas por ámbito territorial (solo Técnicos registrados por un Admin DZ_Cap_Asit.). */
   metasAmbito?: MetaAmbitoTerritorial[];
+  /**
+   * Periodos de gestión del servicio (REQ Gestión de Periodos):
+   *  - 728 / 276 / CAS: un periodo elegido por el usuario (tipo + año).
+   *  - CAS Temporal / Locador: generados automáticamente del rango de fechas.
+   * Opcional para compatibilidad con registros previos a la funcionalidad.
+   */
+  periodosGestion?: PeriodoGestion[];
   /** Permisos de menú del usuario (solo perfiles con esquema configurable). */
   permisosMenu?: PermisosMenu;
   inhabilitadoPorVencimiento?: boolean;
@@ -109,6 +116,100 @@ export interface DatosReniec {
   celularSugerido: string;
   userGenerado: string;
   correoSugerido: string;
+}
+
+/* ===== Periodos de gestión por régimen laboral ===== */
+
+export type TipoPeriodoGestion = 'Regular' | 'Extraordinario';
+
+export interface PeriodoGestion {
+  tipo: TipoPeriodoGestion;
+  anio: number;
+}
+
+/** Regímenes cuyo periodo de gestión lo elige el usuario (tipo + año). */
+export const REGIMENES_CON_PERIODO: readonly string[] = [
+  'Decreto Legislativo 728',
+  'Decreto Legislativo 276',
+  'Régimen CAS',
+];
+
+export function regimenConPeriodo(regimen: string): boolean {
+  return REGIMENES_CON_PERIODO.includes(regimen);
+}
+
+/** "Regular 2026" / "Extraordinario 2025" (etiqueta única en tabla y form). */
+export function formatearPeriodo(p: PeriodoGestion): string {
+  return `${p.tipo} ${p.anio}`;
+}
+
+/**
+ * Periodos Regulares generados automáticamente a partir del rango de un
+ * contrato temporal (uno por cada año calendario que abarque el rango).
+ * Ej.: 2026-11-01 → 2027-03-15 produce [Regular 2026, Regular 2027].
+ */
+export function periodosDesdeRango(fechaIniISO: string, fechaFinISO: string): PeriodoGestion[] {
+  const anioIni = Number(fechaIniISO?.slice(0, 4));
+  const anioFin = Number(fechaFinISO?.slice(0, 4));
+  if (!Number.isInteger(anioIni) || !Number.isInteger(anioFin) || anioFin < anioIni) return [];
+  return Array.from({ length: anioFin - anioIni + 1 }, (_, i) => ({
+    tipo: 'Regular' as const,
+    anio: anioIni + i,
+  }));
+}
+
+const MESES_ES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
+/**
+ * Meses comprendidos en el rango de un contrato temporal, en orden
+ * cronológico, sin repetidos, con nombres completos en español y sin año.
+ * Ej.: 2026-02-01 → 2026-07-23 = "Febrero, Marzo, Abril, Mayo, Junio y Julio".
+ */
+export function mesesDeRango(fechaIniISO: string, fechaFinISO: string): string {
+  const ini = fechaIniISO?.split('-').map(Number);
+  const fin = fechaFinISO?.split('-').map(Number);
+  if (!ini || !fin || ini.length < 2 || fin.length < 2 || ini.some(Number.isNaN) || fin.some(Number.isNaN)) return '';
+  const desde = ini[0] * 12 + (ini[1] - 1);
+  const hasta = fin[0] * 12 + (fin[1] - 1);
+  if (hasta < desde) return '';
+  const meses: string[] = [];
+  for (let m = desde; m <= hasta && meses.length < 12; m++) {
+    const nombre = MESES_ES[m % 12];
+    if (!meses.includes(nombre)) meses.push(nombre);
+  }
+  if (meses.length === 1) return meses[0];
+  return `${meses.slice(0, -1).join(', ')} y ${meses[meses.length - 1]}`;
+}
+
+export type EstadoVigencia = 'Vigente' | 'Próximo a vencer' | 'Expirado';
+
+/**
+ * Estado de vigencia del servicio (función única, sin lógica duplicada):
+ *  - CAS Temporal / Locador: por fecha fin (expirado si ya pasó; próximo a
+ *    vencer dentro de los últimos 30 días de contrato).
+ *  - Regímenes con periodo: el periodo permitido por negocio es el del año
+ *    en curso — un periodo de un año anterior está expirado y, durante
+ *    diciembre, el periodo del año en curso queda próximo a vencer.
+ *  - Registros sin datos de periodo (previos a la funcionalidad): Vigente.
+ */
+export function estadoVigenciaDe(
+  u: Pick<UsuarioSodega, 'regimen' | 'fechaFin' | 'periodosGestion'>,
+  hoy = new Date(),
+): EstadoVigencia {
+  if (u.regimen === 'Locador de Servicio (OS)' || u.regimen === 'Régimen CAS Temporal') {
+    const dias = calcularDiasRestantes(u.fechaFin);
+    if (dias === null) return 'Vigente';
+    if (dias < 0) return 'Expirado';
+    return dias <= 30 ? 'Próximo a vencer' : 'Vigente';
+  }
+  const periodos = u.periodosGestion ?? [];
+  if (!periodos.length) return 'Vigente';
+  const anioMaximo = Math.max(...periodos.map((p) => p.anio));
+  if (anioMaximo < hoy.getFullYear()) return 'Expirado';
+  return hoy.getMonth() === 11 && anioMaximo === hoy.getFullYear() ? 'Próximo a vencer' : 'Vigente';
 }
 
 /* ===== Reglas de vigencia (idénticas al prototipo) ===== */

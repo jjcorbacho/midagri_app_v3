@@ -492,9 +492,12 @@
 /* ============================================================
    Animaciones de entrada
    ============================================================ */
+/* Entrada de página solo con opacidad: cualquier transform (incluso durante
+   la animación) convertiría a la sección en containing block y descentraría
+   los modales y flotantes `fixed` que viven dentro de las vistas. */
 @keyframes ds-page-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 @keyframes ds-modal-in {
   from { opacity: 0; transform: scale(0.97) translateY(4px); }

@@ -12,6 +12,7 @@ import { LucideAngularModule, Search } from 'lucide-angular';
 import { Participante, TipoParticipante } from '../../../core/models/participante.model';
 import { ProductoresService } from '../../../core/services/productores.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { ModalService } from '../../../core/services/modal.service';
 import { calcEdad } from '../../../shared/utils/fecha.util';
 import { INPUT_BASE, INPUT_DISABLED, INPUT_REQUIRED } from '../../../shared/utils/input-styles.const';
 import {
@@ -78,19 +79,9 @@ const REQUIRED_INPUT = INPUT_REQUIRED;
               @if (errors()['dni']) {
                 <p class="text-[11px] text-destructive">{{ errors()['dni'] }}</p>
               }
-              <p class="text-xs font-medium italic">
-                @switch (busqueda()) {
-                  @case ('ok') {
-                    <span class="text-success">✓ Encontrado en la base de datos de Productores</span>
-                  }
-                  @case ('no-encontrado') {
-                    <span class="text-warning-foreground">⚠ DNI no encontrado. Puede registrarlo manualmente.</span>
-                  }
-                  @default {
-                    <span class="text-brand">* Ingrese el DNI para autocompletar.</span>
-                  }
-                }
-              </p>
+              @if (!busqueda()) {
+                <p class="text-xs font-medium italic text-brand">* Ingrese el DNI para autocompletar.</p>
+              }
             </div>
           } @else {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -324,6 +315,7 @@ const REQUIRED_INPUT = INPUT_REQUIRED;
 export class ParticipanteFormComponent {
   private readonly fb = inject(FormBuilder);
   private readonly productores = inject(ProductoresService);
+  private readonly modales = inject(ModalService);
   private readonly toast = inject(ToastService);
 
   readonly mode = input.required<ParticipanteFormMode>();
@@ -434,10 +426,17 @@ export class ParticipanteFormComponent {
       });
       this.busqueda.set('ok');
       this.demoLocked.set(true);
-      this.toast.success('Encontrado en la base de datos de Productores');
+      // Modal informativo estándar; al aceptar continúa la carga ya realizada.
+      void this.modales.openInfo('DNI encontrado', 'DNI encontrado en la base de datos de productores.');
     } else {
       this.busqueda.set('no-encontrado');
       this.demoLocked.set(false);
+      // Advertencia informativa (solo Aceptar); luego continúa el registro manual.
+      void this.modales.openWarning(
+        'DNI no encontrado',
+        'El DNI ingresado no se encuentra en la base de datos de productores. Puede continuar registrando la información manualmente.',
+        { soloAceptar: true },
+      );
     }
     this.dniLocked.set(true);
     this.form.controls.dni.disable();

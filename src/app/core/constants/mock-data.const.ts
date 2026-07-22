@@ -54,6 +54,11 @@ export const TECNICOS_DEMO_REASIGNACION: UsuarioSodega[] = [
     celular: '911111111',
     userGen: 'mtorres',
     correo: 'mtorres@midagri.gob.pe',
+    // Contrato temporal vencido: prueba de "Agregar Nuevo Servicio" y meses.
+    regimen: 'Régimen CAS Temporal',
+    fechaIni: '2025-02-01',
+    fechaFin: '2025-07-23',
+    periodosGestion: [{ tipo: 'Regular', anio: 2025 }],
   },
   {
     ...TECNICO_DEMO_BASE,
@@ -67,6 +72,7 @@ export const TECNICOS_DEMO_REASIGNACION: UsuarioSodega[] = [
     celular: '922222222',
     userGen: 'lramos',
     correo: 'lramos@midagri.gob.pe',
+    periodosGestion: [{ tipo: 'Regular', anio: 2026 }],
   },
 ];
 

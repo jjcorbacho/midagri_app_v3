@@ -8,6 +8,8 @@ export interface SolicitudModal {
   tipo: TipoModalFeedback;
   titulo: string;
   mensaje: string;
+  /** Advertencias informativas: un único botón "Aceptar" (sin Cancelar). */
+  soloAceptar?: boolean;
   /** true = aceptado/confirmado · false = cancelado (siempre true en modales de un botón). */
   resolver: (resultado: boolean) => void;
 }
@@ -32,9 +34,10 @@ export class ModalService {
     return this.abrir('info', titulo, mensaje);
   }
 
-  /** Modal de advertencia: icono alerta + Continuar / Cancelar. */
-  openWarning(titulo: string, mensaje: string): Promise<boolean> {
-    return this.abrir('warning', titulo, mensaje);
+  /** Modal de advertencia: icono alerta + Continuar / Cancelar
+   *  (o solo "Aceptar" cuando es una advertencia informativa). */
+  openWarning(titulo: string, mensaje: string, opciones?: { soloAceptar?: boolean }): Promise<boolean> {
+    return this.abrir('warning', titulo, mensaje, opciones?.soloAceptar);
   }
 
   /** Modal de confirmación de acciones: icono pregunta + Confirmar / Cancelar. */
@@ -59,11 +62,16 @@ export class ModalService {
     actual?.resolver(resultado);
   }
 
-  private abrir(tipo: TipoModalFeedback, titulo: string, mensaje: string): Promise<boolean> {
+  private abrir(
+    tipo: TipoModalFeedback,
+    titulo: string,
+    mensaje: string,
+    soloAceptar = false,
+  ): Promise<boolean> {
     // Si hubiera un modal previo abierto se resuelve como cancelado.
     this._solicitud()?.resolver(false);
     return new Promise<boolean>((resolver) => {
-      this._solicitud.set({ tipo, titulo, mensaje, resolver });
+      this._solicitud.set({ tipo, titulo, mensaje, soloAceptar, resolver });
     });
   }
 }

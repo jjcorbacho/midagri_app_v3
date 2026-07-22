@@ -70,11 +70,11 @@ const ESTILOS: Record<TipoModalFeedback, EstiloModal> = {
           <p class="text-sm text-foreground leading-relaxed">{{ s.mensaje }}</p>
         </div>
         <div class="flex justify-center gap-2 mt-6">
-          @if (estilo().conCancelar) {
+          @if (estilo().conCancelar && !s.soloAceptar) {
             <button (click)="servicio.cerrar(false)" class="btn-secondary px-6 min-w-[110px]">Cancelar</button>
           }
           <button (click)="servicio.cerrar(true)" [class]="estilo().botonPrincipal + ' px-6 min-w-[110px]'">
-            {{ estilo().etiquetaPrincipal }}
+            {{ s.soloAceptar ? 'Aceptar' : estilo().etiquetaPrincipal }}
           </button>
         </div>
       </app-modal>
