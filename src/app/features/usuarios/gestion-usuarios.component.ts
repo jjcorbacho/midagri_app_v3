@@ -11,8 +11,8 @@ import { UsuariosService } from '../../core/services/usuarios.service';
 import { ToastService } from '../../core/services/toast.service';
 import { estadoVigenciaDe, formatearPeriodo, mesesDeRango, UsuarioSodega, esUsuarioPermanente, toTitleCase } from '../../core/models/usuario-sodega.model';
 import { formatearUbigeoTexto } from '../../core/constants/sodega.const';
-import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { ModalService } from '../../core/services/modal.service';
+import { ColumnSelectorComponent, ColumnaTabla } from '../../shared/components/column-selector/column-selector.component';
 import {
   ReasignarRegistroModalComponent,
   ResultadoReasignacion,
@@ -23,6 +23,28 @@ type FiltroKpi = 'TOTAL' | 'HABILITADO' | 'INHABILITADO' | 'PERMANENTE' | 'CRITI
 /** Badge pill base (mismo patrón que EstadoBadge de la bandeja N1). */
 const BADGE_PILL =
   'inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 whitespace-nowrap tracking-wide';
+
+/**
+ * Configuración de las columnas de la grilla de usuarios.
+ * Para incorporar una columna nueva basta con añadir su entrada aquí y su
+ * `@case` en la celda: la cabecera, el colspan y el selector son dinámicos.
+ */
+const COLUMNAS_USUARIOS: ColumnaTabla[] = [
+  { id: 'acciones', nombre: 'Acciones', visible: true, obligatoria: true, orden: 1, clase: 'text-center min-w-[220px]' },
+  { id: 'empleado', nombre: 'Empleado', visible: true, orden: 2, clase: 'w-56' },
+  { id: 'estado', nombre: 'Estado', visible: false, orden: 3, clase: 'text-center w-28' },
+  { id: 'usuario', nombre: 'Usuario', visible: false, orden: 4, clase: 'w-28' },
+  { id: 'dni', nombre: 'DNI', visible: false, orden: 5, clase: 'w-24' },
+  { id: 'perfil', nombre: 'Perfil', visible: true, orden: 6, clase: 'w-48' },
+  { id: 'regimen', nombre: 'Tipo de Régimen', visible: true, orden: 7, clase: 'w-44' },
+  { id: 'unidadResponsable', nombre: 'Unidad Responsable', visible: false, orden: 8, clase: 'w-64' },
+  { id: 'unidadFuncional', nombre: 'Unidad Funcional', visible: false, orden: 9, clase: 'w-64' },
+  { id: 'periodo', nombre: 'Periodo de Gestión', visible: true, orden: 10, clase: 'w-40' },
+  { id: 'vigencia', nombre: 'Vigencia', visible: true, orden: 11, clase: 'w-48' },
+  { id: 'vencimiento', nombre: 'Vencimiento', visible: true, orden: 12, clase: 'w-28' },
+  { id: 'progPresup', nombre: 'Prog. presupuestal', visible: false, orden: 13, clase: 'w-64' },
+  { id: 'ubigeo', nombre: 'Ubigeo', visible: false, orden: 14, clase: 'w-24' },
+];
 
 /** Tonos de los iconos de acción (mismo patrón ICON_TONES de la bandeja N1). */
 const ICON_TONES: Record<string, string> = {
@@ -42,7 +64,7 @@ const ICON_TONES: Record<string, string> = {
 @Component({
   selector: 'app-gestion-usuarios',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, ModalComponent, ReasignarRegistroModalComponent],
+  imports: [LucideAngularModule, ReasignarRegistroModalComponent, ColumnSelectorComponent],
   template: `
     <section class="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6 animate-page-in">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -106,6 +128,11 @@ const ICON_TONES: Record<string, string> = {
           </div>
 
           <div class="flex items-center gap-2">
+            <app-column-selector
+              [columnas]="columnasBase"
+              storageKey="sodega.usuarios.columnas"
+              (columnasChange)="columnas.set($event)"
+            />
             <button (click)="exportarExcel()" class="btn-secondary">
               <lucide-angular [img]="FileSpreadsheetIcon" class="size-4 text-success" />
               <span>Exportar excel</span>
@@ -119,28 +146,18 @@ const ICON_TONES: Record<string, string> = {
 
         <!-- GRILLA DE DATOS -->
         <div class="overflow-auto max-h-[60vh]">
-          <table class="w-full text-left min-w-[1400px]">
+          <table class="w-full text-left" [style.min-width.px]="anchoMinimoTabla()">
             <thead class="bg-secondary sticky top-0 z-10 shadow-sm">
               <tr class="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
-                <th class="px-4 py-3 text-center min-w-[220px]">Acciones</th>
-                <th class="px-4 py-3 w-56">Empleado</th>
-                <th class="px-4 py-3 text-center w-28">Estado</th>
-                <th class="px-4 py-3 w-28">Usuario</th>
-                <th class="px-4 py-3 w-24">DNI</th>
-                <th class="px-4 py-3 w-48">Perfil</th>
-                <th class="px-4 py-3 w-64">Unidad Responsable</th>
-                <th class="px-4 py-3 w-64">Unidad Funcional</th>
-                <th class="px-4 py-3 w-40">Periodo de Gestión</th>
-                <th class="px-4 py-3 w-48">Vigencia</th>
-                <th class="px-4 py-3 w-28">Vencimiento</th>
-                <th class="px-4 py-3 w-64">Prog. presupuestal</th>
-                <th class="px-4 py-3 w-24">Ubigeo</th>
+                @for (col of columnasVisibles(); track col.id) {
+                  <th class="px-4 py-3" [class]="col.clase ?? ''">{{ col.nombre }}</th>
+                }
               </tr>
             </thead>
             <tbody class="divide-y divide-border">
               @if (pageRows().length === 0) {
                 <tr>
-                  <td colspan="12">
+                  <td [attr.colspan]="columnasVisibles().length">
                     <div class="empty-state">
                       <lucide-angular [img]="SearchIcon" class="size-8 text-muted-foreground/40" />
                       <p class="text-sm font-medium text-foreground">Sin resultados</p>
@@ -151,72 +168,105 @@ const ICON_TONES: Record<string, string> = {
               }
               @for (u of pageRows(); track u.id) {
                 <tr class="hover:bg-secondary/40 transition-colors">
-                  <td class="px-4 py-4 whitespace-nowrap w-px">
-                    <div class="flex items-center justify-center gap-1 flex-nowrap">
-                      <button title="Editar Datos" aria-label="Editar Datos" (click)="accion('EDITAR', u)"
-                        class="p-2 rounded-lg transition-all" [class]="tone('slate')">
-                        <lucide-angular [img]="UserPenIcon" class="size-4" />
-                      </button>
-                      <button title="Agregar nueva Presup." aria-label="Agregar nueva Presupuestal" (click)="accion('PRESUPUESTO', u)"
-                        class="p-2 rounded-lg transition-all" [class]="tone('teal')">
-                        <lucide-angular [img]="FilePlus2Icon" class="size-4" />
-                      </button>
-                      <button title="Restablecer clave" aria-label="Restablecer clave" (click)="accion('CLAVE', u)"
-                        class="p-2 rounded-lg transition-all" [class]="tone('amber')">
-                        <lucide-angular [img]="KeyRoundIcon" class="size-4" />
-                      </button>
-                      @if (puedeReasignar(u)) {
-                        <button title="Reasignar Registro" aria-label="Reasignar Registro" (click)="accion('REASIGNAR_REGISTRO', u)"
-                          class="p-2 rounded-lg transition-all" [class]="tone('blue')">
-                          <lucide-angular [img]="MapPinnedIcon" class="size-4" />
-                        </button>
+                  @for (col of columnasVisibles(); track col.id) {
+                    @switch (col.id) {
+                      @case ('acciones') {
+                        <td class="px-4 py-4 whitespace-nowrap w-px">
+                          <div class="flex items-center justify-center gap-1 flex-nowrap">
+                            <button title="Editar Datos" aria-label="Editar Datos" (click)="accion('EDITAR', u)"
+                              class="p-2 rounded-lg transition-all" [class]="tone('slate')">
+                              <lucide-angular [img]="UserPenIcon" class="size-4" />
+                            </button>
+                            <button title="Agregar nueva Presup." aria-label="Agregar nueva Presupuestal" (click)="accion('PRESUPUESTO', u)"
+                              class="p-2 rounded-lg transition-all" [class]="tone('teal')">
+                              <lucide-angular [img]="FilePlus2Icon" class="size-4" />
+                            </button>
+                            <button title="Restablecer clave" aria-label="Restablecer clave" (click)="accion('CLAVE', u)"
+                              class="p-2 rounded-lg transition-all" [class]="tone('amber')">
+                              <lucide-angular [img]="KeyRoundIcon" class="size-4" />
+                            </button>
+                            @if (puedeReasignar(u)) {
+                              <button title="Reasignar Registro" aria-label="Reasignar Registro" (click)="accion('REASIGNAR_REGISTRO', u)"
+                                class="p-2 rounded-lg transition-all" [class]="tone('blue')">
+                                <lucide-angular [img]="MapPinnedIcon" class="size-4" />
+                              </button>
+                            }
+                            <button title="Cambiar Estado" aria-label="Cambiar Estado" (click)="accion('ESTADO', u)"
+                              class="p-2 rounded-lg transition-all" [class]="tone('red')">
+                              <lucide-angular [img]="WorkflowIcon" class="size-4" />
+                            </button>
+                            @if (puedeAgregarServicio(u)) {
+                              <button title="Agregar Nuevo Servicio" aria-label="Agregar Nuevo Servicio" (click)="accion('NUEVO_SERVICIO', u)"
+                                class="p-2 rounded-lg transition-all" [class]="tone('green')">
+                                <lucide-angular [img]="CirclePlusIcon" class="size-4" />
+                              </button>
+                            }
+                          </div>
+                        </td>
                       }
-                      <button title="Cambiar Estado" aria-label="Cambiar Estado" (click)="accion('ESTADO', u)"
-                        class="p-2 rounded-lg transition-all" [class]="tone('red')">
-                        <lucide-angular [img]="WorkflowIcon" class="size-4" />
-                      </button>
-                      @if (puedeAgregarServicio(u)) {
-                        <button title="Agregar Nuevo Servicio" aria-label="Agregar Nuevo Servicio" (click)="accion('NUEVO_SERVICIO', u)"
-                          class="p-2 rounded-lg transition-all" [class]="tone('green')">
-                          <lucide-angular [img]="CirclePlusIcon" class="size-4" />
-                        </button>
+                      @case ('empleado') {
+                        <td class="px-4 py-4 text-sm font-semibold text-foreground leading-tight">{{ nombreFila(u) }}</td>
                       }
-                    </div>
-                  </td>
-                  <td class="px-4 py-4 text-sm font-semibold text-foreground leading-tight">{{ nombreFila(u) }}</td>
-                  <td class="px-4 py-4 text-center whitespace-nowrap">
-                    <span
-                      class="${BADGE_PILL}"
-                      [class]="u.estado === 'HABILITADO'
-                        ? 'bg-state-aprobado-soft text-state-aprobado-foreground ring-state-aprobado/30'
-                        : 'bg-state-observado-soft text-state-observado-foreground ring-state-observado/30'"
-                    >{{ u.estado }}</span>
-                  </td>
-                  <td class="px-4 py-4 text-sm text-muted-foreground font-medium">{{ u.userGen }}</td>
-                  <td class="px-4 py-4 text-sm font-mono tabular-nums text-foreground/80">{{ u.dni }}</td>
-                  <td class="px-4 py-4 text-sm font-semibold text-foreground">{{ u.perfil }}</td>
-                  <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[220px]" [title]="unidadResponsableDe(u)">{{ unidadResponsableDe(u) }}</td>
-                  <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[220px]" [title]="opasDe(u)">{{ opasDe(u) }}</td>
-                  <td class="px-4 py-4">
-                    @if (mesesContrato(u); as meses) {
-                      <!-- Temporales: meses comprendidos en el contrato -->
-                      <span class="text-xs text-foreground/80 leading-snug">{{ meses }}</span>
-                    } @else if (u.periodosGestion?.length) {
-                      <div class="flex flex-col gap-1">
-                        @for (pg of u.periodosGestion; track pg.anio) {
-                          <span class="inline-flex w-fit px-2 py-0.5 rounded-full bg-brand-soft text-brand text-[11px] font-bold ring-1 ring-brand/20 whitespace-nowrap">
-                            {{ formatearPeriodo(pg) }}
-                          </span>
-                        }
-                      </div>
-                    } @else {
-                      <span class="text-xs text-muted-foreground">—</span>
+                      @case ('estado') {
+                        <td class="px-4 py-4 text-center whitespace-nowrap">
+                          <span
+                            class="${BADGE_PILL}"
+                            [class]="u.estado === 'HABILITADO'
+                              ? 'bg-state-aprobado-soft text-state-aprobado-foreground ring-state-aprobado/30'
+                              : 'bg-state-observado-soft text-state-observado-foreground ring-state-observado/30'"
+                          >{{ u.estado }}</span>
+                        </td>
+                      }
+                      @case ('usuario') {
+                        <td class="px-4 py-4 text-sm text-muted-foreground font-medium">{{ u.userGen }}</td>
+                      }
+                      @case ('dni') {
+                        <td class="px-4 py-4 text-sm font-mono tabular-nums text-foreground/80">{{ u.dni }}</td>
+                      }
+                      @case ('perfil') {
+                        <td class="px-4 py-4 text-sm font-semibold text-foreground">{{ u.perfil }}</td>
+                      }
+                      @case ('regimen') {
+                        <td class="px-4 py-4 text-sm text-foreground/80 whitespace-nowrap">{{ u.regimen || '—' }}</td>
+                      }
+                      @case ('unidadResponsable') {
+                        <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[220px]" [title]="unidadResponsableDe(u)">{{ unidadResponsableDe(u) }}</td>
+                      }
+                      @case ('unidadFuncional') {
+                        <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[220px]" [title]="opasDe(u)">{{ opasDe(u) }}</td>
+                      }
+                      @case ('periodo') {
+                        <td class="px-4 py-4">
+                          @if (mesesContrato(u); as meses) {
+                            <!-- Temporales: meses comprendidos en el contrato -->
+                            <span class="text-xs text-foreground/80 leading-snug">{{ meses }}</span>
+                          } @else if (u.periodosGestion?.length) {
+                            <div class="flex flex-col gap-1">
+                              @for (pg of u.periodosGestion; track pg.anio) {
+                                <span class="inline-flex w-fit px-2 py-0.5 rounded-full bg-brand-soft text-brand text-[11px] font-bold ring-1 ring-brand/20 whitespace-nowrap">
+                                  {{ formatearPeriodo(pg) }}
+                                </span>
+                              }
+                            </div>
+                          } @else {
+                            <span class="text-xs text-muted-foreground">—</span>
+                          }
+                        </td>
+                      }
+                      @case ('vigencia') {
+                        <td class="px-4 py-4 whitespace-nowrap"><span [class]="vigenciaCls(u)">{{ u.vigenciaCalculada }}</span></td>
+                      }
+                      @case ('vencimiento') {
+                        <td class="px-4 py-4 whitespace-nowrap"><span [class]="vencimientoCls(u)">{{ vencimientoDe(u) }}</span></td>
+                      }
+                      @case ('progPresup') {
+                        <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[180px]" [title]="progPresupDe(u)">{{ progPresupDe(u) }}</td>
+                      }
+                      @case ('ubigeo') {
+                        <td class="px-4 py-4 text-sm text-foreground/80" [title]="ubigeoDe(u)">{{ ubigeoDe(u) }}</td>
+                      }
                     }
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap"><span [class]="vigenciaCls(u)">{{ u.vigenciaCalculada }}</span></td>
-                  <td class="px-4 py-4 whitespace-nowrap"><span [class]="vencimientoCls(u)">{{ vencimientoDe(u) }}</span></td>
-                  <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[180px]" [title]="progPresupDe(u)">{{ progPresupDe(u) }}</td>
-                  <td class="px-4 py-4 text-sm text-foreground/80" [title]="ubigeoDe(u)">{{ ubigeoDe(u) }}</td>
+                  }
                 </tr>
               }
             </tbody>
@@ -306,6 +356,15 @@ export class GestionUsuariosComponent {
   readonly toastExcel = signal('');
   /** Registro de origen del modal "Reasignar Registro" (null = cerrado). */
   readonly reasignarOrigen = signal<UsuarioSodega | null>(null);
+
+  /* ===== Columnas configurables de la grilla ===== */
+  readonly columnasBase = COLUMNAS_USUARIOS;
+  readonly columnas = signal<ColumnaTabla[]>(COLUMNAS_USUARIOS);
+  readonly columnasVisibles = computed(() =>
+    this.columnas().filter((c) => c.visible).sort((a, b) => a.orden - b.orden),
+  );
+  /** Ancho mínimo proporcional para no estirar la tabla con pocas columnas. */
+  readonly anchoMinimoTabla = computed(() => this.columnasVisibles().length * 130);
 
   /** Registros visibles según los privilegios del perfil activo. */
   private readonly visibles = computed(() => {

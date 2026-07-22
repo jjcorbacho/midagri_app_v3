@@ -16,6 +16,7 @@ import {
   MetaAmbitoTerritorial,
   PERFILES,
   Perfil,
+  MESES_ES,
   PeriodoGestion,
   TipoPeriodoGestion,
   UsuarioSodega,
@@ -24,8 +25,8 @@ import {
   formatearPeriodo,
   perfilRequiereAmbito,
   perfilSoloRegion,
-  periodosDesdeRango,
-  regimenConPeriodo,
+  estadoPeriodo,
+  regimenesPermitidosParaNuevoServicio,
   toTitleCase,
 } from '../../core/models/usuario-sodega.model';
 import { PermisosMenu, combinarPermisos } from '../../core/models/permisos-menu.model';
@@ -44,7 +45,6 @@ import {
   UNIDADES_POR_PROGRAMA,
   UNIDADES_RESPONSABLES,
 } from '../../core/constants/sodega.const';
-import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { AutocompleteComponent } from '../../shared/components/autocomplete/autocomplete.component';
 import { normalizarBusqueda } from '../../shared/utils/texto.util';
 
@@ -68,7 +68,7 @@ const INP_NORMAL = INPUT_BASE;
 @Component({
   selector: 'app-usuario-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, LucideAngularModule, ModalComponent, PermisosMenuFormComponent, AutocompleteComponent],
+  imports: [ReactiveFormsModule, LucideAngularModule, PermisosMenuFormComponent, AutocompleteComponent],
   template: `
     <section class="p-6 lg:p-8 max-w-[1200px] mx-auto space-y-5 animate-page-in">
       <h1 class="text-h1 text-foreground">{{ titulo() }}</h1>
@@ -291,7 +291,7 @@ const INP_NORMAL = INPUT_BASE;
                 <label class="block text-[11px] font-medium text-muted-foreground mb-1">Régimen laboral <span class="text-destructive">*</span></label>
                 <select formControlName="regimen" (change)="onRegimenChange()" [class]="inpMandatory">
                   <option value="">--Seleccione--</option>
-                  @for (r of regimenes; track r) {
+                  @for (r of regimenesDisponibles(); track r) {
                     <option [value]="r">{{ r }}</option>
                   }
                 </select>
@@ -325,53 +325,112 @@ const INP_NORMAL = INPUT_BASE;
               </div>
             }
 
-            <!-- Periodo de Gestión según régimen laboral -->
-            @if (regimenRequierePeriodo()) {
-              <div class="grid grid-cols-12 gap-3 p-4 bg-brand-soft/50 rounded-xl ring-1 ring-brand/20">
-                <p class="col-span-12 text-[11px] font-semibold uppercase tracking-wider text-brand">
-                  Periodo de Gestión
-                </p>
-                <div class="col-span-12 md:col-span-6">
-                  <label for="periodo-tipo" class="block text-[11px] font-medium text-brand mb-1">
-                    Tipo de periodo <span class="text-destructive">*</span>
-                  </label>
-                  <select id="periodo-tipo" formControlName="periodoTipo" [class]="inpMandatory">
-                    <option value="">--Seleccione--</option>
-                    @for (t of tiposPeriodo; track t) {
-                      <option [value]="t">{{ t }}</option>
-                    }
-                  </select>
+            <!-- Tipo de Periodo (se habilita al elegir el Régimen Laboral) -->
+            @if (mostrarSeccionPeriodo()) {
+              <div class="p-4 bg-brand-soft/50 rounded-xl ring-1 ring-brand/20 space-y-3">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-brand">Tipo de Periodo</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label for="periodo-tipo" class="block text-[11px] font-medium text-brand mb-1">
+                      Tipo de periodo <span class="text-destructive">*</span>
+                    </label>
+                    <select id="periodo-tipo" formControlName="periodoTipo" (change)="onTipoPeriodoChange()" [class]="inpMandatory">
+                      <option value="">--Seleccione--</option>
+                      @for (t of tiposPeriodo; track t) {
+                        <option [value]="t">{{ t }}</option>
+                      }
+                    </select>
+                  </div>
                 </div>
-                <div class="col-span-12 md:col-span-6">
-                  <label for="periodo-anio" class="block text-[11px] font-medium text-brand mb-1">
-                    Año de gestión <span class="text-destructive">*</span>
-                  </label>
-                  <select id="periodo-anio" formControlName="periodoAnio" [class]="inpMandatory">
-                    <option value="">--Seleccione--</option>
-                    @for (a of aniosGestion(); track a) {
-                      <option [value]="a">{{ a }}</option>
-                    }
-                  </select>
-                </div>
-              </div>
-            } @else if (regimenTemporal()) {
-              <!-- Generado automáticamente del rango de fechas: solo lectura -->
-              <div class="p-4 bg-secondary/60 rounded-xl ring-1 ring-border space-y-2" aria-live="polite">
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Periodo de Gestión
-                  <span class="normal-case tracking-normal font-normal">· generado automáticamente, no editable</span>
-                </p>
-                <div class="flex flex-wrap gap-1.5">
-                  @if (periodosGenerados().length === 0) {
-                    <span class="text-xs text-muted-foreground italic">
-                      Registre la fecha de inicio y la fecha fin para generar el periodo.
-                    </span>
-                  }
-                  @for (pg of periodosGenerados(); track pg.anio) {
-                    <span class="px-2.5 py-1 rounded-full bg-brand-soft text-brand text-[11px] font-bold ring-1 ring-brand/20 whitespace-nowrap">
-                      {{ formatearPeriodo(pg) }}
-                    </span>
-                  }
+
+                @if (form.controls.periodoTipo.value === 'Regular') {
+                  <!-- Regular: selección múltiple de meses -->
+                  <div>
+                    <p class="text-[11px] font-medium text-brand mb-2">
+                      Meses del periodo <span class="text-destructive">*</span>
+                    </p>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-1.5" role="group" aria-label="Meses del periodo">
+                      @for (m of mesesCatalogo; track m.numero) {
+                        <label class="flex items-center gap-2 text-sm text-foreground/90 cursor-pointer select-none rounded-lg px-2 py-1 hover:bg-card/60">
+                          <input
+                            type="checkbox"
+                            class="accent-brand size-4"
+                            [checked]="mesesSeleccionados().includes(m.numero)"
+                            (change)="toggleMes(m.numero, $any($event.target).checked)"
+                          />
+                          <span>{{ m.nombre }}</span>
+                        </label>
+                      }
+                    </div>
+                  </div>
+                } @else if (form.controls.periodoTipo.value === 'Extraordinario') {
+                  <!-- Extraordinario: rango de fechas -->
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label for="periodo-desde" class="block text-[11px] font-medium text-brand mb-1">
+                        Fecha Inicio <span class="text-destructive">*</span>
+                      </label>
+                      <input id="periodo-desde" type="date" formControlName="periodoFechaIni" [class]="inpMandatory" />
+                    </div>
+                    <div>
+                      <label for="periodo-hasta" class="block text-[11px] font-medium text-brand mb-1">
+                        Fecha Fin <span class="text-destructive">*</span>
+                      </label>
+                      <input id="periodo-hasta" type="date" formControlName="periodoFechaFin" [class]="inpMandatory" />
+                    </div>
+                  </div>
+                }
+
+                @if (form.controls.periodoTipo.value) {
+                  <div class="flex justify-end">
+                    <button type="button" (click)="agregarPeriodo()" class="btn-secondary">
+                      <span>Agregar Periodo</span>
+                      <lucide-angular [img]="SquarePlusIcon" class="size-4 text-muted-foreground" />
+                    </button>
+                  </div>
+                }
+
+                <!-- Tabla de periodos del servicio (máximo uno) -->
+                <div class="bg-card rounded-xl ring-1 ring-border shadow-sm overflow-x-auto">
+                  <table class="w-full min-w-[520px] text-left">
+                    <thead class="bg-secondary">
+                      <tr class="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
+                        <th class="px-4 py-3 w-40">Tipo de Periodo</th>
+                        <th class="px-4 py-3">Meses / Fechas Activas</th>
+                        <th class="px-4 py-3 w-32 text-center">Estado</th>
+                        <th class="px-4 py-3 w-20 text-center">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border">
+                      @if (periodos().length === 0) {
+                        <tr>
+                          <td colspan="4" class="px-4 py-4 text-center text-sm text-muted-foreground italic">
+                            Sin periodo registrado para este servicio.
+                          </td>
+                        </tr>
+                      }
+                      @for (pg of periodos(); track $index; let i = $index) {
+                        <tr class="hover:bg-secondary/40 transition-colors">
+                          <td class="px-4 py-3 text-sm font-semibold text-foreground">{{ pg.tipo }}</td>
+                          <td class="px-4 py-3 text-sm text-foreground/80">{{ formatearPeriodo(pg) }}</td>
+                          <td class="px-4 py-3 text-center">
+                            <span
+                              class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 whitespace-nowrap"
+                              [class]="estadoPeriodo(pg) === 'Expirado'
+                                ? 'bg-destructive/10 text-destructive ring-destructive/30'
+                                : 'bg-state-aprobado-soft text-state-aprobado-foreground ring-state-aprobado/30'"
+                            >{{ estadoPeriodo(pg) }}</span>
+                          </td>
+                          <td class="px-2 py-3 text-center">
+                            <button type="button" (click)="eliminarPeriodo(i)" class="p-2 rounded-lg transition-all bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground" title="Eliminar periodo" aria-label="Eliminar periodo">
+                              <lucide-angular [img]="Trash2Icon" class="size-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
                 </div>
               </div>
             }
@@ -662,7 +721,6 @@ export class UsuarioFormComponent implements OnInit {
 
   /* Catálogos reactivos: base del proyecto ⊕ opciones de Administración de Listas */
   readonly profesiones = computed(() => this.listasAdmin.opcionesFormulario('Profesión - Especialidad', PROFESIONES));
-  readonly regimenes = REGIMENES_LABORALES;
   readonly fuentes = computed(() => this.listasAdmin.opcionesFormulario('Fuente de Financiamiento', FUENTES_FINANCIAMIENTO));
   readonly categorias = computed(() => this.listasAdmin.opcionesFormulario('Categoría Presupuestal', CATEGORIAS_PRESUPUESTALES));
   readonly programas = computed(() =>
@@ -720,7 +778,8 @@ export class UsuarioFormComponent implements OnInit {
     nroOrden: '',
     perfil: '' as Perfil | '',
     periodoTipo: '' as TipoPeriodoGestion | '',
-    periodoAnio: '',
+    periodoFechaIni: '',
+    periodoFechaFin: '',
     metasAmbito: this.fb.array<MetaAmbitoForm>([]),
   });
 
@@ -770,15 +829,19 @@ export class UsuarioFormComponent implements OnInit {
       userGen: u.userGen,
       correo: u.correo,
       regimen: u.regimen,
-      estado: u.estado,
+      // El estado pertenece al servicio: un nuevo servicio nace habilitado
+      // y nunca arrastra el estado del servicio anterior (T1).
+      estado: esServicio ? 'HABILITADO' : u.estado,
       // Nuevo servicio: la vigencia y el periodo se registran desde cero.
       fechaIni: esServicio ? '' : u.fechaIni,
       fechaFin: esServicio ? '' : u.fechaFin,
       nroOrden: esServicio ? '' : u.nroOrden,
       perfil: u.perfil,
-      periodoTipo: esServicio ? '' : (u.periodosGestion?.[0]?.tipo ?? ''),
-      periodoAnio: esServicio ? '' : String(u.periodosGestion?.[0]?.anio ?? ''),
+      periodoTipo: '',
     });
+    // Cada servicio administra su propio periodo: en un nuevo servicio se
+    // registra desde cero; al editar se cargan los del propio registro.
+    this.periodos.set(esServicio ? [] : [...(u.periodosGestion ?? [])]);
     this.ambitos.set([...(u.ambitos ?? [])]);
     this.reconstruirMetasAmbito(u.ambitos ?? [], u.metasAmbito);
     this.sincronizarPermisosMenu();
@@ -959,33 +1022,105 @@ export class UsuarioFormComponent implements OnInit {
     return r === 'Locador de Servicio (OS)' || r === 'Régimen CAS Temporal';
   });
 
-  /* ===== Periodo de Gestión según régimen laboral ===== */
-
-  readonly tiposPeriodo: TipoPeriodoGestion[] = ['Regular', 'Extraordinario'];
-  readonly formatearPeriodo = formatearPeriodo;
-
-  readonly regimenRequierePeriodo = computed(() => {
-    this.formTick();
-    return regimenConPeriodo(this.form.controls.regimen.value);
-  });
-
-  /** Años elegibles (dinámico): del año actual hacia atrás, nunca futuros. */
-  readonly aniosGestion = computed(() => {
-    const actual = new Date().getFullYear();
-    return Array.from({ length: 6 }, (_, i) => actual - i);
-  });
-
-  /** Periodos generados automáticamente del rango (CAS Temporal / Locador). */
-  readonly periodosGenerados = computed<PeriodoGestion[]>(() => {
-    this.formTick();
-    const v = this.form.getRawValue();
-    return this.regimenTemporal() ? periodosDesdeRango(v.fechaIni, v.fechaFin) : [];
-  });
-
   readonly esModoServicio = computed(() => this.modo() === 'servicio');
 
+  /* ===== Periodo de Gestión del servicio ===== */
+
+  readonly tiposPeriodo: TipoPeriodoGestion[] = ['Regular', 'Extraordinario'];
+  readonly mesesCatalogo = MESES_ES.map((nombre, i) => ({ numero: i + 1, nombre }));
+  readonly formatearPeriodo = formatearPeriodo;
+  readonly estadoPeriodo = estadoPeriodo;
+
+  /** Periodo(s) del servicio en edición (máximo uno por servicio). */
+  readonly periodos = signal<PeriodoGestion[]>([]);
+  /** Meses marcados mientras se configura un periodo Regular. */
+  readonly mesesSeleccionados = signal<number[]>([]);
+
+  /** La sección se habilita al elegir el Régimen Laboral. */
+  readonly mostrarSeccionPeriodo = computed(() => {
+    this.formTick();
+    return !!this.form.controls.regimen.value;
+  });
+
+  /**
+   * Regímenes seleccionables: en un nuevo servicio sobre un contrato temporal
+   * solo se permiten CAS Temporal y Locador (regla de negocio del modelo,
+   * aplicada también al validar el guardado).
+   */
+  readonly regimenesDisponibles = computed<readonly string[]>(() => {
+    const previo = this.usuarioBase?.regimen ?? '';
+    return this.modo() === 'servicio'
+      ? regimenesPermitidosParaNuevoServicio(previo, REGIMENES_LABORALES)
+      : REGIMENES_LABORALES;
+  });
+
+  toggleMes(mes: number, marcado: boolean): void {
+    this.mesesSeleccionados.update((prev) =>
+      marcado ? [...prev, mes].sort((a, b) => a - b) : prev.filter((m) => m !== mes),
+    );
+  }
+
+  onTipoPeriodoChange(): void {
+    this.mesesSeleccionados.set([]);
+    this.form.patchValue({ periodoFechaIni: '', periodoFechaFin: '' });
+    this.formTick.update((t) => t + 1);
+  }
+
+  /** Alta del periodo del servicio (uno solo por servicio). */
+  agregarPeriodo(): void {
+    if (this.periodos().length > 0) {
+      void this.modales.openWarning(
+        'Periodo ya registrado',
+        'Este servicio ya cuenta con un periodo registrado. Elimine el periodo actual si desea reemplazarlo.',
+        { soloAceptar: true },
+      );
+      return;
+    }
+    const v = this.form.getRawValue();
+    const tipo = v.periodoTipo as TipoPeriodoGestion;
+    if (tipo === 'Regular') {
+      if (this.mesesSeleccionados().length === 0) {
+        void this.modales.openError('Meses requeridos', 'Seleccione al menos un mes para el periodo Regular.');
+        return;
+      }
+      this.periodos.set([
+        { tipo, anio: new Date().getFullYear(), meses: [...this.mesesSeleccionados()] },
+      ]);
+    } else {
+      if (!v.periodoFechaIni || !v.periodoFechaFin) {
+        void this.modales.openError(
+          'Fechas requeridas',
+          'La Fecha Inicio y la Fecha Fin del periodo Extraordinario son obligatorias.',
+        );
+        return;
+      }
+      if (v.periodoFechaFin < v.periodoFechaIni) {
+        void this.modales.openError(
+          'Rango de fechas inválido',
+          'La Fecha Fin no puede ser menor a la Fecha Inicio del periodo.',
+        );
+        return;
+      }
+      this.periodos.set([
+        {
+          tipo,
+          anio: Number(v.periodoFechaIni.slice(0, 4)),
+          fechaInicio: v.periodoFechaIni,
+          fechaFin: v.periodoFechaFin,
+        },
+      ]);
+    }
+    this.mesesSeleccionados.set([]);
+    this.form.patchValue({ periodoTipo: '', periodoFechaIni: '', periodoFechaFin: '' });
+  }
+
+  eliminarPeriodo(i: number): void {
+    this.periodos.update((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
   onRegimenChange(): void {
-    this.form.patchValue({ periodoTipo: '', periodoAnio: '' });
+    this.form.patchValue({ periodoTipo: '', periodoFechaIni: '', periodoFechaFin: '' });
+    this.mesesSeleccionados.set([]);
     this.formTick.update((t) => t + 1);
   }
 
@@ -1464,21 +1599,23 @@ export class UsuarioFormComponent implements OnInit {
       }
     }
 
-    if (regimenConPeriodo(v.regimen)) {
-      if (!v.periodoTipo || !v.periodoAnio) {
-        this.mostrarAlerta({
-          titulo: 'Periodo de Gestión Requerido',
-          mensaje: 'Debe seleccionar el Tipo de periodo y el Año de gestión para el régimen laboral elegido.',
-        });
-        return;
-      }
-      if (Number(v.periodoAnio) > new Date().getFullYear()) {
-        this.mostrarAlerta({
-          titulo: 'Año de gestión no permitido',
-          mensaje: 'El Año de gestión no puede ser mayor al año actual del sistema.',
-        });
-        return;
-      }
+    // Regla de negocio (no solo visual): régimen permitido para el servicio.
+    if (!this.regimenesDisponibles().includes(v.regimen)) {
+      this.mostrarAlerta({
+        titulo: 'Régimen no permitido',
+        mensaje:
+          'Para un nuevo servicio sobre un contrato temporal solo puede registrarse ' +
+          'Régimen CAS Temporal o Locador de Servicio (OS).',
+      });
+      return;
+    }
+
+    if (this.periodos().length === 0) {
+      this.mostrarAlerta({
+        titulo: 'Periodo de Gestión Requerido',
+        mensaje: 'Debe registrar el periodo del servicio con el botón "Agregar Periodo" antes de guardar.',
+      });
+      return;
     }
 
     if (perfilRequiereAmbito(v.perfil) && this.ambitos().length === 0) {
@@ -1525,12 +1662,8 @@ export class UsuarioFormComponent implements OnInit {
       fechaIni: this.regimenTemporal() ? v.fechaIni : '',
       fechaFin: this.regimenTemporal() ? v.fechaFin : '',
       nroOrden: this.esLocador() ? v.nroOrden.trim() : '',
-      // Periodo de Gestión: elegido (728/276/CAS) o generado del rango (temporales).
-      periodosGestion: regimenConPeriodo(v.regimen)
-        ? [{ tipo: v.periodoTipo as TipoPeriodoGestion, anio: Number(v.periodoAnio) }]
-        : this.regimenTemporal()
-          ? periodosDesdeRango(v.fechaIni, v.fechaFin)
-          : undefined,
+      // Periodo propio del servicio (independiente de otros servicios).
+      periodosGestion: [...this.periodos()],
       perfil: v.perfil as Perfil,
       opa: this.usuariosService.derivarOpa(v.unidad),
       fuenteFinanc: esAdminGeneral ? '' : v.fuenteFinanc,
