@@ -22,6 +22,7 @@ import { Curso, TipoCurso, isLocked } from '../../../core/models/curso.model';
 import { isoToFechaCorta } from '../../../shared/utils/fecha.util';
 import { EstadoBadgeComponent } from '../../../shared/components/estado-badge/estado-badge.component';
 import { CursoFormComponent, CursoFormState } from '../curso-form/curso-form.component';
+import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { ParticipanteFormComponent, ParticipanteFormSubmit } from '../participante-form/participante-form.component';
 
 const MAX_MB = 15;
@@ -35,13 +36,11 @@ type Paso = 1 | 2 | 3;
 @Component({
   selector: 'app-stepper',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    RouterLink,
+  imports: [RouterLink,
     LucideAngularModule,
     EstadoBadgeComponent,
     CursoFormComponent,
-    ParticipanteFormComponent,
-  ],
+    ParticipanteFormComponent, ModalComponent],
   template: `
     <section class="p-6 lg:p-8 max-w-[1200px] mx-auto space-y-5 animate-page-in">
       <div class="flex items-center gap-2 text-xs text-muted-foreground">
@@ -202,14 +201,13 @@ type Paso = 1 | 2 | 3;
             </div>
           }
 
-          @if (!showForm()) {
-            <div class="bg-card rounded-xl ring-1 ring-border overflow-hidden">
+          <div class="bg-card rounded-xl ring-1 ring-border overflow-hidden">
               <div class="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
                 <div>
                   <h2 class="text-sm font-bold uppercase tracking-wider">Participantes registrados</h2>
                   <p class="text-xs text-muted-foreground">Total: {{ participantes().length }}</p>
                 </div>
-                @if (!bloqueado()) {
+                @if (!bloqueado() && !showForm()) {
                   <button
                     type="button"
                     (click)="showForm.set(true)"
@@ -271,6 +269,24 @@ type Paso = 1 | 2 | 3;
                 </table>
               </div>
 
+              @if (!bloqueado()) {
+                <!-- Declaración jurada: cierre del Paso 2, antes de continuar -->
+                <div class="px-5 py-4 border-t border-border">
+                  <label class="flex items-start gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      class="accent-brand size-4 mt-0.5 shrink-0"
+                      [checked]="declaracionJurada()"
+                      (change)="declaracionJurada.set($any($event.target).checked)"
+                    />
+                    <span class="text-sm text-foreground leading-relaxed">
+                      Declaro bajo juramento que la información proporcionada es correcta.
+                      <span class="text-destructive">*</span>
+                    </span>
+                  </label>
+                </div>
+              }
+
               <div class="px-5 py-3 border-t border-border bg-secondary/30 flex items-center justify-between gap-2">
                 <button
                   (click)="paso.set(1)"
@@ -279,15 +295,14 @@ type Paso = 1 | 2 | 3;
                   <lucide-angular [img]="ArrowLeftIcon" class="size-4" /> Volver al Paso 1
                 </button>
                 <button
-                  (click)="paso.set(3)"
+                  (click)="continuarAPaso3()"
                   [disabled]="participantes().length === 0 && !bloqueado()"
                   class="btn-primary h-8"
                 >
                   Continuar al Paso 3 <lucide-angular [img]="ChevronRightIcon" class="size-4" />
                 </button>
               </div>
-            </div>
-          }
+          </div>
         </div>
       }
 
@@ -435,6 +450,34 @@ type Paso = 1 | 2 | 3;
           </div>
         </div>
       }
+    <!-- Declaración jurada pendiente: modal estandarizado del sistema -->
+      @if (modalDeclaracion()) {
+        <app-modal
+          title="Declaración jurada pendiente"
+          maxWidth="max-w-md"
+          tipo="warning"
+          mensaje="Para continuar al siguiente paso debe aceptar la declaración jurada del registro."
+          [mostrarAcciones]="true"
+          labelAceptar="Continuar"
+          [aceptarDeshabilitado]="!declaracionJurada()"
+          (aceptado)="confirmarDeclaracion()"
+          (cancelado)="modalDeclaracion.set(false)"
+          (closed)="modalDeclaracion.set(false)"
+        >
+          <label class="flex items-start gap-3 bg-secondary/60 rounded-xl ring-1 ring-border p-4 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              class="accent-brand size-4 mt-0.5 shrink-0"
+              [checked]="declaracionJurada()"
+              (change)="declaracionJurada.set($any($event.target).checked)"
+            />
+            <span class="text-sm text-foreground leading-relaxed text-left">
+              Declaro bajo juramento que la información proporcionada es correcta.
+            </span>
+          </label>
+        </app-modal>
+      }
+
     </section>
   `,
 })
@@ -472,6 +515,9 @@ export class StepperComponent implements OnInit {
   private tipoInit: TipoCurso = 'capacitacion';
 
   readonly paso = signal<Paso>(1);
+  /** Declaración jurada del Paso 2 (se conserva al navegar entre pasos). */
+  readonly declaracionJurada = signal(false);
+  readonly modalDeclaracion = signal(false);
   readonly createdId = signal<string | null>(null);
   readonly showForm = signal(false);
 
@@ -553,6 +599,22 @@ export class StepperComponent implements OnInit {
 
   clickable(n: Paso): boolean {
     return Boolean(this.createdId()) && n <= this.paso();
+  }
+
+  /** Paso 2 → Paso 3: exige la declaración jurada (modal estandarizado). */
+  continuarAPaso3(): void {
+    if (!this.bloqueado() && !this.declaracionJurada()) {
+      this.modalDeclaracion.set(true);
+      return;
+    }
+    this.paso.set(3);
+  }
+
+  /** Continúa automáticamente tras aceptar la declaración dentro del modal. */
+  confirmarDeclaracion(): void {
+    if (!this.declaracionJurada()) return;
+    this.modalDeclaracion.set(false);
+    this.paso.set(3);
   }
 
   volverABandeja(): void {

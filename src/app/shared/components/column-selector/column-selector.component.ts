@@ -39,14 +39,18 @@ export interface ColumnaTabla {
     </button>
 
     @if (abierto()) {
-      <app-modal title="Columnas visibles" maxWidth="max-w-md" (closed)="abierto.set(false)">
-        <p class="text-xs text-muted-foreground leading-relaxed">
-          Seleccione las columnas que desea visualizar en la tabla. La preferencia se conserva
-          para las próximas sesiones en este dispositivo.
-        </p>
-
+      <app-modal
+        title="Columnas visibles"
+        maxWidth="max-w-md"
+        tipo="info"
+        mensaje="Seleccione las columnas que desea visualizar en la tabla. La preferencia se conserva para las próximas sesiones en este dispositivo."
+        [mostrarAcciones]="true"
+        [mostrarCancelar]="false"
+        (aceptado)="abierto.set(false)"
+        (closed)="abierto.set(false)"
+      >
         <div
-          class="mt-3 max-h-[50vh] overflow-y-auto thin-scroll rounded-xl ring-1 ring-border divide-y divide-border"
+          class="max-h-[50vh] overflow-y-auto thin-scroll rounded-xl ring-1 ring-border divide-y divide-border"
           role="group"
           aria-label="Columnas disponibles"
         >
@@ -70,12 +74,9 @@ export interface ColumnaTabla {
           }
         </div>
 
-        <div class="flex justify-between items-center gap-2 mt-5 pt-4 border-t border-border">
+        <div class="flex justify-center mt-4">
           <button type="button" (click)="restaurar()" class="btn-ghost px-3 text-xs">
             Restaurar por defecto
-          </button>
-          <button type="button" (click)="abierto.set(false)" class="btn-primary px-6 min-w-[110px]">
-            Aceptar
           </button>
         </div>
       </app-modal>

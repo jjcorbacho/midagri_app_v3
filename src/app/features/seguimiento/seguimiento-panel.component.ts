@@ -285,7 +285,15 @@ const ICON_TONES: Record<string, string> = {
 
       <!-- Modal observar -->
       @if (observarOpen()) {
-        <app-modal [title]="'Observar ' + sel().size + ' registro(s)'" (closed)="observarOpen.set(false)">
+        <app-modal
+          [title]="'Observar ' + sel().size + ' registro(s)'"
+          tipo="warning"
+          mensaje="Indique el motivo de la observación. Los registros seleccionados regresarán al responsable para su subsanación."
+          [mostrarAcciones]="true"
+          (aceptado)="confirmarObservar()"
+          (cancelado)="observarOpen.set(false)"
+          (closed)="observarOpen.set(false)"
+        >
           <label class="block text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wider">
             Descripción de la observación
           </label>
@@ -309,16 +317,6 @@ const ICON_TONES: Record<string, string> = {
             <span class="text-xs text-muted-foreground">
               → {{ fechaObservacionTexto() }}
             </span>
-          </div>
-          <div class="flex justify-end gap-2 mt-6">
-            <button
-              (click)="observarOpen.set(false)"
-              class="btn-secondary h-8"
-            >Cancelar</button>
-            <button
-              (click)="confirmarObservar()"
-              class="btn-danger h-8"
-            >Confirmar observación</button>
           </div>
         </app-modal>
       }

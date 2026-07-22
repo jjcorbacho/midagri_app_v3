@@ -233,6 +233,25 @@ export function mesesDeRango(fechaIniISO: string, fechaFinISO: string): string {
   return `${meses.slice(0, -1).join(', ')} y ${meses[meses.length - 1]}`;
 }
 
+/**
+ * Meses (1–12) que aún pueden activarse en un periodo **Regular** del año de
+ * gestión indicado. Regla de negocio única, usada tanto para deshabilitar los
+ * checkboxes como para validar el alta del periodo:
+ *  - Año de gestión = año actual → desde el mes en curso hasta diciembre.
+ *  - Año de gestión anterior     → ninguno (histórico: ya no puede activarse).
+ *  - Año de gestión futuro       → ninguno (el sistema no admite años futuros).
+ */
+export function mesesHabilitadosParaAnio(anio: number, hoy = new Date()): number[] {
+  if (!Number.isInteger(anio) || anio !== hoy.getFullYear()) return [];
+  const mesActual = hoy.getMonth() + 1;
+  return Array.from({ length: 12 - mesActual + 1 }, (_, i) => mesActual + i);
+}
+
+/** ¿El mes puede activarse en el año de gestión indicado? */
+export function mesHabilitadoParaAnio(mes: number, anio: number, hoy = new Date()): boolean {
+  return mesesHabilitadosParaAnio(anio, hoy).includes(mes);
+}
+
 export type EstadoVigencia = 'Vigente' | 'Próximo a vencer' | 'Expirado';
 
 /**

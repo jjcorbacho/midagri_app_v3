@@ -26,6 +26,8 @@ import {
   perfilRequiereAmbito,
   perfilSoloRegion,
   estadoPeriodo,
+  mesesHabilitadosParaAnio,
+  nombresDeMeses,
   regimenesPermitidosParaNuevoServicio,
   toTitleCase,
 } from '../../core/models/usuario-sodega.model';
@@ -342,6 +344,18 @@ const INP_NORMAL = INPUT_BASE;
                       }
                     </select>
                   </div>
+                  @if (form.controls.periodoTipo.value === 'Regular') {
+                    <div>
+                      <label for="periodo-anio" class="block text-[11px] font-medium text-brand mb-1">
+                        Año de Gestión <span class="text-destructive">*</span>
+                      </label>
+                      <select id="periodo-anio" formControlName="periodoAnio" (change)="onAnioGestionChange()" [class]="inpMandatory">
+                        @for (a of aniosGestion(); track a) {
+                          <option [value]="a">{{ a }}</option>
+                        }
+                      </select>
+                    </div>
+                  }
                 </div>
 
                 @if (form.controls.periodoTipo.value === 'Regular') {
@@ -349,14 +363,26 @@ const INP_NORMAL = INPUT_BASE;
                   <div>
                     <p class="text-[11px] font-medium text-brand mb-2">
                       Meses del periodo <span class="text-destructive">*</span>
+                      @if (mesesHabilitados().length === 0) {
+                        <span class="normal-case font-normal text-muted-foreground">
+                          · ningún mes puede activarse para el año de gestión seleccionado
+                        </span>
+                      }
                     </p>
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-1.5" role="group" aria-label="Meses del periodo">
                       @for (m of mesesCatalogo; track m.numero) {
-                        <label class="flex items-center gap-2 text-sm text-foreground/90 cursor-pointer select-none rounded-lg px-2 py-1 hover:bg-card/60">
+                        <label
+                          class="flex items-center gap-2 text-sm select-none rounded-lg px-2 py-1 transition-colors"
+                          [class]="esMesHabilitado(m.numero)
+                            ? 'text-foreground/90 cursor-pointer hover:bg-card/60'
+                            : 'text-muted-foreground/60 cursor-not-allowed'"
+                          [title]="esMesHabilitado(m.numero) ? '' : 'Este mes ya no puede activarse para el año de gestión seleccionado'"
+                        >
                           <input
                             type="checkbox"
-                            class="accent-brand size-4"
+                            class="accent-brand size-4 disabled:cursor-not-allowed"
                             [checked]="mesesSeleccionados().includes(m.numero)"
+                            [disabled]="!esMesHabilitado(m.numero)"
                             (change)="toggleMes(m.numero, $any($event.target).checked)"
                           />
                           <span>{{ m.nombre }}</span>
@@ -778,6 +804,7 @@ export class UsuarioFormComponent implements OnInit {
     nroOrden: '',
     perfil: '' as Perfil | '',
     periodoTipo: '' as TipoPeriodoGestion | '',
+    periodoAnio: String(new Date().getFullYear()),
     periodoFechaIni: '',
     periodoFechaFin: '',
     metasAmbito: this.fb.array<MetaAmbitoForm>([]),
@@ -1054,15 +1081,44 @@ export class UsuarioFormComponent implements OnInit {
       : REGIMENES_LABORALES;
   });
 
+  /** Años seleccionables: el actual hacia atrás (nunca futuros). */
+  readonly aniosGestion = computed(() => {
+    const actual = new Date().getFullYear();
+    return Array.from({ length: 6 }, (_, i) => actual - i);
+  });
+
+  /** Meses activables según el año de gestión elegido (regla del modelo). */
+  readonly mesesHabilitados = computed(() => {
+    this.formTick();
+    return mesesHabilitadosParaAnio(Number(this.form.controls.periodoAnio.value));
+  });
+
+  esMesHabilitado(mes: number): boolean {
+    return this.mesesHabilitados().includes(mes);
+  }
+
   toggleMes(mes: number, marcado: boolean): void {
+    // Defensa en profundidad: un mes bloqueado nunca entra a la selección.
+    if (marcado && !this.esMesHabilitado(mes)) return;
     this.mesesSeleccionados.update((prev) =>
       marcado ? [...prev, mes].sort((a, b) => a - b) : prev.filter((m) => m !== mes),
     );
   }
 
+  /** Al cambiar el año se descartan los meses que dejan de ser activables. */
+  onAnioGestionChange(): void {
+    this.formTick.update((t) => t + 1);
+    const habilitados = mesesHabilitadosParaAnio(Number(this.form.controls.periodoAnio.value));
+    this.mesesSeleccionados.update((prev) => prev.filter((m) => habilitados.includes(m)));
+  }
+
   onTipoPeriodoChange(): void {
     this.mesesSeleccionados.set([]);
-    this.form.patchValue({ periodoFechaIni: '', periodoFechaFin: '' });
+    this.form.patchValue({
+      periodoAnio: String(new Date().getFullYear()),
+      periodoFechaIni: '',
+      periodoFechaFin: '',
+    });
     this.formTick.update((t) => t + 1);
   }
 
@@ -1079,12 +1135,32 @@ export class UsuarioFormComponent implements OnInit {
     const v = this.form.getRawValue();
     const tipo = v.periodoTipo as TipoPeriodoGestion;
     if (tipo === 'Regular') {
+      const anio = Number(v.periodoAnio);
+      if (anio > new Date().getFullYear()) {
+        void this.modales.openError(
+          'Año de gestión no permitido',
+          'El Año de Gestión no puede ser mayor al año actual del sistema.',
+        );
+        return;
+      }
       if (this.mesesSeleccionados().length === 0) {
         void this.modales.openError('Meses requeridos', 'Seleccione al menos un mes para el periodo Regular.');
         return;
       }
+      // Validación de negocio (no solo visual): ningún mes bloqueado puede registrarse.
+      const habilitados = mesesHabilitadosParaAnio(anio);
+      const bloqueados = this.mesesSeleccionados().filter((m) => !habilitados.includes(m));
+      if (bloqueados.length) {
+        void this.modales.openWarning(
+          'Meses no disponibles',
+          `Los siguientes meses ya no pueden ser activados para el año de gestión ${anio}: ` +
+            `${nombresDeMeses(bloqueados)}. Seleccione únicamente meses disponibles.`,
+          { soloAceptar: true },
+        );
+        return;
+      }
       this.periodos.set([
-        { tipo, anio: new Date().getFullYear(), meses: [...this.mesesSeleccionados()] },
+        { tipo, anio, meses: [...this.mesesSeleccionados()] },
       ]);
     } else {
       if (!v.periodoFechaIni || !v.periodoFechaFin) {
@@ -1111,7 +1187,12 @@ export class UsuarioFormComponent implements OnInit {
       ]);
     }
     this.mesesSeleccionados.set([]);
-    this.form.patchValue({ periodoTipo: '', periodoFechaIni: '', periodoFechaFin: '' });
+    this.form.patchValue({
+      periodoTipo: '',
+      periodoAnio: String(new Date().getFullYear()),
+      periodoFechaIni: '',
+      periodoFechaFin: '',
+    });
   }
 
   eliminarPeriodo(i: number): void {

@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
-import { LucideAngularModule, X, UploadCloud, FileText, Trash2, Send } from 'lucide-angular';
+import { LucideAngularModule, UploadCloud, FileText, Trash2 } from 'lucide-angular';
 import { Curso } from '../../../core/models/curso.model';
 import { ParticipantesService } from '../../../core/services/participantes.service';
 import { CursosService } from '../../../core/services/cursos.service';
+import { ModalComponent } from '../../../shared/components/modal/modal.component';
 
 const MAX_MB = 15;
 
@@ -10,25 +11,22 @@ const MAX_MB = 15;
 @Component({
   selector: 'app-sustento-modal',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule],
+  imports: [LucideAngularModule, ModalComponent],
   template: `
-    <div class="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-[2px] flex items-center justify-center p-4 animate-overlay-in" (click)="closed.emit()">
-      <div class="bg-card text-foreground rounded-xl ring-1 ring-border shadow-lg w-full max-w-3xl max-h-[90vh] flex flex-col animate-modal-in" (click)="$event.stopPropagation()">
-        <!-- Header -->
-        <div class="flex items-start justify-between p-6 border-b border-border">
-          <div>
-            <h2 class="text-lg font-bold tracking-tight">Cargar Sustento de Expediente</h2>
-            <p class="text-sm text-muted-foreground mt-0.5">
-              Último paso antes de enviar los datos al Supervisor de Área.
-            </p>
-          </div>
-          <button (click)="closed.emit()" class="p-1 rounded-md hover:bg-muted text-muted-foreground" aria-label="Cerrar">
-            <lucide-angular [img]="XIcon" class="size-5" />
-          </button>
-        </div>
-
+    <app-modal
+      title="Cargar Sustento de Expediente"
+      maxWidth="max-w-3xl"
+      tipo="warning"
+      mensaje="Último paso antes de enviar los datos al Supervisor de Área."
+      [mostrarAcciones]="true"
+      labelAceptar="Enviar"
+      [aceptarDeshabilitado]="!file() || !declaro()"
+      (aceptado)="enviar()"
+      (cancelado)="closed.emit()"
+      (closed)="closed.emit()"
+    >
         <!-- Body -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 overflow-auto">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- Izquierda: actividad + participantes -->
           <div class="space-y-4">
             <div class="bg-secondary/40 ring-1 ring-border rounded-lg p-4">
@@ -133,21 +131,7 @@ const MAX_MB = 15;
           </div>
         </div>
 
-        <!-- Footer -->
-        <div class="flex items-center justify-end gap-2 p-4 border-t border-border bg-secondary/30 rounded-b-xl">
-          <button (click)="closed.emit()" class="btn-ghost">
-            Cancelar
-          </button>
-          <button
-            (click)="enviar()"
-            [disabled]="!file() || !declaro()"
-            class="btn-primary"
-          >
-            <lucide-angular [img]="SendIcon" class="size-4" /> Enviar
-          </button>
-        </div>
-      </div>
-    </div>
+    </app-modal>
   `,
 })
 export class SustentoModalComponent {
@@ -157,11 +141,9 @@ export class SustentoModalComponent {
   readonly curso = input.required<Curso>();
   readonly closed = output<void>();
 
-  readonly XIcon = X;
   readonly UploadCloudIcon = UploadCloud;
   readonly FileTextIcon = FileText;
   readonly Trash2Icon = Trash2;
-  readonly SendIcon = Send;
   readonly maxMb = MAX_MB;
 
   readonly file = signal<File | null>(null);

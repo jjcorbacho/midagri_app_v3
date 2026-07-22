@@ -9,7 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormBuilder, FormControl, ReactiveFormsModule } from '@angular/forms';
-import { LucideAngularModule, CircleAlert, LocateFixed, Info, MapPin, Compass, Sparkles } from 'lucide-angular';
+import { LucideAngularModule, LocateFixed, Info, MapPin, Compass, Sparkles } from 'lucide-angular';
 import { AreaService } from '../../../core/services/area.service';
 import { ReglasService } from '../../../core/services/reglas.service';
 import { CamposService } from '../../../core/services/campos.service';
@@ -25,7 +25,6 @@ import {
   getCentrosPoblados,
 } from '../../../core/constants/catalogos.const';
 import { PeruMapComponent } from '../../../shared/components/peru-map/peru-map.component';
-import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { ModalService } from '../../../core/services/modal.service';
 import { INPUT_BASE, INPUT_DISABLED, INPUT_REQUIRED } from '../../../shared/utils/input-styles.const';
 import { lngLatToUTM } from '../../../shared/utils/utm.util';
@@ -68,7 +67,7 @@ const INP_REQ = INPUT_REQUIRED;
 @Component({
   selector: 'app-curso-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, LucideAngularModule, PeruMapComponent, ModalComponent],
+  imports: [ReactiveFormsModule, LucideAngularModule, PeruMapComponent],
   template: `
     <div class="space-y-5">
       <fieldset [disabled]="readOnly()" class="space-y-5 m-0 p-0 border-0 disabled:opacity-95">
@@ -388,59 +387,7 @@ const INP_REQ = INPUT_REQUIRED;
         }
       </fieldset>
 
-      @if (!readOnly()) {
-        <!-- Declaración jurada: obligatoria para continuar al siguiente paso.
-             El mt-4 (escala global) se suma al space-y-5 del contenedor para
-             dar más aire entre Coordenadas y este bloque de cierre. -->
-        <section class="bg-card rounded-xl ring-1 ring-border p-5 mt-4">
-          <label class="flex items-start gap-3 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              class="accent-brand size-4 mt-0.5 shrink-0"
-              [checked]="declaracionJurada()"
-              (change)="toggleDeclaracion($any($event.target).checked)"
-            />
-            <span class="text-sm text-foreground leading-relaxed">
-              Declaro bajo juramento que la información proporcionada es correcta.
-              <span class="text-destructive">*</span>
-            </span>
-          </label>
-        </section>
-      }
 
-      <!-- Modal estandarizado: declaración jurada pendiente (estilo Advertencia) -->
-      @if (modalDeclaracion()) {
-        <app-modal title="Declaración jurada pendiente" maxWidth="max-w-md" (closed)="modalDeclaracion.set(false)">
-          <div class="flex flex-col items-center text-center gap-3 pt-1">
-            <div class="size-12 rounded-full flex items-center justify-center bg-warning-soft text-warning-foreground" aria-hidden="true">
-              <lucide-angular [img]="CircleAlertIcon" class="size-6" />
-            </div>
-            <p class="text-sm text-foreground leading-relaxed">
-              Para continuar al siguiente paso debe aceptar la declaración jurada del registro.
-            </p>
-          </div>
-          <label class="mt-4 flex items-start gap-3 bg-secondary/60 rounded-xl ring-1 ring-border p-4 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              class="accent-brand size-4 mt-0.5 shrink-0"
-              [checked]="declaracionJurada()"
-              (change)="toggleDeclaracion($any($event.target).checked)"
-            />
-            <span class="text-sm text-foreground leading-relaxed text-left">
-              Declaro bajo juramento que la información proporcionada es correcta.
-            </span>
-          </label>
-          <div class="flex justify-center gap-2 mt-6">
-            <button type="button" (click)="modalDeclaracion.set(false)" class="btn-secondary px-6 min-w-[110px]">Cancelar</button>
-            <button
-              type="button"
-              (click)="continuarConDeclaracion()"
-              [disabled]="!declaracionJurada()"
-              class="btn-primary px-6 min-w-[110px] disabled:opacity-50 disabled:cursor-not-allowed"
-            >Continuar</button>
-          </div>
-        </app-modal>
-      }
 
       <div class="flex justify-end gap-2 pt-2">
         <button type="button" (click)="cancelled.emit()" class="btn-secondary">
@@ -478,7 +425,6 @@ export class CursoFormComponent implements OnInit {
 
   readonly SparklesIcon = Sparkles;
   readonly LocateFixedIcon = LocateFixed;
-  readonly CircleAlertIcon = CircleAlert;
   readonly MapPinIcon = MapPin;
   readonly CompassIcon = Compass;
   readonly InfoIcon = Info;
@@ -492,10 +438,6 @@ export class CursoFormComponent implements OnInit {
   readonly ubigeo = UBIGEO;
 
   readonly errores = signal<Record<string, string>>({});
-  /** Declaración jurada del Paso 1 (prellenada al editar un evento ya guardado). */
-  readonly declaracionJurada = signal(false);
-  /** Modal estandarizado que solicita la declaración antes de continuar. */
-  readonly modalDeclaracion = signal(false);
   /** Valores de los campos personalizados del área (fase B). */
   readonly custom = signal<Record<string, string>>({});
   private readonly formTick = signal(0);
@@ -552,8 +494,6 @@ export class CursoFormComponent implements OnInit {
       `${this.tipo() === 'capacitacion' ? 'CAP' : 'AST'}-2026-${String(Math.floor(Math.random() * 900) + 100)}`;
     this.form.patchValue({ ...EMPTY, ...initial, codigo: codigoAuto });
     this.custom.set({ ...(initial?.custom ?? {}) });
-    // Un evento ya guardado implica que la declaración jurada fue aceptada.
-    if (initial) this.declaracionJurada.set(true);
     this.form.valueChanges.subscribe(() => this.formTick.update((t) => t + 1));
   }
 
@@ -764,13 +704,6 @@ export class CursoFormComponent implements OnInit {
     return Object.keys(e).length === 0;
   }
 
-  toggleDeclaracion(aceptada: boolean): void {
-    this.declaracionJurada.set(aceptada);
-    if (aceptada) {
-      this.errores.update(({ declaracion: _descartado, ...resto }) => resto);
-    }
-  }
-
   guardar(): void {
     const raw = this.form.getRawValue();
     const state: CursoFormState = {
@@ -778,19 +711,6 @@ export class CursoFormComponent implements OnInit {
       horas: Number(raw.horas) || 0,
       custom: { ...this.custom() },
     };
-    if (!this.validar(state)) return;
-    if (!this.declaracionJurada()) {
-      // El aviso se muestra como modal estandarizado con la declaración dentro.
-      this.modalDeclaracion.set(true);
-      return;
-    }
-    this.saved.emit(state);
-  }
-
-  /** Continúa automáticamente al siguiente paso tras aceptar en el modal. */
-  continuarConDeclaracion(): void {
-    if (!this.declaracionJurada()) return;
-    this.modalDeclaracion.set(false);
-    this.guardar();
+    if (this.validar(state)) this.saved.emit(state);
   }
 }

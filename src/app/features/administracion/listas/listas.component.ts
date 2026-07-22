@@ -206,7 +206,16 @@ const INP_REQ = INPUT_REQUIRED;
 
       <!-- Modal nueva / editar opción -->
       @if (modalOpcionAbierto()) {
-        <app-modal [title]="tituloModalOpcion()" maxWidth="max-w-lg" (closed)="cerrarModalOpcion()">
+        <app-modal
+          [title]="tituloModalOpcion()"
+          maxWidth="max-w-lg"
+          tipo="info"
+          [mensaje]="mensajeModalOpcion()"
+          [mostrarAcciones]="true"
+          (aceptado)="guardarOpcion()"
+          (cancelado)="cerrarModalOpcion()"
+          (closed)="cerrarModalOpcion()"
+        >
           <div class="space-y-4">
             <div>
               <label class="block text-[11px] font-medium text-muted-foreground mb-1">Código <span class="text-destructive">*</span></label>
@@ -249,14 +258,6 @@ const INP_REQ = INPUT_REQUIRED;
                 [disabled]="listaActivaEsUnidadFuncional() && !modalUnidadResponsable()"
                 class="${INP_REQ} disabled:opacity-70 disabled:cursor-not-allowed"
               />
-            </div>
-            <div class="flex justify-end gap-2 pt-2 border-t border-border">
-              <button (click)="cerrarModalOpcion()" class="btn-secondary">
-                Cancelar
-              </button>
-              <button (click)="guardarOpcion()" class="btn-primary px-5">
-                <lucide-angular [img]="SaveIcon" class="size-3.5" /> Guardar
-              </button>
             </div>
           </div>
         </app-modal>
@@ -325,6 +326,13 @@ export class ListasComponent {
       .map((opcion, indice) => ({ opcion, indice }))
       .filter(({ opcion }) => `${opcion.codigo} - ${opcion.nombre}`.toLowerCase().includes(filtro));
   });
+
+  /** Texto descriptivo del modal de opción (estructura estándar). */
+  readonly mensajeModalOpcion = computed(() =>
+    this.opcionEnEdicion() === null
+      ? `Registre una nueva opción para la lista "${this.listaActiva()}".`
+      : `Actualice los datos de la opción seleccionada de "${this.listaActiva()}".`,
+  );
 
   readonly tituloModalOpcion = computed(() =>
     `${this.opcionEnEdicion() !== null ? 'Editar Opción' : 'Nueva Opción'}: ${this.listaActiva()}`,

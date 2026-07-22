@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { Router } from '@angular/router';
 import { LucideAngularModule, ChevronDown, User as UserIcon, KeyRound, LogOut } from 'lucide-angular';
 import { AuthService } from '../../core/services/auth.service';
+import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { AreaService } from '../../core/services/area.service';
 import { AREAS } from '../../core/constants/areas.const';
 
@@ -15,7 +16,7 @@ const MOSTRAR_SELECTOR_AREA = false;
 @Component({
   selector: 'app-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule],
+  imports: [LucideAngularModule, ModalComponent],
   template: `
     <header class="h-16 bg-card/95 backdrop-blur border-b border-border flex items-center justify-between px-6 sticky top-0 z-20">
       <div class="flex items-center gap-6">
@@ -95,12 +96,16 @@ const MOSTRAR_SELECTOR_AREA = false;
       </div>
 
       @if (pwdOpen()) {
-        <div class="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-[2px] flex items-center justify-center p-4 animate-overlay-in" (click)="pwdOpen.set(false)">
-          <div class="bg-card rounded-xl ring-1 ring-border shadow-lg w-full max-w-md p-6 animate-modal-in" (click)="$event.stopPropagation()">
-            <h2 class="text-h3 mb-1">Cambiar clave</h2>
-            <p class="text-xs text-muted-foreground mb-5">
-              Mínimo 8 caracteres, una mayúscula, un número y un carácter especial (estándar SBS).
-            </p>
+        <app-modal
+          title="Cambiar clave"
+          maxWidth="max-w-md"
+          tipo="info"
+          mensaje="Mínimo 8 caracteres, una mayúscula, un número y un carácter especial (estándar SBS)."
+          [mostrarAcciones]="true"
+          (aceptado)="pwdOpen.set(false)"
+          (cancelado)="pwdOpen.set(false)"
+          (closed)="pwdOpen.set(false)"
+        >
             <form class="space-y-3" (submit)="$event.preventDefault(); pwdOpen.set(false)">
               @for (l of ['Clave actual', 'Clave nueva', 'Confirmar clave nueva']; track l) {
                 <div>
@@ -112,17 +117,8 @@ const MOSTRAR_SELECTOR_AREA = false;
                   />
                 </div>
               }
-              <div class="flex gap-2 justify-end pt-2">
-                <button type="button" (click)="pwdOpen.set(false)" class="btn-ghost">
-                  Cancelar
-                </button>
-                <button class="btn-primary">
-                  Actualizar
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
+        </app-modal>
       }
     </header>
   `,
