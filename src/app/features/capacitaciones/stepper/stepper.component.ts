@@ -197,7 +197,24 @@ type Paso = 1 | 2 | 3;
                 [resetOnSubmit]="true"
                 (submitted)="agregarParticipante($event)"
                 (cancelled)="showForm.set(false)"
-              />
+              >
+                <!-- Declaración jurada del Paso 2: cierra "4. Información
+                     adicional", justo antes del botón "Agregar participante". -->
+                <div class="pt-2 border-t border-border">
+                  <label class="flex items-start gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      class="accent-brand size-4 mt-0.5 shrink-0"
+                      [checked]="declaracionJurada()"
+                      (change)="declaracionJurada.set($any($event.target).checked)"
+                    />
+                    <span class="text-sm text-foreground leading-relaxed">
+                      Declaro bajo juramento que la información proporcionada es correcta.
+                      <span class="text-destructive">*</span>
+                    </span>
+                  </label>
+                </div>
+              </app-participante-form>
             </div>
           }
 
@@ -269,24 +286,9 @@ type Paso = 1 | 2 | 3;
                 </table>
               </div>
 
-              @if (!bloqueado()) {
-                <!-- Declaración jurada: cierre del Paso 2, antes de continuar -->
-                <div class="px-5 py-4 border-t border-border">
-                  <label class="flex items-start gap-3 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      class="accent-brand size-4 mt-0.5 shrink-0"
-                      [checked]="declaracionJurada()"
-                      (change)="declaracionJurada.set($any($event.target).checked)"
-                    />
-                    <span class="text-sm text-foreground leading-relaxed">
-                      Declaro bajo juramento que la información proporcionada es correcta.
-                      <span class="text-destructive">*</span>
-                    </span>
-                  </label>
-                </div>
-              }
-
+              <!-- La declaración jurada vive en el formulario de participante
+                   (tras "4. Información adicional"); si el formulario está
+                   cerrado, el modal de "Continuar al Paso 3" la solicita. -->
               <div class="px-5 py-3 border-t border-border bg-secondary/30 flex items-center justify-between gap-2">
                 <button
                   (click)="paso.set(1)"

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { LucideAngularModule } from 'lucide-angular';
 import type { LucideIconData } from 'lucide-angular';
 
-export type KpiTone = 'blue' | 'teal' | 'emerald' | 'indigo' | 'slate' | 'amber';
+export type KpiTone = 'blue' | 'teal' | 'emerald' | 'indigo' | 'slate' | 'amber' | 'subsanado';
 
 const TONE_MAP: Record<KpiTone, string> = {
   blue: 'bg-info-soft text-info',
@@ -11,6 +11,8 @@ const TONE_MAP: Record<KpiTone, string> = {
   indigo: 'bg-state-validado-soft text-state-validado',
   slate: 'bg-muted text-muted-foreground',
   amber: 'bg-warning-soft text-warning-foreground',
+  /* Mismo token que el badge del estado "Enviado-Subsanado" (app-estado-badge). */
+  subsanado: 'bg-state-subsanado-soft text-state-subsanado-foreground',
 };
 
 /** Tarjeta KPI de la bandeja N1 (contador + ícono con tono). */

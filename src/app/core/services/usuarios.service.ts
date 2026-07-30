@@ -13,9 +13,20 @@ import { permisosCompletos } from '../models/permisos-menu.model';
 import { ESQUEMAS_PERMISOS_MENU } from '../constants/permisos-menu.const';
 import { obtenerUbigeoTextoSimulado } from '../constants/sodega.const';
 import { TECNICOS_DEMO_REASIGNACION } from '../constants/mock-data.const';
+import { usuariosDemoFaltantes } from '../constants/usuarios-demo.const';
+import { environment } from '../../../environments/environment';
 
 /** Cuenta master: ingresa con todos los permisos de menú activos. */
 const PERMISOS_MASTER = permisosCompletos(ESQUEMAS_PERMISOS_MENU['Administrador General']!);
+
+/**
+ * Registros de prueba de QA (core/constants/usuarios-demo.const.ts). Se cargan
+ * solo fuera de producción y sin duplicar los que ya existan: en un build
+ * productivo la lista queda vacía y el estado inicial no cambia.
+ */
+function seedUsuariosDemo(base: readonly UsuarioSodega[]): UsuarioSodega[] {
+  return environment.production ? [] : usuariosDemoFaltantes(base);
+}
 
 /**
  * Gestión Integral de Usuarios SODEGA.
@@ -30,44 +41,50 @@ const PERMISOS_MASTER = permisosCompletos(ESQUEMAS_PERMISOS_MENU['Administrador 
  *  - POST   /usuarios/{id}/restablecer-clave
  *  - GET    /reniec/{dni}                   (Web Service RENIEC institucional)
  */
+/** Estado inicial sin los registros de QA (cuenta master + demo de reasignación). */
+const USUARIOS_BASE: UsuarioSodega[] = [
+  {
+    id: '1',
+    dni: '45893012',
+    nombres: 'Carlos',
+    apePat: 'Candelaria',
+    apeMat: 'Burgos',
+    estCivil: 'Soltero',
+    profesion: 'Especialista TI',
+    direccion: 'Jr. Lambayeque 450',
+    ubigeo: 'Lima/Lima/Jesús María',
+    restricciones: 'Ninguna',
+    sexo: 'Masculino',
+    fechaNac: '15/08/1988',
+    edad: '37',
+    celular: '987452310',
+    unidad: 'Programa de Desarrollo Productivo Agrario Rural',
+    userGen: 'ccandelaria',
+    correo: 'ccandelaria@midagri.gob.pe',
+    regimen: 'Régimen CAS',
+    estado: 'HABILITADO',
+    fechaIni: '',
+    fechaFin: '',
+    nroOrden: '',
+    perfil: 'Administrador General',
+    opa: 'OGTI',
+    fuenteFinanc: '',
+    categoriaPresup: '',
+    programaPresup: '',
+    unidadFuncional: '',
+    ambitos: [],
+    permisosMenu: PERMISOS_MASTER,
+  },
+  // Datos de prueba (solo desarrollo): técnicos con registros para el
+  // modal "Reasignar registros" — ver core/constants/mock-data.const.ts.
+  ...TECNICOS_DEMO_REASIGNACION,
+];
+
 @Injectable({ providedIn: 'root' })
 export class UsuariosService {
   private readonly _usuarios = signal<UsuarioSodega[]>([
-    {
-      id: '1',
-      dni: '45893012',
-      nombres: 'Carlos',
-      apePat: 'Candelaria',
-      apeMat: 'Burgos',
-      estCivil: 'Soltero',
-      profesion: 'Especialista TI',
-      direccion: 'Jr. Lambayeque 450',
-      ubigeo: 'Lima/Lima/Jesús María',
-      restricciones: 'Ninguna',
-      sexo: 'Masculino',
-      fechaNac: '15/08/1988',
-      edad: '37',
-      celular: '987452310',
-      unidad: 'Programa de Desarrollo Productivo Agrario Rural',
-      userGen: 'ccandelaria',
-      correo: 'ccandelaria@midagri.gob.pe',
-      regimen: 'Régimen CAS',
-      estado: 'HABILITADO',
-      fechaIni: '',
-      fechaFin: '',
-      nroOrden: '',
-      perfil: 'Administrador General',
-      opa: 'OGTI',
-      fuenteFinanc: '',
-      categoriaPresup: '',
-      programaPresup: '',
-      unidadFuncional: '',
-      ambitos: [],
-      permisosMenu: PERMISOS_MASTER,
-    },
-    // Datos de prueba (solo desarrollo): técnicos con registros para el
-    // modal "Reasignar registros" — ver core/constants/mock-data.const.ts.
-    ...TECNICOS_DEMO_REASIGNACION,
+    ...USUARIOS_BASE,
+    ...seedUsuariosDemo(USUARIOS_BASE),
   ]);
 
   readonly usuarios = this._usuarios.asReadonly();
