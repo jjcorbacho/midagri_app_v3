@@ -289,6 +289,13 @@ const REQUIRED_INPUT = INPUT_REQUIRED;
             </label>
           </div>
         </section>
+
+        <!--
+          Cierre del formulario: contenido proyectado por el contenedor (el
+          stepper inyecta aquí la declaración jurada del Paso 2). Queda después
+          del bloque "4. Información adicional" y antes de la botonera.
+        -->
+        <ng-content />
       </form>
 
       <div class="bg-surface-2 border-t border-border px-6 py-4 flex justify-end gap-3">

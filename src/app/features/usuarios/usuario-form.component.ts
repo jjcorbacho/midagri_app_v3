@@ -20,13 +20,18 @@ import {
   PeriodoGestion,
   TipoPeriodoGestion,
   UsuarioSodega,
+  anioGestionVigente,
   aplicaMetasPorAmbito,
+  aniosDeRango,
   calcularDiasCalendarioEntre,
+  esRegimenTemporal,
+  excedeAnioGestion,
+  fechaMaximaVigencia,
   formatearPeriodo,
   perfilRequiereAmbito,
   perfilSoloRegion,
   estadoPeriodo,
-  mesesHabilitadosParaAnio,
+  mesesActivablesPeriodoRegular,
   nombresDeMeses,
   regimenesPermitidosParaNuevoServicio,
   toTitleCase,
@@ -312,12 +317,27 @@ const INP_NORMAL = INPUT_BASE;
               <div class="grid grid-cols-12 gap-3 p-4 bg-brand-soft/50 rounded-xl ring-1 ring-brand/20">
                 <div [class]="esLocador() ? 'col-span-4' : 'col-span-6'">
                   <label class="block text-[11px] font-medium text-brand mb-1">Fecha de inicio <span class="text-destructive">*</span></label>
-                  <input type="date" formControlName="fechaIni" [class]="inpMandatory" />
+                  <input
+                    type="date"
+                    formControlName="fechaIni"
+                    [max]="fechaMaxVigencia"
+                    (change)="onFechasContratoChange()"
+                    [class]="inpMandatory"
+                  />
                 </div>
                 <div [class]="esLocador() ? 'col-span-4' : 'col-span-6'">
                   <label class="block text-[11px] font-medium text-brand mb-1">Fecha fin <span class="text-destructive">*</span></label>
-                  <input type="date" formControlName="fechaFin" [class]="inpMandatory" />
+                  <input
+                    type="date"
+                    formControlName="fechaFin"
+                    [max]="fechaMaxVigencia"
+                    (change)="onFechasContratoChange()"
+                    [class]="inpMandatory"
+                  />
                 </div>
+                <p class="col-span-12 text-[11px] text-muted-foreground">
+                  La vigencia no puede superar el {{ fechaMaxVigenciaTexto }} (año de gestión {{ anioGestion }}).
+                </p>
                 @if (esLocador()) {
                   <div class="col-span-4">
                     <label class="block text-[11px] font-medium text-brand mb-1">Nro. de Orden (O.S.) <span class="text-destructive">*</span></label>
@@ -363,7 +383,11 @@ const INP_NORMAL = INPUT_BASE;
                   <div>
                     <p class="text-[11px] font-medium text-brand mb-2">
                       Meses del periodo <span class="text-destructive">*</span>
-                      @if (mesesHabilitados().length === 0) {
+                      @if (mesesAutomaticos()) {
+                        <span class="normal-case font-normal text-muted-foreground">
+                          · calculados automáticamente según la vigencia del contrato
+                        </span>
+                      } @else if (mesesHabilitados().length === 0) {
                         <span class="normal-case font-normal text-muted-foreground">
                           · ningún mes puede activarse para el año de gestión seleccionado
                         </span>
@@ -376,7 +400,11 @@ const INP_NORMAL = INPUT_BASE;
                           [class]="esMesHabilitado(m.numero)
                             ? 'text-foreground/90 cursor-pointer hover:bg-card/60'
                             : 'text-muted-foreground/60 cursor-not-allowed'"
-                          [title]="esMesHabilitado(m.numero) ? '' : 'Este mes ya no puede activarse para el año de gestión seleccionado'"
+                          [title]="esMesHabilitado(m.numero)
+                            ? ''
+                            : (mesesAutomaticos()
+                                ? 'Este mes está fuera de la vigencia del contrato'
+                                : 'Este mes ya no puede activarse para el año de gestión seleccionado')"
                         >
                           <input
                             type="checkbox"
@@ -397,13 +425,25 @@ const INP_NORMAL = INPUT_BASE;
                       <label for="periodo-desde" class="block text-[11px] font-medium text-brand mb-1">
                         Fecha Inicio <span class="text-destructive">*</span>
                       </label>
-                      <input id="periodo-desde" type="date" formControlName="periodoFechaIni" [class]="inpMandatory" />
+                      <input
+                        id="periodo-desde"
+                        type="date"
+                        formControlName="periodoFechaIni"
+                        [max]="fechaMaxVigencia"
+                        [class]="inpMandatory"
+                      />
                     </div>
                     <div>
                       <label for="periodo-hasta" class="block text-[11px] font-medium text-brand mb-1">
                         Fecha Fin <span class="text-destructive">*</span>
                       </label>
-                      <input id="periodo-hasta" type="date" formControlName="periodoFechaFin" [class]="inpMandatory" />
+                      <input
+                        id="periodo-hasta"
+                        type="date"
+                        formControlName="periodoFechaFin"
+                        [max]="fechaMaxVigencia"
+                        [class]="inpMandatory"
+                      />
                     </div>
                   </div>
                 }
@@ -1081,17 +1121,50 @@ export class UsuarioFormComponent implements OnInit {
       : REGIMENES_LABORALES;
   });
 
-  /** Años seleccionables: el actual hacia atrás (nunca futuros). */
+  /**
+   * Años seleccionables. En CAS Temporal / Locador los define la vigencia del
+   * contrato (puede cruzar de un año a otro); en el resto de regímenes, el año
+   * actual hacia atrás (nunca futuros).
+   */
   readonly aniosGestion = computed(() => {
-    const actual = new Date().getFullYear();
+    this.formTick();
+    const actual = anioGestionVigente();
+    if (this.regimenTemporal()) {
+      // Nunca por encima del año de gestión (las fechas ya vienen acotadas).
+      const anios = aniosDeRango(
+        this.form.controls.fechaIni.value,
+        this.form.controls.fechaFin.value,
+      ).filter((a) => a <= actual);
+      if (anios.length) return anios;
+    }
     return Array.from({ length: 6 }, (_, i) => actual - i);
   });
 
-  /** Meses activables según el año de gestión elegido (regla del modelo). */
+  /** Meses activables según régimen y año de gestión (regla única del modelo). */
   readonly mesesHabilitados = computed(() => {
     this.formTick();
-    return mesesHabilitadosParaAnio(Number(this.form.controls.periodoAnio.value));
+    return this.calcularMesesActivables();
   });
+
+  /** ¿Los meses se derivan automáticamente del contrato (CAS Temporal / OS)? */
+  readonly mesesAutomaticos = computed(() => {
+    this.formTick();
+    return (
+      this.regimenTemporal() &&
+      !!this.form.controls.fechaIni.value &&
+      !!this.form.controls.fechaFin.value
+    );
+  });
+
+  /** Regla de negocio única, compartida por la UI y la validación del alta. */
+  private calcularMesesActivables(anio = Number(this.form.controls.periodoAnio.value)): number[] {
+    return mesesActivablesPeriodoRegular({
+      anio,
+      regimen: this.form.controls.regimen.value,
+      fechaIni: this.form.controls.fechaIni.value,
+      fechaFin: this.form.controls.fechaFin.value,
+    });
+  }
 
   esMesHabilitado(mes: number): boolean {
     return this.mesesHabilitados().includes(mes);
@@ -1108,18 +1181,81 @@ export class UsuarioFormComponent implements OnInit {
   /** Al cambiar el año se descartan los meses que dejan de ser activables. */
   onAnioGestionChange(): void {
     this.formTick.update((t) => t + 1);
-    const habilitados = mesesHabilitadosParaAnio(Number(this.form.controls.periodoAnio.value));
+    if (this.sincronizarMesesDesdeContrato()) return;
+    const habilitados = this.calcularMesesActivables();
     this.mesesSeleccionados.update((prev) => prev.filter((m) => habilitados.includes(m)));
   }
 
   onTipoPeriodoChange(): void {
     this.mesesSeleccionados.set([]);
     this.form.patchValue({
-      periodoAnio: String(new Date().getFullYear()),
+      periodoAnio: String(this.aniosGestion()[0] ?? new Date().getFullYear()),
       periodoFechaIni: '',
       periodoFechaFin: '',
     });
     this.formTick.update((t) => t + 1);
+    this.sincronizarMesesDesdeContrato();
+  }
+
+  /**
+   * CAS Temporal / Locador: al cambiar la Fecha de inicio o la Fecha fin se
+   * valida el tope del año de gestión y se recalculan los años disponibles y
+   * los meses marcados, de modo que no queden inconsistencias entre las fechas
+   * del contrato y el periodo.
+   */
+  onFechasContratoChange(): void {
+    this.formTick.update((t) => t + 1);
+    if (this.rechazarFechasFueraDeAnioGestion()) return;
+    const anios = this.aniosGestion();
+    if (anios.length && !anios.includes(Number(this.form.controls.periodoAnio.value))) {
+      this.form.patchValue({ periodoAnio: String(anios[0]) });
+      this.formTick.update((t) => t + 1);
+    }
+    this.sincronizarMesesDesdeContrato();
+  }
+
+  /* ===== Tope de vigencia: 31 de diciembre del año de gestión ===== */
+
+  /** Año de gestión y su último día, derivados del sistema (nunca fijos). */
+  readonly anioGestion = anioGestionVigente();
+  readonly fechaMaxVigencia = fechaMaximaVigencia();
+  readonly fechaMaxVigenciaTexto = fechaMaximaVigencia().split('-').reverse().join('/');
+
+  /**
+   * El atributo `max` impide elegir fechas posteriores en el calendario, pero
+   * no cubre el tecleo manual ni el pegado: aquí se detecta ese caso, se avisa
+   * con el modal estándar y se limpia el campo infractor para que no quede una
+   * vigencia inválida en el formulario. Devuelve `true` si hubo rechazo.
+   */
+  private rechazarFechasFueraDeAnioGestion(): boolean {
+    const { fechaIni, fechaFin } = this.form.getRawValue();
+    const invalidos: string[] = [];
+    if (excedeAnioGestion(fechaIni)) invalidos.push('Fecha de inicio');
+    if (excedeAnioGestion(fechaFin)) invalidos.push('Fecha fin');
+    if (!invalidos.length) return false;
+
+    if (excedeAnioGestion(fechaIni)) this.form.patchValue({ fechaIni: '' });
+    if (excedeAnioGestion(fechaFin)) this.form.patchValue({ fechaFin: '' });
+    this.mesesSeleccionados.set([]);
+    this.formTick.update((t) => t + 1);
+    void this.modales.openError(
+      'Vigencia fuera del año de gestión',
+      `${invalidos.join(' y ')} no puede superar el ${this.fechaMaxVigenciaTexto}, ` +
+        `último día del año de gestión ${this.anioGestion}.`,
+    );
+    return true;
+  }
+
+  /**
+   * Marca automáticamente todos los meses comprendidos en la vigencia del
+   * contrato para el año de gestión activo. Devuelve `true` si la selección la
+   * gobierna el contrato (y por tanto no debe tocarse manualmente después).
+   */
+  private sincronizarMesesDesdeContrato(): boolean {
+    if (this.form.controls.periodoTipo.value !== 'Regular') return false;
+    if (!esRegimenTemporal(this.form.controls.regimen.value)) return false;
+    this.mesesSeleccionados.set(this.calcularMesesActivables());
+    return true;
   }
 
   /** Alta del periodo del servicio (uno solo por servicio). */
@@ -1136,10 +1272,20 @@ export class UsuarioFormComponent implements OnInit {
     const tipo = v.periodoTipo as TipoPeriodoGestion;
     if (tipo === 'Regular') {
       const anio = Number(v.periodoAnio);
-      if (anio > new Date().getFullYear()) {
+      const derivadoDelContrato = esRegimenTemporal(v.regimen);
+      // Ninguna vigencia puede superar el año de gestión, tampoco en contratos
+      // temporales: sus fechas ya quedan acotadas al 31/12 del año en curso.
+      if (anio > this.anioGestion) {
         void this.modales.openError(
           'Año de gestión no permitido',
-          'El Año de Gestión no puede ser mayor al año actual del sistema.',
+          `El Año de Gestión no puede ser mayor a ${this.anioGestion}, el año en curso del sistema.`,
+        );
+        return;
+      }
+      if (derivadoDelContrato && (!v.fechaIni || !v.fechaFin)) {
+        void this.modales.openError(
+          'Vigencia del contrato requerida',
+          'Registre la Fecha de inicio y la Fecha fin del contrato antes de agregar el periodo Regular.',
         );
         return;
       }
@@ -1148,13 +1294,16 @@ export class UsuarioFormComponent implements OnInit {
         return;
       }
       // Validación de negocio (no solo visual): ningún mes bloqueado puede registrarse.
-      const habilitados = mesesHabilitadosParaAnio(anio);
+      const habilitados = this.calcularMesesActivables(anio);
       const bloqueados = this.mesesSeleccionados().filter((m) => !habilitados.includes(m));
       if (bloqueados.length) {
         void this.modales.openWarning(
           'Meses no disponibles',
-          `Los siguientes meses ya no pueden ser activados para el año de gestión ${anio}: ` +
-            `${nombresDeMeses(bloqueados)}. Seleccione únicamente meses disponibles.`,
+          derivadoDelContrato
+            ? `Los siguientes meses quedan fuera de la vigencia del contrato: ` +
+                `${nombresDeMeses(bloqueados)}. Ajuste la Fecha de inicio o la Fecha fin.`
+            : `Los siguientes meses ya no pueden ser activados para el año de gestión ${anio}: ` +
+                `${nombresDeMeses(bloqueados)}. Seleccione únicamente meses disponibles.`,
           { soloAceptar: true },
         );
         return;
@@ -1177,6 +1326,15 @@ export class UsuarioFormComponent implements OnInit {
         );
         return;
       }
+      // El periodo Extraordinario también es una vigencia: mismo tope anual.
+      if (excedeAnioGestion(v.periodoFechaIni) || excedeAnioGestion(v.periodoFechaFin)) {
+        void this.modales.openError(
+          'Vigencia fuera del año de gestión',
+          `El periodo Extraordinario no puede superar el ${this.fechaMaxVigenciaTexto}, ` +
+            `último día del año de gestión ${this.anioGestion}.`,
+        );
+        return;
+      }
       this.periodos.set([
         {
           tipo,
@@ -1189,7 +1347,7 @@ export class UsuarioFormComponent implements OnInit {
     this.mesesSeleccionados.set([]);
     this.form.patchValue({
       periodoTipo: '',
-      periodoAnio: String(new Date().getFullYear()),
+      periodoAnio: String(this.aniosGestion()[0] ?? new Date().getFullYear()),
       periodoFechaIni: '',
       periodoFechaFin: '',
     });
@@ -1202,6 +1360,10 @@ export class UsuarioFormComponent implements OnInit {
   onRegimenChange(): void {
     this.form.patchValue({ periodoTipo: '', periodoFechaIni: '', periodoFechaFin: '' });
     this.mesesSeleccionados.set([]);
+    this.formTick.update((t) => t + 1);
+    this.form.patchValue({
+      periodoAnio: String(this.aniosGestion()[0] ?? new Date().getFullYear()),
+    });
     this.formTick.update((t) => t + 1);
   }
 
@@ -1641,6 +1803,16 @@ export class UsuarioFormComponent implements OnInit {
         this.mostrarAlerta({
           titulo: 'Campos Incompletos',
           mensaje: 'Para locadores de servicio (OS) o regímenes CAS Temporales es obligatorio registrar las fechas de inicio y fin de contrato.',
+        });
+        return;
+      }
+      // Tope del año de gestión: ninguna vigencia puede pasar del 31/12 en curso.
+      if (excedeAnioGestion(v.fechaIni) || excedeAnioGestion(v.fechaFin)) {
+        this.mostrarAlerta({
+          titulo: 'Vigencia fuera del año de gestión',
+          mensaje:
+            `La vigencia del contrato no puede superar el ${this.fechaMaxVigenciaTexto}, ` +
+            `último día del año de gestión ${this.anioGestion}.`,
         });
         return;
       }

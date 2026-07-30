@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import {
   LucideAngularModule,
   Search, AlertTriangle, Download, CheckCircle2, MessageSquareWarning,
-  MapPin, ClipboardList, Users, ChevronDown, ChevronUp, X, FileText,
+  MapPin, ClipboardList, Users, ChevronDown, ChevronUp, X, FileText, FileSpreadsheet,
 } from 'lucide-angular';
 import { AreaService } from '../../core/services/area.service';
 import { CursosService } from '../../core/services/cursos.service';
@@ -13,6 +13,7 @@ import { Curso, EstadoCurso } from '../../core/models/curso.model';
 import { Participante } from '../../core/models/participante.model';
 import { EstadoBadgeComponent } from '../../shared/components/estado-badge/estado-badge.component';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
+import { exportarTablaExcel } from '../../shared/utils/excel.util';
 import { isoToDDMMYYYY, todayDDMMYYYY, todayISO } from '../../shared/utils/fecha.util';
 
 const ACCIONABLES_DZ: EstadoCurso[] = ['Enviado', 'Enviado-Subsanado'];
@@ -111,6 +112,16 @@ const ICON_TONES: Record<string, string> = {
               </button>
             }
           </div>
+
+          <!-- Exportación junto al buscador (misma identidad que la Bandeja N1) -->
+          <button
+            (click)="exportarExcel()"
+            title="Exportar Excel"
+            aria-label="Exportar la tabla a Excel"
+            class="p-2 rounded-lg transition-all bg-success text-success-foreground hover:bg-success/85 shadow-sm shrink-0"
+          >
+            <lucide-angular [img]="FileSpreadsheetIcon" class="size-4" />
+          </button>
 
           @if (selectables().length > 0) {
             <label class="flex items-center gap-2 text-xs font-medium text-muted-foreground cursor-pointer select-none">
@@ -351,6 +362,7 @@ export class SeguimientoPanelComponent {
   readonly ChevronUpIcon = ChevronUp;
   readonly XIcon = X;
   readonly FileTextIcon = FileText;
+  readonly FileSpreadsheetIcon = FileSpreadsheet;
 
   readonly tiposFiltro = [
     { k: 'TODOS' as const, label: 'Todos' },
@@ -521,6 +533,32 @@ export class SeguimientoPanelComponent {
     this.observarTexto.set('');
     this.observarFecha.set(todayISO());
     this.observarOpen.set(false);
+  }
+
+  /**
+   * Exporta la tabla tal como está en pantalla: respeta la pestaña de estado,
+   * el filtro por tipo y la búsqueda activa (`filtered()`), en el mismo orden
+   * mostrado. Reutiliza el exportador único del sistema (`excel.util`), el
+   * mismo que usa la Bandeja N1.
+   */
+  exportarExcel(): void {
+    const base = this.rol() === 'ADMIN_UE' ? 'Seguimiento_Aprobacion' : 'Seguimiento_Revision';
+    exportarTablaExcel(base, [
+      { titulo: 'Código', valor: (c) => c.codigo },
+      { titulo: 'Tipo', valor: (c) => (c.tipo === 'capacitacion' ? 'Capacitación' : 'Asistencia Técnica') },
+      { titulo: 'Tema', valor: (c) => c.nombreTema },
+      { titulo: 'Estado', valor: (c) => c.estado },
+      { titulo: 'Fecha', valor: (c) => c.fecha },
+      { titulo: 'Hora', valor: (c) => c.hora },
+      { titulo: 'Horas', valor: (c) => c.horas },
+      { titulo: 'Participantes', valor: (c) => c.participantes },
+      { titulo: 'Región', valor: (c) => c.region },
+      { titulo: 'Provincia', valor: (c) => c.provincia },
+      { titulo: 'Distrito', valor: (c) => c.distrito },
+      { titulo: 'Extensionista', valor: (c) => c.extensionista },
+      { titulo: 'Sustento', valor: (c) => c.fotoSustento ?? '' },
+      { titulo: 'Observaciones', valor: (c) => (c.observacionesHistorial ?? []).map((o) => `[${o.fecha}] ${o.descripcion}`).join(' | ') },
+    ], this.filtered());
   }
 
   descargaSimulada(): void {

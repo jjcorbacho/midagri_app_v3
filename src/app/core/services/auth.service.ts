@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Perfil, UsuarioSodega } from '../models/usuario-sodega.model';
+import { Perfil, PeriodoGestion, UsuarioSodega } from '../models/usuario-sodega.model';
 import { User } from '../models/user.model';
 import { UsuariosService } from './usuarios.service';
 
@@ -56,6 +56,29 @@ export class AuthService {
   readonly isAdminDZ = computed(() => this.perfil() === 'Administrador DZ_Cap_Asit.');
   readonly isTecnico1 = computed(() => this.perfil() === 'Técnico Capacitación y Asistencia Técnica');
   readonly isReadOnly = computed(() => this.isAdminDZ() || this.isAdminUE());
+
+  /**
+   * Registro SODEGA del que proviene la sesión activa. Un usuario unificado
+   * puede tener varios registros (uno por servicio/unidad), así que se resuelve
+   * por perfil + unidad + OPA y se degrada al primero disponible. Es reactivo:
+   * si el registro cambia (p. ej. se le agrega un periodo), la vista se refresca.
+   */
+  readonly registroActivo = computed<UsuarioSodega | null>(() => {
+    const s = this._session();
+    if (!s) return null;
+    const registros = this.usuariosService.findByUserGen(s.userGen);
+    if (registros.length === 0) return null;
+    return (
+      registros.find((u) => u.perfil === s.perfil && u.unidad === s.unidad && u.opa === s.opa) ??
+      registros.find((u) => u.perfil === s.perfil) ??
+      registros[0]
+    );
+  });
+
+  /** Periodos de gestión asignados al servicio con el que se opera la sesión. */
+  readonly periodosSesion = computed<PeriodoGestion[]>(
+    () => this.registroActivo()?.periodosGestion ?? [],
+  );
 
   /** Vista compatible del usuario para componentes existentes (perfil, header…). */
   readonly user = computed<User | null>(() => {

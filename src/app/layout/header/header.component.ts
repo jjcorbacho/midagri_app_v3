@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { LucideAngularModule, ChevronDown, User as UserIcon, KeyRound, LogOut } from 'lucide-angular';
+import { LucideAngularModule, ChevronDown, User as UserIcon, KeyRound, LogOut, CalendarRange } from 'lucide-angular';
 import { AuthService } from '../../core/services/auth.service';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { AreaService } from '../../core/services/area.service';
 import { AREAS } from '../../core/constants/areas.const';
+import { etiquetaPeriodoCabecera } from '../../core/models/usuario-sodega.model';
 
 /**
  * Selector "ÁREA ACTIVA" del header: oculto para todos los perfiles por
@@ -20,9 +21,21 @@ const MOSTRAR_SELECTOR_AREA = false;
   template: `
     <header class="h-16 bg-card/95 backdrop-blur border-b border-border flex items-center justify-between px-6 sticky top-0 z-20">
       <div class="flex items-center gap-6">
-        <div class="flex flex-col">
+        <div class="flex flex-col justify-center leading-tight min-w-0">
           <span class="text-[10px] uppercase tracking-wider font-semibold text-brand">MIDAGRI</span>
           <span class="text-sm font-medium text-muted-foreground">Sistema de Capacitaciones</span>
+          <!-- Periodo de gestión del usuario autenticado (visible en toda la app). -->
+          @if (periodoTexto(); as periodo) {
+            <span
+              class="flex items-center gap-1 text-[11px] text-brand font-medium mt-0.5 min-w-0"
+              [title]="'Periodo: ' + periodo"
+            >
+              <lucide-angular [img]="CalendarRangeIcon" class="size-3 shrink-0" />
+              <span class="truncate max-w-[220px] sm:max-w-[420px] lg:max-w-[560px]">
+                Periodo: {{ periodo }}
+              </span>
+            </span>
+          }
         </div>
         @if (mostrarSelectorArea) {
           <div class="h-8 w-px bg-border"></div>
@@ -132,11 +145,21 @@ export class HeaderComponent {
   readonly UserIconRef = UserIcon;
   readonly KeyRoundIcon = KeyRound;
   readonly LogOutIcon = LogOut;
+  readonly CalendarRangeIcon = CalendarRange;
 
   readonly areas = AREAS;
   readonly mostrarSelectorArea = MOSTRAR_SELECTOR_AREA;
   readonly menuOpen = signal(false);
   readonly pwdOpen = signal(false);
+
+  /**
+   * Periodo(s) del usuario autenticado, con el formato de la cabecera:
+   * "Regular | Marzo - Abril" o "Extraordinario | 15/03/2026 al 20/08/2026".
+   * Vacío cuando el servicio no tiene periodo asignado (no se muestra la línea).
+   */
+  readonly periodoTexto = computed(() =>
+    this.auth.periodosSesion().map(etiquetaPeriodoCabecera).join('  ·  '),
+  );
 
   iniciales(): string {
     const u = this.auth.user();
