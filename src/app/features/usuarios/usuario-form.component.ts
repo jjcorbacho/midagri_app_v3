@@ -4,13 +4,14 @@ import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Va
 import {
   LucideAngularModule,
   IdCard, KeyRound, UserCheck, Wallet, ShieldHalf, Search, LoaderCircle,
-  ArrowLeft, ArrowRight, Save, Trash2, SquarePlus, Target,
+  ArrowLeft, ArrowRight, Save, Trash2, SquarePlus, Target, CircleCheck, TriangleAlert,
 } from 'lucide-angular';
 import { AuthService } from '../../core/services/auth.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { ListasAdminService } from '../../core/services/listas-admin.service';
 import { PermisosMenuService } from '../../core/services/permisos-menu.service';
 import { ModalService } from '../../core/services/modal.service';
+import { ToastService } from '../../core/services/toast.service';
 import {
   AmbitoTerritorial,
   MetaAmbitoTerritorial,
@@ -38,6 +39,7 @@ import {
 } from '../../core/models/usuario-sodega.model';
 import { PermisosMenu, combinarPermisos } from '../../core/models/permisos-menu.model';
 import { PermisosMenuFormComponent } from './permisos-menu-form.component';
+import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { INPUT_BASE, INPUT_DISABLED, INPUT_REQUIRED } from '../../shared/utils/input-styles.const';
 import {
   CATEGORIAS_PRESUPUESTALES,
@@ -75,7 +77,15 @@ const INP_NORMAL = INPUT_BASE;
 @Component({
   selector: 'app-usuario-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, LucideAngularModule, PermisosMenuFormComponent, AutocompleteComponent],
+  imports: [
+    ReactiveFormsModule,
+    LucideAngularModule,
+    PermisosMenuFormComponent,
+    AutocompleteComponent,
+    ModalComponent,
+  ],
+  // ESC cierra el modal presupuestal descartando los cambios (igual que Cancelar).
+  host: { '(document:keydown.escape)': 'onEscape()' },
   template: `
     <section class="p-6 lg:p-8 max-w-[1200px] mx-auto space-y-5 animate-page-in">
       <h1 class="text-h1 text-foreground">{{ titulo() }}</h1>
@@ -736,15 +746,22 @@ const INP_NORMAL = INPUT_BASE;
               <lucide-angular [img]="ArrowLeftIcon" class="size-3.5" /> Atrás
             </button>
             @if (requierePresupuestoAdminGeneral()) {
-              <button (click)="irARegistrarDatosPresupuestales()" class="btn-primary px-5">
-                <lucide-angular [img]="WalletIcon" class="size-3.5" />
-                <span>Registrar Datos Presupuestales</span>
+              <!-- Abre el modal (no cambia de pestaña) y refleja el estado completado. -->
+              <button
+                (click)="abrirModalPresupuesto()"
+                [class]="(presupuestoRegistrado() ? 'btn-success' : 'btn-primary') + ' px-5'"
+                [attr.aria-label]="presupuestoRegistrado()
+                  ? 'Datos presupuestales registrados. Abrir para revisar o editar'
+                  : 'Registrar datos presupuestales'"
+              >
+                <lucide-angular [img]="presupuestoRegistrado() ? CircleCheckIcon : WalletIcon" class="size-3.5" />
+                <span>{{ presupuestoRegistrado() ? 'Datos Presupuestales Registrados' : 'Registrar Datos Presupuestales' }}</span>
               </button>
             }
             <button
               (click)="guardarRegistroCompleto()"
               [disabled]="guardarBloqueado()"
-              [title]="guardarBloqueado() ? 'Complete los Datos Presupuestales obligatorios antes de guardar.' : ''"
+              [title]="guardarBloqueado() ? motivoGuardarBloqueado() : ''"
               class="btn-success px-5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <lucide-angular [img]="SaveIcon" class="size-3.5" />
@@ -752,6 +769,157 @@ const INP_NORMAL = INPUT_BASE;
             </button>
           </div>
         </div>
+      }
+
+      <!-- ===== Modal Datos Presupuestales (Admin General → UE / DZ / Técnico) =====
+           Reutiliza los mismos controles del formulario y sus catálogos, por lo que
+           las cascadas (Unidad Responsable → Unidad Funcional) siguen operando sin
+           lógica duplicada. Cancelar restaura el estado previo a abrir el modal. -->
+      @if (modalPresupuesto()) {
+        <app-modal
+          title="Datos Presupuestales"
+          maxWidth="max-w-2xl"
+          mensaje="Complete la información presupuestal requerida para habilitar el registro del usuario."
+          (closed)="cancelarPresupuesto()"
+        >
+          <div class="space-y-4 text-left" [formGroup]="form">
+            <div>
+              <label for="mp-unidad" class="block text-[11px] font-medium text-muted-foreground mb-1">
+                Unidad Responsable <span class="text-destructive">*</span>
+              </label>
+              <select
+                id="mp-unidad"
+                formControlName="unidad"
+                aria-label="Unidad Responsable"
+                [attr.aria-invalid]="!!erroresPresupuesto()['unidad']"
+                [attr.aria-describedby]="erroresPresupuesto()['unidad'] ? 'mp-unidad-error' : null"
+                [class]="unidadBloqueada() ? inpDisabled : inpMandatory"
+              >
+                <option value="">--Seleccione--</option>
+                @for (u of unidadesResponsables(); track u) {
+                  <option [value]="u">{{ u }}</option>
+                }
+              </select>
+              @if (erroresPresupuesto()['unidad']; as e) {
+                <p id="mp-unidad-error" class="text-[11px] text-destructive mt-1">{{ e }}</p>
+              }
+            </div>
+
+            <div>
+              <label for="mp-fuente" class="block text-[11px] font-medium text-muted-foreground mb-1">
+                Fuente de Financiamiento <span class="text-destructive">*</span>
+              </label>
+              <select
+                id="mp-fuente"
+                formControlName="fuenteFinanc"
+                aria-label="Fuente de Financiamiento"
+                [attr.aria-invalid]="!!erroresPresupuesto()['fuenteFinanc']"
+                [attr.aria-describedby]="erroresPresupuesto()['fuenteFinanc'] ? 'mp-fuente-error' : null"
+                [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory"
+              >
+                <option value="">Seleccione</option>
+                @for (f of fuentes(); track f) {
+                  <option [value]="f">{{ f }}</option>
+                }
+              </select>
+              @if (erroresPresupuesto()['fuenteFinanc']; as e) {
+                <p id="mp-fuente-error" class="text-[11px] text-destructive mt-1">{{ e }}</p>
+              }
+            </div>
+
+            <!-- Categoría presupuestal: solo fuera de la vista Jefe de Área (mismo criterio del formulario). -->
+            @if (!modoJefeArea()) {
+              <div>
+                <label for="mp-categoria-presup" class="block text-[11px] font-medium text-muted-foreground mb-1">
+                  Categoría presupuestal <span class="text-destructive">*</span>
+                </label>
+                <select
+                  id="mp-categoria-presup"
+                  formControlName="categoriaPresup"
+                  (change)="onCategoriaChange()"
+                  aria-label="Categoría presupuestal"
+                  [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory"
+                >
+                  <option value="">Seleccione</option>
+                  @for (c of categorias(); track c) {
+                    <option [value]="c">{{ c }}</option>
+                  }
+                </select>
+                @if (erroresPresupuesto()['categoriaPresup']; as e) {
+                  <p class="text-[11px] text-destructive mt-1">{{ e }}</p>
+                }
+              </div>
+            }
+
+            <div>
+              <label for="mp-categoria" class="block text-[11px] font-medium text-muted-foreground mb-1">
+                {{ modoJefeArea() ? 'Categoría' : 'Programa presupuestal' }} <span class="text-destructive">*</span>
+              </label>
+              <select
+                id="mp-categoria"
+                formControlName="programaPresup"
+                (change)="onProgramaChange()"
+                [attr.aria-label]="modoJefeArea() ? 'Categoría' : 'Programa presupuestal'"
+                [attr.aria-invalid]="!!erroresPresupuesto()['programaPresup']"
+                [attr.aria-describedby]="erroresPresupuesto()['programaPresup'] ? 'mp-categoria-error' : null"
+                [class]="presupuestoBloqueado() || !programaHabilitado() ? inpDisabled : inpMandatory"
+              >
+                <option value="">Seleccione</option>
+                @for (p of programas(); track p) {
+                  <option [value]="p">{{ p }}</option>
+                }
+              </select>
+              @if (erroresPresupuesto()['programaPresup']; as e) {
+                <p id="mp-categoria-error" class="text-[11px] text-destructive mt-1">{{ e }}</p>
+              }
+            </div>
+
+            <div>
+              <label for="mp-unidad-func" class="block text-[11px] font-medium text-muted-foreground mb-1">
+                Unidad Funcional <span class="text-destructive">*</span>
+              </label>
+              <select
+                id="mp-unidad-func"
+                formControlName="unidadFuncional"
+                aria-label="Unidad Funcional"
+                [attr.aria-invalid]="!!erroresPresupuesto()['unidadFuncional']"
+                [attr.aria-describedby]="erroresPresupuesto()['unidadFuncional'] ? 'mp-unidad-func-error' : null"
+                [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory"
+              >
+                <option value="">Seleccione</option>
+                @for (u of unidadesFuncionales(); track u) {
+                  <option [value]="u">{{ u }}</option>
+                }
+              </select>
+              @if (erroresPresupuesto()['unidadFuncional']; as e) {
+                <p id="mp-unidad-func-error" class="text-[11px] text-destructive mt-1">{{ e }}</p>
+              }
+            </div>
+
+            <!-- Resumen accesible de la validación (se anuncia al fallar Aceptar). -->
+            <p role="alert" aria-live="assertive" class="sr-only">{{ resumenErroresPresupuesto() }}</p>
+            @if (resumenErroresPresupuesto()) {
+              <div class="flex items-start gap-2 rounded-lg bg-destructive/10 ring-1 ring-destructive/25 px-3 py-2">
+                <lucide-angular [img]="TriangleAlertIcon" class="size-4 text-destructive shrink-0 mt-0.5" />
+                <p class="text-xs text-destructive">{{ resumenErroresPresupuesto() }}</p>
+              </div>
+            }
+          </div>
+
+          <!-- Botonera propia, alineada a la derecha (mostrarAcciones queda en false). -->
+          <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-8">
+            <button
+              type="button"
+              (click)="cancelarPresupuesto()"
+              class="btn-secondary w-full sm:w-auto sm:min-w-[130px]"
+            >Cancelar</button>
+            <button
+              type="button"
+              (click)="aceptarPresupuesto()"
+              class="btn-primary w-full sm:w-auto sm:min-w-[130px]"
+            >Aceptar</button>
+          </div>
+        </app-modal>
       }
 
     </section>
@@ -766,6 +934,7 @@ export class UsuarioFormComponent implements OnInit {
   private readonly listasAdmin = inject(ListasAdminService);
   private readonly permisosService = inject(PermisosMenuService);
   private readonly modales = inject(ModalService);
+  private readonly toast = inject(ToastService);
 
   readonly IdCardIcon = IdCard;
   readonly KeyRoundIcon = KeyRound;
@@ -780,6 +949,8 @@ export class UsuarioFormComponent implements OnInit {
   readonly Trash2Icon = Trash2;
   readonly SquarePlusIcon = SquarePlus;
   readonly TargetIcon = Target;
+  readonly CircleCheckIcon = CircleCheck;
+  readonly TriangleAlertIcon = TriangleAlert;
 
   readonly inpMandatory = INP_MANDATORY;
   readonly inpDisabled = INP_DISABLED;
@@ -1422,10 +1593,130 @@ export class UsuarioFormComponent implements OnInit {
     return !!(v.unidad && v.fuenteFinanc && categoriaOk && v.programaPresup && v.unidadFuncional);
   }
 
+  /* ===== Modal de Datos Presupuestales ===== */
+
+  readonly modalPresupuesto = signal(false);
+  /** Los datos presupuestales se aceptaron en el modal (habilita el guardado). */
+  readonly presupuestoRegistrado = signal(false);
+  readonly erroresPresupuesto = signal<Record<string, string>>({});
+  /** Valores al abrir el modal; Cancelar los restaura sin guardar nada. */
+  private snapshotPresupuesto: Record<string, string> | null = null;
+
+  readonly resumenErroresPresupuesto = computed(() => {
+    const n = Object.keys(this.erroresPresupuesto()).length;
+    if (!n) return '';
+    return n === 1
+      ? 'Falta completar 1 campo obligatorio de los datos presupuestales.'
+      : `Faltan completar ${n} campos obligatorios de los datos presupuestales.`;
+  });
+
+  /** Campos del modal, en el mismo orden en que se muestran. */
+  private camposPresupuesto(): { control: string; etiqueta: string }[] {
+    const campos = [
+      { control: 'unidad', etiqueta: 'Unidad Responsable' },
+      { control: 'fuenteFinanc', etiqueta: 'Fuente de Financiamiento' },
+    ];
+    if (!this.modoJefeArea()) campos.push({ control: 'categoriaPresup', etiqueta: 'Categoría presupuestal' });
+    campos.push(
+      { control: 'programaPresup', etiqueta: this.modoJefeArea() ? 'Categoría' : 'Programa presupuestal' },
+      { control: 'unidadFuncional', etiqueta: 'Unidad Funcional' },
+    );
+    return campos;
+  }
+
+  /** Abre el modal conservando lo ya registrado (permite revisarlo y editarlo). */
+  abrirModalPresupuesto(): void {
+    const v = this.form.getRawValue();
+    this.snapshotPresupuesto = {
+      unidad: v.unidad,
+      fuenteFinanc: v.fuenteFinanc,
+      categoriaPresup: v.categoriaPresup,
+      programaPresup: v.programaPresup,
+      unidadFuncional: v.unidadFuncional,
+    };
+    this.erroresPresupuesto.set({});
+    this.modalPresupuesto.set(true);
+    // Foco inicial en el primer campo (mismo patrón de scroll/foco del formulario).
+    setTimeout(() => (document.getElementById('mp-unidad') as HTMLSelectElement | null)?.focus(), 60);
+  }
+
+  /** Cancelar: restaura los valores previos y no registra nada. */
+  cancelarPresupuesto(): void {
+    if (this.snapshotPresupuesto) this.form.patchValue(this.snapshotPresupuesto);
+    this.snapshotPresupuesto = null;
+    this.erroresPresupuesto.set({});
+    this.modalPresupuesto.set(false);
+    this.formTick.update((t) => t + 1);
+  }
+
+  /** ESC equivale a Cancelar (descarta los cambios del modal). */
+  onEscape(): void {
+    if (this.modalPresupuesto()) this.cancelarPresupuesto();
+  }
+
+  /**
+   * Aceptar: valida que no quede ningún campo vacío. Si falta alguno, marca los
+   * controles y no cierra; si está completo, deja los valores en el formulario
+   * (ya escritos por los propios controles) y marca el registro como completado.
+   */
+  aceptarPresupuesto(): void {
+    const v = this.form.getRawValue() as unknown as Record<string, string>;
+    const errores: Record<string, string> = {};
+    for (const { control, etiqueta } of this.camposPresupuesto()) {
+      if (!v[control]) errores[control] = `${etiqueta} es obligatorio.`;
+    }
+    this.erroresPresupuesto.set(errores);
+    if (Object.keys(errores).length > 0) return;
+
+    this.snapshotPresupuesto = null;
+    this.presupuestoRegistrado.set(true);
+    this.modalPresupuesto.set(false);
+    this.formTick.update((t) => t + 1);
+    this.toast.success(
+      'Datos presupuestales registrados',
+      'Ya puede continuar con el registro del usuario.',
+    );
+  }
+
+  /**
+   * Datos obligatorios de ambas pestañas, con las mismas reglas de presencia que
+   * ya aplican `guardarYContinuar` y `guardarRegistroCompleto` (aquí solo se
+   * evalúan para habilitar el botón; los mensajes siguen viviendo allí).
+   */
+  private datosObligatoriosCompletos(): boolean {
+    const v = this.form.getRawValue();
+    const identidad = !!(v.dni.trim() && v.apePat && v.nombres && v.profesion && v.sexo);
+    const cuenta = !!(v.correo.trim() && v.regimen && v.perfil && v.unidad);
+    const temporal = !this.regimenTemporal() || !!(v.fechaIni && v.fechaFin);
+    const orden = !this.esLocador() || !!v.nroOrden.trim();
+    const periodo = this.periodos().length > 0;
+    const ambito = !perfilRequiereAmbito(v.perfil) || this.ambitos().length > 0;
+    const metas = !this.aplicaMetas() || this.metasAmbito.valid;
+    return identidad && cuenta && temporal && orden && periodo && ambito && metas;
+  }
+
+  /**
+   * En el flujo del Admin General el guardado exige, además del presupuesto
+   * registrado en el modal, que el resto del formulario esté completo. Para los
+   * demás perfiles se conserva el comportamiento actual.
+   */
   readonly guardarBloqueado = computed(() => {
     this.formTick();
-    return this.requierePresupuestoAdminGeneral() && !this.presupuestoCompleto();
+    if (!this.requierePresupuestoAdminGeneral()) return false;
+    return (
+      !this.presupuestoRegistrado() ||
+      !this.presupuestoCompleto() ||
+      !this.datosObligatoriosCompletos()
+    );
   });
+
+  /** Motivo del bloqueo, como ayuda contextual del botón deshabilitado. */
+  motivoGuardarBloqueado(): string {
+    if (!this.presupuestoRegistrado() || !this.presupuestoCompleto()) {
+      return 'Registre los Datos Presupuestales antes de guardar.';
+    }
+    return 'Complete todos los datos obligatorios del formulario antes de guardar.';
+  }
 
   /** Metas por ámbito: solo cuando un Admin DZ_Cap_Asit. registra un Técnico. */
   readonly aplicaMetas = computed(() => {
@@ -1670,13 +1961,6 @@ export class UsuarioFormComponent implements OnInit {
     });
   }
 
-  /** Regresa a la pestaña Datos para completar la sección presupuestal. */
-  irARegistrarDatosPresupuestales(): void {
-    this.tab.set('datos');
-    setTimeout(() => {
-      document.querySelector('select[formcontrolname="unidad"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 80);
-  }
 
   irAPestana(tab: 'datos' | 'permisos'): void {
     if (tab === 'permisos') {
