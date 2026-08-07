@@ -1,251 +1,242 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { LucideAngularModule, User, Lock, ShieldCheck, CircleCheck, CircleX, Info, TriangleAlert, UserCog, KeyRound, Send, X } from 'lucide-angular';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatDialog } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { AuthService } from '../../core/services/auth.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { ListasAdminService } from '../../core/services/listas-admin.service';
-import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodega.model';
+import { PERFILES, UsuarioSodega } from '../../core/models/usuario-sodega.model';
+import { RecuperarClaveDialogComponent } from './recuperar-clave-dialog.component';
+import {
+  ModoSeleccionIngreso,
+  SeleccionIngresoDialogComponent,
+  SeleccionIngresoResult,
+} from './seleccion-ingreso-dialog.component';
 
 /**
  * Login unificado SODEGA (base del proyecto — docs/referencia/sodega-login-permisos.html)
  * con el diseño institucional de dos columnas del sistema MIDAGRI:
  *  - Validación en vivo del usuario unificado.
- *  - Modal de selección: Admin General elige perfil; múltiples registros eligen Unidad (OPA).
+ *  - Diálogo de selección: Admin General elige perfil; múltiples registros eligen Unidad (OPA).
  * TODO(backend): validar credenciales contra POST /auth/login.
  */
 @Component({
   selector: 'app-login',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, LucideAngularModule],
+  imports: [
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatCardModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+  ],
   template: `
-    <div class="min-h-screen flex bg-background">
+    <div class="acceso">
       <!-- Panel institucional -->
-      <div class="hidden lg:flex flex-1 bg-sidebar text-sidebar-foreground p-12 flex-col justify-between relative overflow-hidden">
-        <div
-          class="absolute inset-0 opacity-10"
-          style="background-image: radial-gradient(circle at 20% 80%, var(--brand-secondary) 0%, transparent 40%), radial-gradient(circle at 80% 20%, var(--brand) 0%, transparent 40%)"
-        ></div>
-        <div class="relative">
-          <div class="flex items-center gap-3">
-            <div class="size-10 bg-brand rounded-md flex items-center justify-center font-bold">M</div>
-            <div>
-              <div class="text-[10px] uppercase tracking-widest text-sidebar-muted">Ministerio de Desarrollo Agrario y Riego</div>
-              <div class="font-semibold">MIDAGRI · Perú</div>
-            </div>
+      <aside class="panel-institucional">
+        <div class="marca">
+          <div class="logo" aria-hidden="true">M</div>
+          <div>
+            <p class="ministerio">Ministerio de Desarrollo Agrario y Riego</p>
+            <p class="pais">MIDAGRI · Perú</p>
           </div>
         </div>
-        <div class="relative max-w-md">
-          <h1 class="text-3xl font-semibold leading-tight">Sistema institucional de capacitaciones y asistencias técnicas.</h1>
-          <p class="mt-4 text-sm text-sidebar-muted">
-            Registro centralizado para áreas usuarias: SODEGA, DGDG, DGDAA, DGAAA, DGASFS, PSI, UEFSA, AGRORURAL, ANA y PEAH.
+
+        <div class="lema">
+          <h1>Sistema institucional de capacitaciones y asistencias técnicas.</h1>
+          <p>
+            Registro centralizado para áreas usuarias: SODEGA, DGDG, DGDAA, DGAAA, DGASFS, PSI,
+            UEFSA, AGRORURAL, ANA y PEAH.
           </p>
         </div>
-        <div class="relative text-[11px] text-sidebar-muted flex items-center gap-2">
-          <lucide-angular [img]="ShieldCheckIcon" class="size-3.5" />
+
+        <p class="seguridad">
+          <mat-icon fontSet="material-symbols-outlined">verified_user</mat-icon>
           Cumplimiento con los estándares de seguridad de la institución.
-        </div>
-      </div>
+        </p>
+      </aside>
 
       <!-- Panel de acceso -->
-      <div class="flex-1 flex items-center justify-center p-6">
-        <form [formGroup]="form" (ngSubmit)="procesarIngreso()" class="w-full max-w-sm space-y-6 animate-page-in">
-          <div>
-            <div class="text-[10px] uppercase tracking-widest text-brand font-semibold mb-2">Acceso institucional</div>
-            <h2 class="text-2xl font-semibold">Iniciar sesión</h2>
-            <p class="text-sm text-muted-foreground mt-1">Usa tu usuario institucional MIDAGRI.</p>
-            <div class="mt-3 rounded-md bg-brand/10 ring-1 ring-brand/20 px-3 py-2 text-[11px] text-brand space-y-0.5">
-              <div><strong>Acceso unificado SODEGA</strong> · cualquier clave</div>
-              <div>• <code>ccandelaria</code> — Administrador General (elige su perfil al ingresar)</div>
-              <div>• <code>candelab</code> — alias del mismo usuario master</div>
-              <div>• Los demás usuarios se crean en <strong>Gestión de Usuarios</strong></div>
-            </div>
-          </div>
+      <main class="panel-acceso">
+        <mat-card appearance="outlined" class="tarjeta">
+          <mat-card-content>
+            <form [formGroup]="form" (ngSubmit)="procesarIngreso()">
+              <p class="antetitulo">Acceso institucional</p>
+              <h2>Iniciar sesión</h2>
+              <p class="subtitulo">Usa tu usuario institucional MIDAGRI.</p>
 
-          @if (error()) {
-            <div class="rounded-md bg-destructive/10 ring-1 ring-destructive/30 px-3 py-2 text-xs text-destructive flex items-center gap-2">
-              <lucide-angular [img]="TriangleAlertIcon" class="size-4 shrink-0" />
-              {{ error() }}
-            </div>
-          }
+              <div class="ayuda-demo">
+                <p><strong>Acceso unificado SODEGA</strong> · cualquier clave</p>
+                <p>• <code>ccandelaria</code> — Administrador General (elige su perfil al ingresar)</p>
+                <p>• <code>candelab</code> — alias del mismo usuario master</p>
+                <p>• Los demás usuarios se crean en <strong>Gestión de Usuarios</strong></p>
+              </div>
 
-          <div class="space-y-3">
-            <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Usuario</label>
-              <div class="relative">
-                <lucide-angular [img]="UserIcon" class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              @if (error(); as e) {
+                <div class="aviso-error" role="alert">
+                  <mat-icon fontSet="material-symbols-outlined">warning</mat-icon>
+                  <span>{{ e }}</span>
+                </div>
+              }
+
+              <mat-form-field class="campo">
+                <mat-label>Usuario</mat-label>
+                <mat-icon matPrefix fontSet="material-symbols-outlined">person</mat-icon>
                 <input
+                  matInput
                   formControlName="usuario"
                   required
-                  class="w-full bg-card ring-1 ring-border rounded-lg pl-9 pr-3 py-2.5 text-sm placeholder:text-muted-foreground/60 hover:ring-muted-foreground/30 focus:ring-2 focus:ring-ring outline-none transition-[box-shadow] duration-150"
                   placeholder="ccandelaria"
+                  autocomplete="username"
+                  aria-label="Usuario institucional"
                 />
-              </div>
-              <div class="text-[10px] mt-1.5 font-bold flex items-center gap-1.5" [class]="validacionClase()">
-                <lucide-angular [img]="validacionIcono()" class="size-3" />
-                {{ validacionTexto() }}
-              </div>
-            </div>
-            <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Contraseña</label>
-              <div class="relative">
-                <lucide-angular [img]="LockIcon" class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <mat-hint [class]="validacionClase()">
+                  <mat-icon fontSet="material-symbols-outlined" class="icono-hint">{{ validacionIcono() }}</mat-icon>
+                  {{ validacionTexto() }}
+                </mat-hint>
+              </mat-form-field>
+
+              <mat-form-field class="campo">
+                <mat-label>Contraseña</mat-label>
+                <mat-icon matPrefix fontSet="material-symbols-outlined">lock</mat-icon>
                 <input
+                  matInput
                   type="password"
                   formControlName="password"
                   required
-                  class="w-full bg-card ring-1 ring-border rounded-lg pl-9 pr-3 py-2.5 text-sm placeholder:text-muted-foreground/60 hover:ring-muted-foreground/30 focus:ring-2 focus:ring-ring outline-none transition-[box-shadow] duration-150"
-                  placeholder="••••••••"
+                  autocomplete="current-password"
+                  aria-label="Contraseña"
                 />
-              </div>
-              <a href="#" (click)="$event.preventDefault(); abrirRecuperarClave()" class="text-[11px] text-brand mt-1 inline-block hover:underline">Recuperar Contraseña</a>
-            </div>
-          </div>
+              </mat-form-field>
 
-          <button class="btn-primary w-full h-11">
-            Ingresar al sistema
-          </button>
+              <button matButton type="button" class="enlace-clave" (click)="abrirRecuperarClave()">
+                Recuperar Contraseña
+              </button>
 
-          <p class="text-[11px] text-muted-foreground text-center">
-            Al ingresar aceptas las políticas de protección de datos personales (Ley N° 29733).
-          </p>
-        </form>
-      </div>
+              <button matButton="filled" type="submit" class="boton-ingresar">
+                Ingresar al sistema
+              </button>
+
+              <p class="legal">
+                Al ingresar aceptas las políticas de protección de datos personales (Ley N° 29733).
+              </p>
+            </form>
+          </mat-card-content>
+        </mat-card>
+      </main>
     </div>
-
-    <!-- Modal Selección de ingreso (Acceso Selectivo) -->
-    @if (modalOpen()) {
-      <div class="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-foreground/70 backdrop-blur-sm animate-overlay-in">
-        <div class="bg-card rounded-2xl shadow-lg ring-1 ring-border p-6 w-[520px] max-w-full text-foreground animate-modal-in">
-          <div class="text-center mb-5">
-            <div class="w-16 h-16 bg-brand-soft rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
-              <lucide-angular [img]="UserCogIcon" class="size-8 text-brand" />
-            </div>
-            <h3 class="text-lg font-bold">
-              {{ modo() === 'seleccion-perfil'
-                ? 'Seleccione el Perfil para su ingreso al sistema'
-                : 'Seleccione la Unidad Responsable para el Ingreso al Sistema' }}
-            </h3>
-            <p class="text-[11px] text-muted-foreground mt-2 leading-relaxed px-4 font-medium">
-              Se ha detectado múltiples registros o privilegios activos a su cuenta de acceso
-              institucional. Por favor, seleccione el perfil con el que desea iniciar la presente
-              sesión de trabajo.
-            </p>
-          </div>
-          <div class="space-y-4">
-            @if (modo() === 'seleccion-opa') {
-              <div>
-                <label class="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                  Unidad Responsable / OPA <span class="text-destructive">*</span>
-                </label>
-                <select
-                  [value]="opaSeleccionada()"
-                  (change)="opaSeleccionada.set($any($event.target).value)"
-                  class="w-full ring-1 ring-border p-3 rounded-xl text-xs outline-none focus:ring-2 focus:ring-ring bg-card font-semibold transition-[box-shadow] duration-150"
-                >
-                  @for (r of registros(); track r.id) {
-                    <option [value]="r.unidad">{{ r.unidad }}</option>
-                  }
-                </select>
-              </div>
-              <div>
-                <label class="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Perfil Autorizado</label>
-                <input
-                  type="text"
-                  readonly
-                  [value]="perfilPorOpa()"
-                  class="w-full ring-1 ring-border p-3 rounded-xl text-xs outline-none bg-muted font-bold text-muted-foreground cursor-not-allowed"
-                />
-              </div>
-            } @else {
-              <div>
-                <label class="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                  Perfil Autorizado <span class="text-destructive">*</span>
-                </label>
-                <select
-                  [value]="perfilSeleccionado()"
-                  (change)="perfilSeleccionado.set($any($event.target).value)"
-                  class="w-full ring-1 ring-border p-3 rounded-xl text-xs outline-none focus:ring-2 focus:ring-ring bg-card font-semibold transition-[box-shadow] duration-150"
-                >
-                  @for (p of perfiles(); track p) {
-                    <option [value]="p">{{ p }}</option>
-                  }
-                </select>
-              </div>
-            }
-
-            <div class="flex gap-2">
-              <button
-                (click)="modalOpen.set(false)"
-                class="btn-secondary w-1/3 h-11"
-              >Cancelar</button>
-              <button
-                (click)="confirmarIngreso()"
-                class="btn-primary w-2/3 h-11"
-              >Ingresar al Sistema</button>
-            </div>
-          </div>
-        </div>
-      </div>
+  `,
+  styles: `
+    /* Maquetación a dos columnas: Angular Material no ofrece un componente de
+       layout para este patrón, por lo que se resuelve con CSS Grid sobre los
+       tokens del tema. */
+    .acceso {
+      min-height: 100dvh;
+      display: grid;
+      grid-template-columns: 1fr;
+      background: var(--mat-sys-background);
+    }
+    @media (min-width: 1024px) {
+      .acceso { grid-template-columns: 1fr 1fr; }
+      .panel-institucional { display: flex !important; }
     }
 
-    <!-- Modal Recuperar Contraseña -->
-    @if (recuperarOpen()) {
-      <div class="fixed inset-0 z-[96] flex items-center justify-center p-4 bg-foreground/70 backdrop-blur-sm animate-overlay-in">
-        <div class="bg-card rounded-2xl shadow-lg ring-1 ring-border w-[460px] max-w-full text-foreground overflow-hidden animate-modal-in">
-          <div class="px-6 py-4 bg-primary text-primary-foreground flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="size-10 rounded-xl bg-primary-foreground/15 flex items-center justify-center">
-                <lucide-angular [img]="KeyRoundIcon" class="size-5" />
-              </div>
-              <div>
-                <h3 class="text-base font-bold">Recuperar Contraseña</h3>
-                <p class="text-[10px] opacity-80 font-semibold mt-0.5">Sistema SODEGA</p>
-              </div>
-            </div>
-            <button (click)="recuperarOpen.set(false)" class="size-8 rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 transition-colors flex items-center justify-center" title="Cerrar" aria-label="Cerrar">
-              <lucide-angular [img]="XIcon" class="size-4" />
-            </button>
-          </div>
-          <div class="p-6 space-y-4">
-            @if (recuperarEnviado()) {
-              <div class="rounded-md bg-success-soft ring-1 ring-success/30 px-3 py-2 text-xs text-success flex items-center gap-2">
-                <lucide-angular [img]="CircleCheckIcon" class="size-4 shrink-0" />
-                La nueva clave fue enviada al correo electrónico registrado.
-              </div>
-              <div class="flex justify-end">
-                <button (click)="recuperarOpen.set(false)" class="btn-primary px-6">Aceptar</button>
-              </div>
-            } @else {
-              <p class="text-xs text-muted-foreground leading-relaxed">
-                Por favor, ingrese el correo electrónico que tiene registrado en el sistema, la nueva clave se enviará a este correo.
-              </p>
-              <div>
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">
-                  Correo electrónico <span class="text-destructive">*</span>
-                </label>
-                <input
-                  type="email"
-                  [value]="recuperarCorreo()"
-                  (input)="recuperarCorreo.set($any($event.target).value); recuperarError.set('')"
-                  (keyup.enter)="enviarNuevaClave()"
-                  placeholder="correo@midagri.gob.pe"
-                  class="w-full bg-card ring-1 ring-border rounded-lg px-3 py-2.5 text-sm placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-ring outline-none transition-[box-shadow] duration-150"
-                />
-                @if (recuperarError()) {
-                  <p class="text-[11px] text-destructive font-semibold mt-1.5">{{ recuperarError() }}</p>
-                }
-              </div>
-              <div class="flex justify-end gap-2 pt-2 border-t border-border">
-                <button (click)="recuperarOpen.set(false)" class="btn-secondary">Cancelar</button>
-                <button (click)="enviarNuevaClave()" class="btn-primary px-5">
-                  <lucide-angular [img]="SendIcon" class="size-3.5" /> Enviar nueva clave
-                </button>
-              </div>
-            }
-          </div>
-        </div>
-      </div>
+    .panel-institucional {
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 32px;
+      padding: 48px;
+      background: var(--mat-sys-primary);
+      color: var(--mat-sys-on-primary);
+    }
+    .marca { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: var(--mat-sys-corner-small);
+      background: var(--mat-sys-on-primary);
+      color: var(--mat-sys-primary);
+      font: var(--mat-sys-title-medium);
+      font-weight: 700;
+    }
+    .ministerio {
+      margin: 0;
+      font: var(--mat-sys-label-small);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      opacity: 0.85;
+    }
+    .pais { margin: 0; font: var(--mat-sys-title-small); }
+    .lema { max-width: 30rem; }
+    .lema h1 { font: var(--mat-sys-headline-large); margin: 0 0 16px; }
+    .lema p { font: var(--mat-sys-body-medium); margin: 0; opacity: 0.85; }
+    .seguridad {
+      display: flex; align-items: center; gap: 8px;
+      font: var(--mat-sys-label-medium);
+      opacity: 0.85;
+      margin: 0;
+    }
+    .seguridad mat-icon { font-size: 18px; width: 18px; height: 18px; }
+
+    .panel-acceso {
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .tarjeta { width: 100%; max-width: 26rem; }
+    form { display: flex; flex-direction: column; }
+    .antetitulo {
+      margin: 0 0 4px;
+      font: var(--mat-sys-label-small);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--mat-sys-primary);
+      font-weight: 600;
+    }
+    h2 { font: var(--mat-sys-headline-small); margin: 0; }
+    .subtitulo {
+      font: var(--mat-sys-body-medium);
+      color: var(--mat-sys-on-surface-variant);
+      margin: 4px 0 16px;
+    }
+    .ayuda-demo {
+      padding: 12px;
+      border-radius: var(--mat-sys-corner-small);
+      background: var(--mat-sys-surface-container);
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-body-small);
+      margin-bottom: 20px;
+    }
+    .ayuda-demo p { margin: 0 0 2px; }
+    .ayuda-demo code { font-family: 'IBM Plex Mono', monospace; }
+    .aviso-error {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px;
+      border-radius: var(--mat-sys-corner-small);
+      background: var(--mat-sys-error-container);
+      color: var(--mat-sys-on-error-container);
+      font: var(--mat-sys-body-small);
+      margin-bottom: 16px;
+    }
+    .campo { width: 100%; }
+    mat-hint { display: flex; align-items: center; gap: 4px; }
+    .icono-hint { font-size: 14px; width: 14px; height: 14px; }
+    .hint-ok { color: var(--mat-sys-primary); }
+    .hint-error { color: var(--mat-sys-error); }
+    .hint-neutro { color: var(--mat-sys-on-surface-variant); }
+    .enlace-clave { align-self: flex-start; margin-bottom: 8px; }
+    .boton-ingresar { height: 48px; margin-top: 8px; }
+    .legal {
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+      text-align: center;
+      margin: 16px 0 0;
     }
   `,
 })
@@ -255,31 +246,12 @@ export class LoginComponent {
   private readonly usuariosService = inject(UsuariosService);
   private readonly listasAdmin = inject(ListasAdminService);
   private readonly router = inject(Router);
-
-  readonly UserIcon = User;
-  readonly LockIcon = Lock;
-  readonly ShieldCheckIcon = ShieldCheck;
-  readonly TriangleAlertIcon = TriangleAlert;
-  readonly UserCogIcon = UserCog;
-  readonly KeyRoundIcon = KeyRound;
-  readonly SendIcon = Send;
-  readonly XIcon = X;
-  readonly CircleCheckIcon = CircleCheck;
+  private readonly dialog = inject(MatDialog);
 
   /** Perfiles oficiales + personalizados de la lista "Perfil Autorizado". */
   readonly perfiles = computed(() => this.listasAdmin.perfilesAutorizados(PERFILES));
 
   readonly error = signal('');
-  /* Modal Recuperar Contraseña */
-  readonly recuperarOpen = signal(false);
-  readonly recuperarCorreo = signal('');
-  readonly recuperarError = signal('');
-  readonly recuperarEnviado = signal(false);
-  readonly modalOpen = signal(false);
-  readonly modo = signal<'seleccion-perfil' | 'seleccion-opa'>('seleccion-opa');
-  readonly registros = signal<UsuarioSodega[]>([]);
-  readonly opaSeleccionada = signal('');
-  readonly perfilSeleccionado = signal<Perfil>('Administrador General');
   private readonly formTick = signal(0);
 
   readonly form = this.fb.nonNullable.group({
@@ -307,20 +279,15 @@ export class LoginComponent {
 
   readonly validacionClase = computed(() => {
     const u = this.usuarioActual();
-    if (!u) return 'text-muted-foreground';
-    return this.auth.usuarioReconocido(u) ? 'text-success' : 'text-destructive';
+    if (!u) return 'hint-neutro';
+    return this.auth.usuarioReconocido(u) ? 'hint-ok' : 'hint-error';
   });
 
+  /** Ligadura de Material Symbols equivalente al icono anterior. */
   readonly validacionIcono = computed(() => {
     const u = this.usuarioActual();
-    if (!u) return Info;
-    return this.auth.usuarioReconocido(u) ? CircleCheck : CircleX;
-  });
-
-  /** Perfil asociado a la unidad elegida en el modo selección de OPA. */
-  readonly perfilPorOpa = computed(() => {
-    const reg = this.registros().find((r) => r.unidad === this.opaSeleccionada());
-    return reg?.perfil ?? '';
+    if (!u) return 'info';
+    return this.auth.usuarioReconocido(u) ? 'check_circle' : 'cancel';
   });
 
   /* ===== Flujo de ingreso ===== */
@@ -341,16 +308,10 @@ export class LoginComponent {
         this.error.set('Su cuenta se encuentra actualmente INHABILITADA en el sistema.');
         return;
       case 'seleccion-perfil':
-        this.registros.set(resolucion.registros);
-        this.modo.set('seleccion-perfil');
-        this.perfilSeleccionado.set('Administrador General');
-        this.modalOpen.set(true);
+        this.abrirSeleccion('seleccion-perfil', resolucion.registros);
         return;
       case 'seleccion-opa':
-        this.registros.set(resolucion.registros);
-        this.modo.set('seleccion-opa');
-        this.opaSeleccionada.set(resolucion.registros[0]?.unidad ?? '');
-        this.modalOpen.set(true);
+        this.abrirSeleccion('seleccion-opa', resolucion.registros);
         return;
       case 'directo':
         this.auth.confirmarIngreso(resolucion.registro);
@@ -359,14 +320,29 @@ export class LoginComponent {
     }
   }
 
-  confirmarIngreso(): void {
-    if (this.modo() === 'seleccion-perfil') {
-      const perfil = this.perfilSeleccionado();
+  private abrirSeleccion(modo: ModoSeleccionIngreso, registros: UsuarioSodega[]): void {
+    this.dialog
+      .open(SeleccionIngresoDialogComponent, {
+        data: { modo, registros, perfiles: this.perfiles() },
+        width: '520px',
+        maxWidth: '95vw',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+      })
+      .afterClosed()
+      .subscribe((r: SeleccionIngresoResult | undefined) => {
+        if (r) this.confirmarIngreso(r, registros);
+      });
+  }
+
+  private confirmarIngreso(seleccion: SeleccionIngresoResult, registros: UsuarioSodega[]): void {
+    if (seleccion.perfil) {
+      const perfil = seleccion.perfil;
       const base =
-        this.registros().find((r) => r.perfil === perfil) ??
+        registros.find((r) => r.perfil === perfil) ??
         // Perfil personalizado: hereda el registro habilitado de un usuario de ese perfil
         this.usuariosService.usuarios().find((u) => u.estado === 'HABILITADO' && u.perfil === perfil) ??
-        this.registros()[0] ??
+        registros[0] ??
         this.usuariosService.findByUserGen('ccandelaria')[0];
       if (!base) {
         this.error.set('Error de consistencia de privilegios al procesar su solicitud.');
@@ -381,41 +357,23 @@ export class LoginComponent {
         'Administrador General',
       );
     } else {
-      const registro = this.registros().find((r) => r.unidad === this.opaSeleccionada());
+      const registro = registros.find((r) => r.unidad === seleccion.unidad);
       if (!registro) {
         this.error.set('Error de consistencia de privilegios al procesar su solicitud.');
         return;
       }
       this.auth.confirmarIngreso(registro);
     }
-    this.modalOpen.set(false);
     this.router.navigate(['/dashboard']);
   }
 
   /* ===== Recuperar Contraseña (POST /auth/recuperar-clave simulado) ===== */
-
   abrirRecuperarClave(): void {
-    this.recuperarCorreo.set('');
-    this.recuperarError.set('');
-    this.recuperarEnviado.set(false);
-    this.recuperarOpen.set(true);
-  }
-
-  enviarNuevaClave(): void {
-    const correo = this.recuperarCorreo().trim().toLowerCase();
-    const formatoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
-    if (!correo || !formatoValido) {
-      this.recuperarError.set('Ingrese un correo electrónico válido.');
-      return;
-    }
-    const existe = this.usuariosService
-      .usuarios()
-      .some((u) => (u.correo || '').trim().toLowerCase() === correo);
-    if (!existe) {
-      this.recuperarError.set('El correo ingresado no se encuentra registrado en el sistema.');
-      return;
-    }
-    // TODO(backend): POST /auth/recuperar-clave { correo }
-    this.recuperarEnviado.set(true);
+    this.dialog.open(RecuperarClaveDialogComponent, {
+      width: '460px',
+      maxWidth: '95vw',
+      autoFocus: 'first-tabbable',
+      restoreFocus: true,
+    });
   }
 }

@@ -6,15 +6,25 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "screenshots": "node e2e/screenshots.mjs",
+    "screenshots:setup": "playwright install chromium",
+    "screenshots:rapido": "node e2e/screenshots.mjs --fase=principal --viewports=desktop --temas=naturaleza-viva",
+    "screenshots:dev": "node e2e/screenshots.mjs --base-url=http://localhost:4200 --modo=serve",
+    "analizar": "node e2e/analizar-codigo.mjs",
+    "evidencia": "npm run analizar && node e2e/evidencia.mjs",
+    "documentacion": "npm run screenshots && npm run evidencia"
   },
   "private": true,
   "packageManager": "npm@11.16.0",
   "dependencies": {
+    "@angular/animations": "^22.1.0",
+    "@angular/cdk": "^22.1.1",
     "@angular/common": "^22.0.0",
     "@angular/compiler": "^22.0.0",
     "@angular/core": "^22.0.0",
     "@angular/forms": "^22.0.0",
+    "@angular/material": "^22.1.1",
     "@angular/platform-browser": "^22.0.0",
     "@angular/router": "^22.0.0",
     "@tailwindcss/postcss": "^4.3.2",
@@ -29,6 +39,7 @@
     "@angular/build": "^22.0.5",
     "@angular/cli": "^22.0.5",
     "@angular/compiler-cli": "^22.0.0",
+    "playwright": "^1.56.0",
     "prettier": "^3.8.1",
     "typescript": "~6.0.2"
   }

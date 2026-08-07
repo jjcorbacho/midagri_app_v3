@@ -1,0 +1,86 @@
+@use '@angular/material' as mat;
+
+/* ============================================================
+   TEMA INSTITUCIONAL MIDAGRI — Angular Material 3
+   ------------------------------------------------------------
+   Único sistema de diseño de la aplicación. `mat.theme()` emite los
+   tokens de sistema `--mat-sys-*` (color, tipografía, forma y
+   elevación) que consumen todos los componentes de Material.
+
+   Se conservan los dos temas conmutables del sistema ("Personalizar
+   apariencia"): el tema base es Naturaleza Viva —verde institucional—
+   e `[data-theme='innovacion-rural']` redefine únicamente los tokens
+   de color, de modo que tipografía, densidad y forma no se duplican.
+
+   Contraste: los pares primary/on-primary y surface/on-surface se
+   mantienen en AA, igual que en el design system anterior.
+   ============================================================ */
+
+html {
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$green-palette,
+        tertiary: mat.$azure-palette,
+        theme-type: light,
+      ),
+      typography: (
+        plain-family: 'DM Sans, system-ui, sans-serif',
+        brand-family: 'DM Sans, system-ui, sans-serif',
+        bold-weight: 700,
+        medium-weight: 500,
+        regular-weight: 400,
+      ),
+      density: 0,
+    )
+  );
+
+  /* Superficie institucional: fondo muy claro y tarjetas en blanco. */
+  --mat-sys-background: #f8fafc;
+  --mat-sys-surface: #ffffff;
+
+  color-scheme: light;
+}
+
+/* ------------------------------------------------------------
+   Tema 2 — Innovación Rural (azul agua / digitalización).
+   Solo color: hereda tipografía, densidad y forma del bloque base.
+   ------------------------------------------------------------ */
+html[data-theme='innovacion-rural'] {
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$cyan-palette,
+        theme-type: light,
+      ),
+    )
+  );
+
+  --mat-sys-background: #f5f9fd;
+  --mat-sys-surface: #ffffff;
+}
+
+/* ------------------------------------------------------------
+   Base tipográfica y de superficie de la aplicación.
+   ------------------------------------------------------------ */
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--mat-sys-background);
+  color: var(--mat-sys-on-background);
+  font: var(--mat-sys-body-medium);
+}
+
+/* Material Symbols: ligadura y ajuste óptico estándar de Material 3. */
+.material-symbols-outlined {
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+}
