@@ -1,11 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import {
-  LucideAngularModule,
-  Users, UserCheck, UserX, Infinity as InfinityIcon, Clock, TriangleAlert,
-  FileSpreadsheet, UserPlus, Search, UserPen, FilePlus2,
-  KeyRound, MapPinned, Workflow, CirclePlus,
-} from 'lucide-angular';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatPaginatorIntl, MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../core/services/auth.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -13,49 +17,55 @@ import { estadoVigenciaDe, formatearPeriodo, mesesDeRango, UsuarioSodega, esUsua
 import { formatearUbigeoTexto } from '../../core/constants/sodega.const';
 import { ModalService } from '../../core/services/modal.service';
 import { ColumnSelectorComponent, ColumnaTabla } from '../../shared/components/column-selector/column-selector.component';
+import { KpiCardComponent, KpiTone } from '../../shared/components/kpi-card/kpi-card.component';
+import { paginatorIntlEs } from '../../shared/utils/paginator-intl.es';
 import {
-  ReasignarRegistroModalComponent,
+  ReasignarRegistroData,
+  ReasignarRegistroDialogComponent,
   ResultadoReasignacion,
-} from './reasignar-registro-modal.component';
+} from './reasignar-registro-dialog.component';
 
 type FiltroKpi = 'TOTAL' | 'HABILITADO' | 'INHABILITADO' | 'PERMANENTE' | 'CRITICOS' | 'VENCIDOS';
-
-/** Badge pill base (mismo patrón que EstadoBadge de la bandeja N1). */
-const BADGE_PILL =
-  'inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 whitespace-nowrap tracking-wide';
 
 /**
  * Configuración de las columnas de la grilla de usuarios.
  * Para incorporar una columna nueva basta con añadir su entrada aquí y su
- * `@case` en la celda: la cabecera, el colspan y el selector son dinámicos.
+ * `@case` en la celda: la cabecera, el paginado y el selector son dinámicos.
+ * El ancho de cada columna vive en los estilos, en `.mat-column-<id>`.
  */
 const COLUMNAS_USUARIOS: ColumnaTabla[] = [
-  { id: 'acciones', nombre: 'Acciones', visible: true, obligatoria: true, orden: 1, clase: 'text-center min-w-[220px]' },
-  { id: 'empleado', nombre: 'Empleado', visible: true, orden: 2, clase: 'w-56' },
-  { id: 'estado', nombre: 'Estado', visible: false, orden: 3, clase: 'text-center w-28' },
-  { id: 'usuario', nombre: 'Usuario', visible: false, orden: 4, clase: 'w-28' },
-  { id: 'dni', nombre: 'DNI', visible: false, orden: 5, clase: 'w-24' },
-  { id: 'perfil', nombre: 'Perfil', visible: true, orden: 6, clase: 'w-48' },
-  { id: 'regimen', nombre: 'Tipo de Régimen', visible: true, orden: 7, clase: 'w-44' },
-  { id: 'unidadResponsable', nombre: 'Unidad Responsable', visible: false, orden: 8, clase: 'w-64' },
-  { id: 'unidadFuncional', nombre: 'Unidad Funcional', visible: false, orden: 9, clase: 'w-64' },
-  { id: 'periodo', nombre: 'Periodo de Gestión', visible: true, orden: 10, clase: 'w-40' },
-  { id: 'vigencia', nombre: 'Vigencia', visible: true, orden: 11, clase: 'w-48' },
-  { id: 'vencimiento', nombre: 'Vencimiento', visible: true, orden: 12, clase: 'w-28' },
-  { id: 'progPresup', nombre: 'Prog. presupuestal', visible: false, orden: 13, clase: 'w-64' },
-  { id: 'ubigeo', nombre: 'Ubigeo', visible: false, orden: 14, clase: 'w-24' },
+  { id: 'acciones', nombre: 'Acciones', visible: true, obligatoria: true, orden: 1 },
+  { id: 'empleado', nombre: 'Empleado', visible: true, orden: 2 },
+  { id: 'estado', nombre: 'Estado', visible: false, orden: 3 },
+  { id: 'usuario', nombre: 'Usuario', visible: false, orden: 4 },
+  { id: 'dni', nombre: 'DNI', visible: false, orden: 5 },
+  { id: 'perfil', nombre: 'Perfil', visible: true, orden: 6 },
+  { id: 'regimen', nombre: 'Tipo de Régimen', visible: true, orden: 7 },
+  { id: 'unidadResponsable', nombre: 'Unidad Responsable', visible: false, orden: 8 },
+  { id: 'unidadFuncional', nombre: 'Unidad Funcional', visible: false, orden: 9 },
+  { id: 'periodo', nombre: 'Periodo de Gestión', visible: true, orden: 10 },
+  { id: 'vigencia', nombre: 'Vigencia', visible: true, orden: 11 },
+  { id: 'vencimiento', nombre: 'Vencimiento', visible: true, orden: 12 },
+  { id: 'progPresup', nombre: 'Prog. presupuestal', visible: false, orden: 13 },
+  { id: 'ubigeo', nombre: 'Ubigeo', visible: false, orden: 14 },
 ];
 
-/** Tonos de los iconos de acción (mismo patrón ICON_TONES de la bandeja N1). */
-const ICON_TONES: Record<string, string> = {
-  teal: 'bg-brand-soft text-brand hover:bg-brand hover:text-brand-foreground',
-  blue: 'bg-state-validado-soft text-state-validado-foreground hover:bg-state-validado hover:text-primary-foreground',
-  red: 'bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground',
-  amber: 'bg-state-subsanado-soft text-state-subsanado-foreground hover:bg-state-subsanado hover:text-primary-foreground',
-  slate: 'bg-muted text-muted-foreground hover:bg-foreground hover:text-background',
-  /* Agregar Nuevo Servicio (renovación de vigencia expirada). */
-  green: 'bg-state-aprobado-soft text-state-aprobado-foreground hover:bg-state-aprobado hover:text-primary-foreground',
-};
+/** Acciones de fila: icono, tono y ayuda contextual. */
+interface AccionFila {
+  tipo: 'EDITAR' | 'PRESUPUESTO' | 'CLAVE' | 'REASIGNAR_REGISTRO' | 'ESTADO' | 'NUEVO_SERVICIO';
+  icono: string;
+  etiqueta: string;
+  tono: string;
+}
+
+const ACCIONES: AccionFila[] = [
+  { tipo: 'EDITAR', icono: 'edit', etiqueta: 'Editar Datos', tono: 'a-neutro' },
+  { tipo: 'PRESUPUESTO', icono: 'note_add', etiqueta: 'Agregar nueva Presupuestal', tono: 'a-marca' },
+  { tipo: 'CLAVE', icono: 'key', etiqueta: 'Restablecer clave', tono: 'a-alerta' },
+  { tipo: 'REASIGNAR_REGISTRO', icono: 'pin_drop', etiqueta: 'Reasignar Registro', tono: 'a-info' },
+  { tipo: 'ESTADO', icono: 'toggle_on', etiqueta: 'Cambiar Estado', tono: 'a-error' },
+  { tipo: 'NUEVO_SERVICIO', icono: 'add_circle', etiqueta: 'Agregar Nuevo Servicio', tono: 'a-exito' },
+];
 
 /**
  * Gestión Integral de Usuarios (módulo base SODEGA).
@@ -64,262 +74,309 @@ const ICON_TONES: Record<string, string> = {
 @Component({
   selector: 'app-gestion-usuarios',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, ReasignarRegistroModalComponent, ColumnSelectorComponent],
+  // Etiquetas del paginador en español; se declara aquí para que Material
+  // viaje en el chunk diferido de la vista y no en el bundle inicial.
+  providers: [{ provide: MatPaginatorIntl, useFactory: paginatorIntlEs }],
+  imports: [
+    MatButtonModule,
+    MatCardModule,
+    MatChipsModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatPaginatorModule,
+    MatTableModule,
+    MatTooltipModule,
+    ColumnSelectorComponent,
+    KpiCardComponent,
+  ],
   template: `
-    <section class="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6 animate-page-in">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+    <section class="pagina">
+      <header class="cabecera">
         <div>
-          <h1 class="text-h1 text-foreground">Gestión Integral de Usuarios</h1>
-          <p class="text-sm text-muted-foreground mt-1 max-w-[70ch]">
+          <h1>Gestión Integral de Usuarios</h1>
+          <p>
             Administra usuarios, perfiles, vigencias laborales, ámbitos presupuestales y permisos de acceso del sistema SODEGA.
           </p>
         </div>
-        <div class="text-[11px] px-2.5 py-1 rounded-full bg-brand-soft text-brand ring-1 ring-brand/30 font-bold whitespace-nowrap">
-          Año Fiscal: <span class="font-black">2026</span>
-        </div>
-      </div>
+        <span class="anio-fiscal">Año Fiscal: <strong>2026</strong></span>
+      </header>
 
-      <!-- PANEL DE 6 TARJETAS KPI -->
-      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+      <!-- PANEL DE 6 TARJETAS KPI (cada una filtra la grilla) -->
+      <div class="kpis">
         @for (k of kpiDefs; track k.filtro) {
-          <button
-            (click)="setFiltro(k.filtro)"
-            class="bg-card p-5 rounded-xl flex justify-between items-center text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
-            [class]="filtro() === k.filtro ? 'ring-2 ring-brand shadow-md' : 'ring-1 ring-border shadow-sm'"
-          >
-            <div>
-              <p class="text-[10px] font-bold uppercase tracking-wider mb-1" [class]="k.labelCls">{{ k.label }}</p>
-              <p class="text-3xl font-bold tabular-nums" [class]="k.numCls">{{ kpis()[k.filtro] }}</p>
-            </div>
-            <div class="size-12 rounded-xl flex items-center justify-center shrink-0" [class]="k.iconBg">
-              <lucide-angular [img]="k.icon" class="size-6" />
-            </div>
-          </button>
+          <app-kpi-card
+            [label]="k.label"
+            [value]="kpis()[k.filtro]"
+            [icon]="k.icono"
+            [tone]="k.tono"
+            [interactivo]="true"
+            [seleccionado]="filtro() === k.filtro"
+            (seleccion)="setFiltro(k.filtro)"
+          />
         }
       </div>
 
-      <!-- BANNER EXCEL -->
-      @if (toastExcel()) {
-        <div class="bg-state-aprobado-soft ring-1 ring-state-aprobado/30 text-state-aprobado-foreground p-3 rounded-xl text-sm font-medium flex items-center justify-between transition-all">
-          <div class="flex items-center gap-2">
-            <lucide-angular [img]="FileSpreadsheetIcon" class="size-4" />
-            <span>{{ toastExcel() }}</span>
-          </div>
-          <button (click)="toastExcel.set('')" class="hover:opacity-70 font-bold text-sm px-1.5 cursor-pointer transition-opacity">×</button>
-        </div>
-      }
-
       <!-- Panel principal: búsqueda + grilla + paginación -->
-      <div class="bg-card rounded-xl ring-1 ring-border shadow-sm overflow-hidden">
-        <!-- Barra de búsqueda y acciones -->
-        <div class="p-4 bg-secondary/40 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div class="flex items-center gap-2 flex-1">
-            <span class="text-sm font-medium text-muted-foreground shrink-0">Buscar:</span>
-            <div class="relative flex-1 min-w-[200px] max-w-md">
-              <lucide-angular [img]="SearchIcon" class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <input
-                type="text"
-                [value]="q()"
-                (input)="q.set($any($event.target).value); page.set(1)"
-                placeholder="Buscar por DNI, Nombre, Rol..."
-                class="w-full pl-10 pr-4 py-2 bg-card ring-1 ring-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring"
-              />
-            </div>
-          </div>
+      <mat-card appearance="outlined" class="panel">
+        <div class="barra">
+          <mat-form-field subscriptSizing="dynamic" class="buscador">
+            <mat-label>Buscar</mat-label>
+            <mat-icon matPrefix fontSet="material-symbols-outlined">search</mat-icon>
+            <input
+              matInput
+              type="text"
+              [value]="q()"
+              (input)="buscar($any($event.target).value)"
+              placeholder="Buscar por DNI, Nombre, Rol..."
+              aria-label="Buscar usuarios"
+            />
+            @if (q()) {
+              <button matIconButton matSuffix type="button" (click)="buscar('')" aria-label="Limpiar búsqueda">
+                <mat-icon fontSet="material-symbols-outlined">close</mat-icon>
+              </button>
+            }
+          </mat-form-field>
 
-          <div class="flex items-center gap-2">
+          <div class="acciones-barra">
             <app-column-selector
               [columnas]="columnasBase"
               storageKey="sodega.usuarios.columnas"
               (columnasChange)="columnas.set($event)"
             />
-            <button (click)="exportarExcel()" class="btn-secondary">
-              <lucide-angular [img]="FileSpreadsheetIcon" class="size-4 text-success" />
-              <span>Exportar excel</span>
+            <button matButton (click)="exportarExcel()">
+              <mat-icon fontSet="material-symbols-outlined">table_view</mat-icon>
+              Exportar excel
             </button>
-            <button (click)="nuevoUsuario()" class="btn-primary">
-              <lucide-angular [img]="UserPlusIcon" class="size-4" />
-              <span>Nuevo usuario</span>
+            <button matButton="filled" (click)="nuevoUsuario()">
+              <mat-icon fontSet="material-symbols-outlined">person_add</mat-icon>
+              Nuevo usuario
             </button>
           </div>
         </div>
 
         <!-- GRILLA DE DATOS -->
-        <div class="overflow-auto max-h-[60vh]">
-          <table class="w-full text-left" [style.min-width.px]="anchoMinimoTabla()">
-            <thead class="bg-secondary sticky top-0 z-10 shadow-sm">
-              <tr class="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
-                @for (col of columnasVisibles(); track col.id) {
-                  <th class="px-4 py-3" [class]="col.clase ?? ''">{{ col.nombre }}</th>
-                }
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-border">
-              @if (pageRows().length === 0) {
-                <tr>
-                  <td [attr.colspan]="columnasVisibles().length">
-                    <div class="empty-state">
-                      <lucide-angular [img]="SearchIcon" class="size-8 text-muted-foreground/40" />
-                      <p class="text-sm font-medium text-foreground">Sin resultados</p>
-                      <p class="text-xs">No se encontraron registros de usuarios con los criterios establecidos.</p>
-                    </div>
-                  </td>
-                </tr>
-              }
-              @for (u of pageRows(); track u.id) {
-                <tr class="hover:bg-secondary/40 transition-colors">
-                  @for (col of columnasVisibles(); track col.id) {
-                    @switch (col.id) {
-                      @case ('acciones') {
-                        <td class="px-4 py-4 whitespace-nowrap w-px">
-                          <div class="flex items-center justify-center gap-1 flex-nowrap">
-                            <button title="Editar Datos" aria-label="Editar Datos" (click)="accion('EDITAR', u)"
-                              class="p-2 rounded-lg transition-all" [class]="tone('slate')">
-                              <lucide-angular [img]="UserPenIcon" class="size-4" />
-                            </button>
-                            <button title="Agregar nueva Presup." aria-label="Agregar nueva Presupuestal" (click)="accion('PRESUPUESTO', u)"
-                              class="p-2 rounded-lg transition-all" [class]="tone('teal')">
-                              <lucide-angular [img]="FilePlus2Icon" class="size-4" />
-                            </button>
-                            <button title="Restablecer clave" aria-label="Restablecer clave" (click)="accion('CLAVE', u)"
-                              class="p-2 rounded-lg transition-all" [class]="tone('amber')">
-                              <lucide-angular [img]="KeyRoundIcon" class="size-4" />
-                            </button>
-                            @if (puedeReasignar(u)) {
-                              <button title="Reasignar Registro" aria-label="Reasignar Registro" (click)="accion('REASIGNAR_REGISTRO', u)"
-                                class="p-2 rounded-lg transition-all" [class]="tone('blue')">
-                                <lucide-angular [img]="MapPinnedIcon" class="size-4" />
-                              </button>
-                            }
-                            <button title="Cambiar Estado" aria-label="Cambiar Estado" (click)="accion('ESTADO', u)"
-                              class="p-2 rounded-lg transition-all" [class]="tone('red')">
-                              <lucide-angular [img]="WorkflowIcon" class="size-4" />
-                            </button>
-                            @if (puedeAgregarServicio(u)) {
-                              <button title="Agregar Nuevo Servicio" aria-label="Agregar Nuevo Servicio" (click)="accion('NUEVO_SERVICIO', u)"
-                                class="p-2 rounded-lg transition-all" [class]="tone('green')">
-                                <lucide-angular [img]="CirclePlusIcon" class="size-4" />
-                              </button>
-                            }
-                          </div>
-                        </td>
-                      }
-                      @case ('empleado') {
-                        <td class="px-4 py-4 text-sm font-semibold text-foreground leading-tight">{{ nombreFila(u) }}</td>
-                      }
-                      @case ('estado') {
-                        <td class="px-4 py-4 text-center whitespace-nowrap">
-                          <span
-                            class="${BADGE_PILL}"
-                            [class]="u.estado === 'HABILITADO'
-                              ? 'bg-state-aprobado-soft text-state-aprobado-foreground ring-state-aprobado/30'
-                              : 'bg-state-observado-soft text-state-observado-foreground ring-state-observado/30'"
-                          >{{ u.estado }}</span>
-                        </td>
-                      }
-                      @case ('usuario') {
-                        <td class="px-4 py-4 text-sm text-muted-foreground font-medium">{{ u.userGen }}</td>
-                      }
-                      @case ('dni') {
-                        <td class="px-4 py-4 text-sm font-mono tabular-nums text-foreground/80">{{ u.dni }}</td>
-                      }
-                      @case ('perfil') {
-                        <td class="px-4 py-4 text-sm font-semibold text-foreground">{{ u.perfil }}</td>
-                      }
-                      @case ('regimen') {
-                        <td class="px-4 py-4 text-sm text-foreground/80 whitespace-nowrap">{{ u.regimen || '—' }}</td>
-                      }
-                      @case ('unidadResponsable') {
-                        <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[220px]" [title]="unidadResponsableDe(u)">{{ unidadResponsableDe(u) }}</td>
-                      }
-                      @case ('unidadFuncional') {
-                        <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[220px]" [title]="opasDe(u)">{{ opasDe(u) }}</td>
-                      }
-                      @case ('periodo') {
-                        <td class="px-4 py-4">
-                          @if (mesesContrato(u); as meses) {
-                            <!-- Temporales: meses comprendidos en el contrato -->
-                            <span class="text-xs text-foreground/80 leading-snug">{{ meses }}</span>
-                          } @else if (u.periodosGestion?.length) {
-                            <div class="flex flex-col gap-1">
-                              @for (pg of u.periodosGestion; track pg.anio) {
-                                <span class="inline-flex w-fit px-2 py-0.5 rounded-full bg-brand-soft text-brand text-[11px] font-bold ring-1 ring-brand/20 whitespace-nowrap">
-                                  {{ formatearPeriodo(pg) }}
-                                </span>
-                              }
-                            </div>
-                          } @else {
-                            <span class="text-xs text-muted-foreground">—</span>
+        <div class="tabla-contenedor">
+          <table mat-table [dataSource]="pageRows()" [style.min-width.px]="anchoMinimoTabla()">
+            @for (col of columnasBase; track col.id) {
+              <ng-container [matColumnDef]="col.id">
+                <th mat-header-cell *matHeaderCellDef>{{ col.nombre }}</th>
+                <td mat-cell *matCellDef="let u">
+                  @switch (col.id) {
+                    @case ('acciones') {
+                      <div class="acciones-fila">
+                        @for (a of accionesDe(u); track a.tipo) {
+                          <button
+                            matIconButton
+                            class="accion"
+                            [class]="a.tono"
+                            [matTooltip]="a.etiqueta"
+                            [attr.aria-label]="a.etiqueta"
+                            (click)="accion(a.tipo, u)"
+                          >
+                            <mat-icon fontSet="material-symbols-outlined">{{ a.icono }}</mat-icon>
+                          </button>
+                        }
+                      </div>
+                    }
+                    @case ('empleado') { <span class="empleado">{{ nombreFila(u) }}</span> }
+                    @case ('estado') {
+                      <mat-chip
+                        disableRipple
+                        [class]="u.estado === 'HABILITADO' ? 'c-aprobado' : 'c-observado'"
+                      >{{ u.estado }}</mat-chip>
+                    }
+                    @case ('usuario') { <span class="tenue">{{ u.userGen }}</span> }
+                    @case ('dni') { <span class="numerico">{{ u.dni }}</span> }
+                    @case ('perfil') { <span class="empleado">{{ u.perfil }}</span> }
+                    @case ('regimen') { {{ u.regimen || '—' }} }
+                    @case ('unidadResponsable') {
+                      <span class="truncado tenue" [title]="unidadResponsableDe(u)">{{ unidadResponsableDe(u) }}</span>
+                    }
+                    @case ('unidadFuncional') {
+                      <span class="truncado tenue" [title]="opasDe(u)">{{ opasDe(u) }}</span>
+                    }
+                    @case ('periodo') {
+                      @if (mesesContrato(u); as meses) {
+                        <!-- Temporales: meses comprendidos en el contrato -->
+                        <span class="meses">{{ meses }}</span>
+                      } @else if (u.periodosGestion?.length) {
+                        <div class="periodos">
+                          @for (pg of u.periodosGestion; track pg.anio) {
+                            <mat-chip disableRipple class="c-marca">{{ formatearPeriodo(pg) }}</mat-chip>
                           }
-                        </td>
-                      }
-                      @case ('vigencia') {
-                        <td class="px-4 py-4 whitespace-nowrap"><span [class]="vigenciaCls(u)">{{ u.vigenciaCalculada }}</span></td>
-                      }
-                      @case ('vencimiento') {
-                        <td class="px-4 py-4 whitespace-nowrap"><span [class]="vencimientoCls(u)">{{ vencimientoDe(u) }}</span></td>
-                      }
-                      @case ('progPresup') {
-                        <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[180px]" [title]="progPresupDe(u)">{{ progPresupDe(u) }}</td>
-                      }
-                      @case ('ubigeo') {
-                        <td class="px-4 py-4 text-sm text-foreground/80" [title]="ubigeoDe(u)">{{ ubigeoDe(u) }}</td>
+                        </div>
+                      } @else {
+                        <span class="tenue">—</span>
                       }
                     }
+                    @case ('vigencia') {
+                      <mat-chip disableRipple [class]="claseVigencia(u)">{{ u.vigenciaCalculada }}</mat-chip>
+                    }
+                    @case ('vencimiento') {
+                      <mat-chip disableRipple class="numerico" [class]="claseVigencia(u)">{{ vencimientoDe(u) }}</mat-chip>
+                    }
+                    @case ('progPresup') {
+                      <span class="truncado tenue" [title]="progPresupDe(u)">{{ progPresupDe(u) }}</span>
+                    }
+                    @case ('ubigeo') { <span [title]="ubigeoDe(u)">{{ ubigeoDe(u) }}</span> }
                   }
-                </tr>
-              }
-            </tbody>
+                </td>
+              </ng-container>
+            }
+
+            <tr mat-header-row *matHeaderRowDef="columnasVisiblesIds(); sticky: true"></tr>
+            <tr mat-row *matRowDef="let fila; columns: columnasVisiblesIds()"></tr>
+            <tr class="fila-vacia" *matNoDataRow>
+              <td [attr.colspan]="columnasVisiblesIds().length">
+                <div class="sin-datos">
+                  <mat-icon fontSet="material-symbols-outlined">search_off</mat-icon>
+                  <p class="titulo-vacio">Sin resultados</p>
+                  <p>No se encontraron registros de usuarios con los criterios establecidos.</p>
+                </div>
+              </td>
+            </tr>
           </table>
         </div>
 
-        <!-- Paginación -->
-        <div class="p-4 border-t border-border bg-card flex flex-col md:flex-row justify-between items-center gap-3">
-          <div class="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>Mostrar</span>
-            <select
-              [value]="pageSize()"
-              (change)="pageSize.set(+$any($event.target).value); page.set(1)"
-              class="px-2 py-1 ring-1 ring-border rounded text-xs font-medium bg-card"
-            >
-              @for (n of [5, 10, 20, 50]; track n) {
-                <option [value]="n">{{ n }}</option>
-              }
-            </select>
-            <span>registros · del {{ rangoDesde() }} al {{ rangoHasta() }} de un total de {{ filtered().length }}</span>
-          </div>
-          <div class="flex gap-1 items-center">
-            <button
-              (click)="page.set(page() - 1)"
-              [disabled]="page() === 1"
-              class="px-3 py-1 ring-1 ring-border rounded text-[11px] font-bold text-foreground/80 disabled:opacity-40 hover:bg-secondary transition-colors"
-            >Anterior</button>
-            @for (p of paginas(); track p) {
-              <button
-                (click)="page.set(p)"
-                class="px-3 py-1 rounded text-[11px] font-bold transition-colors"
-                [class]="page() === p ? 'bg-brand-soft ring-1 ring-brand/25 text-brand' : 'ring-1 ring-border text-foreground/80 hover:bg-secondary'"
-              >{{ p }}</button>
-            }
-            <button
-              (click)="page.set(page() + 1)"
-              [disabled]="page() === totalPages()"
-              class="px-3 py-1 ring-1 ring-border rounded text-[11px] font-bold text-foreground/80 disabled:opacity-40 hover:bg-secondary transition-colors"
-            >Siguiente</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Modal Reasignar Registro: transferencia de capacitaciones y asistencias -->
-      @if (reasignarOrigen(); as origen) {
-        <app-reasignar-registro-modal
-          [origen]="origen"
-          (closed)="reasignarOrigen.set(null)"
-          (reasignado)="onReasignado($event)"
+        <mat-paginator
+          [length]="filtered().length"
+          [pageSize]="pageSize()"
+          [pageIndex]="pageIndex()"
+          [pageSizeOptions]="[5, 10, 20, 50]"
+          showFirstLastButtons
+          aria-label="Paginación de usuarios"
+          (page)="onPagina($event)"
         />
-      }
-
+      </mat-card>
     </section>
+  `,
+  styles: `
+    .pagina {
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    @media (min-width: 1024px) { .pagina { padding: 32px; } }
+
+    .cabecera {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      justify-content: space-between;
+    }
+    @media (min-width: 768px) { .cabecera { flex-direction: row; align-items: center; } }
+    .cabecera h1 {
+      margin: 0;
+      font: var(--mat-sys-headline-small);
+      color: var(--mat-sys-on-surface);
+    }
+    .cabecera p {
+      margin: 4px 0 0;
+      max-width: 70ch;
+      font: var(--mat-sys-body-medium);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .anio-fiscal {
+      align-self: flex-start;
+      white-space: nowrap;
+      padding: 4px 12px;
+      border-radius: var(--mat-sys-corner-full);
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
+      font: var(--mat-sys-label-medium);
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    @media (min-width: 768px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (min-width: 1280px) { .kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+
+    .panel { padding: 0; overflow: hidden; }
+
+    .barra {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      background: var(--mat-sys-surface-container-low);
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+    }
+    @media (min-width: 768px) {
+      .barra { flex-direction: row; align-items: center; justify-content: space-between; }
+    }
+    .buscador { flex: 1 1 auto; max-width: 420px; }
+    .acciones-barra { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+    .tabla-contenedor { overflow: auto; max-height: 60vh; }
+    table { width: 100%; }
+    th.mat-mdc-header-cell {
+      font: var(--mat-sys-label-medium);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    td.mat-mdc-cell { font: var(--mat-sys-body-medium); }
+
+    /* Anchos por columna (mat-table genera .mat-column-<id>). */
+    .mat-column-acciones { width: 1px; white-space: nowrap; }
+    .mat-column-empleado { width: 14rem; }
+    .mat-column-estado { width: 7rem; text-align: center; }
+    .mat-column-usuario { width: 7rem; }
+    .mat-column-dni { width: 6rem; }
+    .mat-column-perfil { width: 12rem; }
+    .mat-column-regimen { width: 11rem; white-space: nowrap; }
+    .mat-column-unidadResponsable,
+    .mat-column-unidadFuncional { width: 16rem; }
+    .mat-column-periodo { width: 10rem; }
+    .mat-column-vigencia { width: 12rem; }
+    .mat-column-vencimiento { width: 7rem; }
+    .mat-column-progPresup { width: 16rem; }
+    .mat-column-ubigeo { width: 6rem; }
+
+    .acciones-fila { display: flex; align-items: center; justify-content: center; gap: 2px; }
+    .accion { --mdc-icon-button-icon-size: 18px; width: 36px; height: 36px; padding: 8px; }
+    .accion mat-icon { font-size: 18px; width: 18px; height: 18px; }
+    .a-neutro { background: var(--mat-sys-surface-container-highest); color: var(--mat-sys-on-surface-variant); }
+    .a-marca  { background: var(--mat-sys-primary-container); color: var(--mat-sys-on-primary-container); }
+    .a-alerta { background: var(--estado-subsanado-fondo); color: var(--estado-subsanado); }
+    .a-info   { background: var(--estado-validado-fondo); color: var(--estado-validado); }
+    .a-error  { background: var(--mat-sys-error-container); color: var(--mat-sys-on-error-container); }
+    .a-exito  { background: var(--estado-aprobado-fondo); color: var(--estado-aprobado); }
+
+    .empleado { font-weight: 600; }
+    .tenue { color: var(--mat-sys-on-surface-variant); }
+    .numerico { font-variant-numeric: tabular-nums; }
+    .truncado {
+      display: inline-block;
+      max-width: 14rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: bottom;
+    }
+    .meses { font: var(--mat-sys-body-small); }
+    .periodos { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+
+    .fila-vacia td { padding: 0; }
+    .sin-datos {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 40px 16px;
+      color: var(--mat-sys-on-surface-variant);
+      text-align: center;
+    }
+    .sin-datos mat-icon { font-size: 32px; width: 32px; height: 32px; opacity: 0.5; }
+    .sin-datos p { margin: 0; font: var(--mat-sys-body-small); }
+    .titulo-vacio { font: var(--mat-sys-body-medium) !important; color: var(--mat-sys-on-surface); }
   `,
 })
 export class GestionUsuariosComponent {
@@ -328,34 +385,23 @@ export class GestionUsuariosComponent {
   private readonly usuariosService = inject(UsuariosService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
 
-  readonly FileSpreadsheetIcon = FileSpreadsheet;
-  readonly UserPlusIcon = UserPlus;
-  readonly SearchIcon = Search;
-  readonly UserPenIcon = UserPen;
-  readonly FilePlus2Icon = FilePlus2;
-  readonly KeyRoundIcon = KeyRound;
-  readonly MapPinnedIcon = MapPinned;
-  readonly WorkflowIcon = Workflow;
-  readonly CirclePlusIcon = CirclePlus;
   readonly formatearPeriodo = formatearPeriodo;
 
-  readonly kpiDefs = [
-    { filtro: 'TOTAL' as FiltroKpi, label: 'Total usuarios', icon: Users, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-info-soft text-info' },
-    { filtro: 'HABILITADO' as FiltroKpi, label: 'Habilitados', icon: UserCheck, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-success-soft text-success' },
-    { filtro: 'INHABILITADO' as FiltroKpi, label: 'Inhabilitados', icon: UserX, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-destructive/10 text-destructive' },
-    { filtro: 'PERMANENTE' as FiltroKpi, label: 'Permanente', icon: InfinityIcon, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-brand-soft text-brand' },
-    { filtro: 'CRITICOS' as FiltroKpi, label: 'Por vencer (30 días)', icon: Clock, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-warning-soft text-warning-foreground' },
-    { filtro: 'VENCIDOS' as FiltroKpi, label: 'Vencidos', icon: TriangleAlert, numCls: 'text-foreground', labelCls: 'text-muted-foreground', iconBg: 'bg-destructive/10 text-destructive' },
+  readonly kpiDefs: { filtro: FiltroKpi; label: string; icono: string; tono: KpiTone }[] = [
+    { filtro: 'TOTAL', label: 'Total usuarios', icono: 'group', tono: 'blue' },
+    { filtro: 'HABILITADO', label: 'Habilitados', icono: 'how_to_reg', tono: 'emerald' },
+    { filtro: 'INHABILITADO', label: 'Inhabilitados', icono: 'person_off', tono: 'error' },
+    { filtro: 'PERMANENTE', label: 'Permanente', icono: 'all_inclusive', tono: 'teal' },
+    { filtro: 'CRITICOS', label: 'Por vencer (30 días)', icono: 'schedule', tono: 'amber' },
+    { filtro: 'VENCIDOS', label: 'Vencidos', icono: 'warning', tono: 'error' },
   ];
 
   readonly filtro = signal<FiltroKpi>('TOTAL');
   readonly q = signal('');
-  readonly page = signal(1);
+  readonly pageIndex = signal(0);
   readonly pageSize = signal(5);
-  readonly toastExcel = signal('');
-  /** Registro de origen del modal "Reasignar Registro" (null = cerrado). */
-  readonly reasignarOrigen = signal<UsuarioSodega | null>(null);
 
   /* ===== Columnas configurables de la grilla ===== */
   readonly columnasBase = COLUMNAS_USUARIOS;
@@ -363,6 +409,7 @@ export class GestionUsuariosComponent {
   readonly columnasVisibles = computed(() =>
     this.columnas().filter((c) => c.visible).sort((a, b) => a.orden - b.orden),
   );
+  readonly columnasVisiblesIds = computed(() => this.columnasVisibles().map((c) => c.id));
   /** Ancho mínimo proporcional para no estirar la tabla con pocas columnas. */
   readonly anchoMinimoTabla = computed(() => this.columnasVisibles().length * 130);
 
@@ -414,26 +461,25 @@ export class GestionUsuariosComponent {
   });
 
   readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize())));
-  readonly paginas = computed(() => Array.from({ length: this.totalPages() }, (_, i) => i + 1));
   readonly pageRows = computed(() => {
-    const p = Math.min(this.page(), this.totalPages());
+    const p = Math.min(this.pageIndex(), this.totalPages() - 1);
     const size = this.pageSize();
-    return this.filtered().slice((p - 1) * size, p * size);
+    return this.filtered().slice(p * size, (p + 1) * size);
   });
-  readonly rangoDesde = computed(() =>
-    this.filtered().length === 0 ? 0 : (Math.min(this.page(), this.totalPages()) - 1) * this.pageSize() + 1,
-  );
-  readonly rangoHasta = computed(() =>
-    Math.min(Math.min(this.page(), this.totalPages()) * this.pageSize(), this.filtered().length),
-  );
+
+  buscar(texto: string): void {
+    this.q.set(texto);
+    this.pageIndex.set(0);
+  }
+
+  onPagina(e: PageEvent): void {
+    this.pageIndex.set(e.pageIndex);
+    this.pageSize.set(e.pageSize);
+  }
 
   setFiltro(f: FiltroKpi): void {
     this.filtro.set(f);
-    this.page.set(1);
-  }
-
-  tone(t: string): string {
-    return ICON_TONES[t] ?? '';
+    this.pageIndex.set(0);
   }
 
   /* ===== Formato de fila (idéntico al prototipo) ===== */
@@ -441,28 +487,37 @@ export class GestionUsuariosComponent {
     return toTitleCase(`${u.apePat} ${u.apeMat}, ${u.nombres}`);
   }
 
-  /**
-   * La reasignación de registros solo aplica a técnicos de Capacitación y
-   * Asistencia Técnica y la ejecuta el Administrador General.
-   */
-  /**
-   * "Agregar Nuevo Servicio" aplica únicamente a contratos temporales
-   * (Régimen CAS Temporal / Locador de Servicio) cuyo servicio terminó:
-   * cuenta inhabilitada o vigencia expirada (función única del modelo).
-   * Nunca para 728/276/CAS, aunque estén inhabilitados.
-   */
+  /** Acciones aplicables al registro, en el orden fijo de la grilla. */
+  accionesDe(u: UsuarioSodega): AccionFila[] {
+    return ACCIONES.filter((a) => {
+      if (a.tipo === 'REASIGNAR_REGISTRO') return this.puedeReasignar(u);
+      if (a.tipo === 'NUEVO_SERVICIO') return this.puedeAgregarServicio(u);
+      return true;
+    });
+  }
+
   /** Meses del contrato (solo CAS Temporal / Locador); '' para los demás. */
   mesesContrato(u: UsuarioSodega): string {
     const esTemporal = u.regimen === 'Régimen CAS Temporal' || u.regimen === 'Locador de Servicio (OS)';
     return esTemporal ? mesesDeRango(u.fechaIni, u.fechaFin) : '';
   }
 
+  /**
+   * "Agregar Nuevo Servicio" aplica únicamente a contratos temporales
+   * (Régimen CAS Temporal / Locador de Servicio) cuyo servicio terminó:
+   * cuenta inhabilitada o vigencia expirada (función única del modelo).
+   * Nunca para 728/276/CAS, aunque estén inhabilitados.
+   */
   puedeAgregarServicio(u: UsuarioSodega): boolean {
     const esTemporal = u.regimen === 'Régimen CAS Temporal' || u.regimen === 'Locador de Servicio (OS)';
     if (!esTemporal) return false;
     return u.estado === 'INHABILITADO' || estadoVigenciaDe(u) === 'Expirado';
   }
 
+  /**
+   * La reasignación de registros solo aplica a técnicos de Capacitación y
+   * Asistencia Técnica y la ejecuta el Administrador General.
+   */
   puedeReasignar(u: UsuarioSodega): boolean {
     return (
       this.auth.session()?.perfil === 'Administrador General' &&
@@ -501,24 +556,14 @@ export class GestionUsuariosComponent {
     return 'Permanente';
   }
 
-  vigenciaCls(u: UsuarioSodega): string {
-    return this.badgeVigencia(u, false);
-  }
-
-  vencimientoCls(u: UsuarioSodega): string {
-    return this.badgeVigencia(u, true);
-  }
-
-  private badgeVigencia(u: UsuarioSodega, inline: boolean): string {
-    const base = BADGE_PILL + (inline ? ' font-mono tabular-nums' : '');
-    if (esUsuarioPermanente(u)) {
-      return `${base} bg-state-aprobado-soft text-state-aprobado-foreground ring-state-aprobado/30`;
-    }
+  /** Tono del chip de vigencia/vencimiento según los días restantes. */
+  claseVigencia(u: UsuarioSodega): string {
+    if (esUsuarioPermanente(u)) return 'c-aprobado';
     const d = u.diasRestantes ?? 0;
-    if (d < 0) return `${base} bg-state-observado-soft text-state-observado-foreground ring-state-observado/30`;
-    if (d === 0) return `${base} bg-state-enviado-soft text-state-enviado-foreground ring-state-enviado/30`;
-    if (d <= 30) return `${base} bg-state-subsanado-soft text-state-subsanado-foreground ring-state-subsanado/30`;
-    return `${base} bg-state-validado-soft text-state-validado-foreground ring-state-validado/30`;
+    if (d < 0) return 'c-observado';
+    if (d === 0) return 'c-enviado';
+    if (d <= 30) return 'c-subsanado';
+    return 'c-validado';
   }
 
   /* ===== Acciones ===== */
@@ -526,7 +571,7 @@ export class GestionUsuariosComponent {
     this.router.navigate(['/usuarios/nuevo']);
   }
 
-  accion(tipo: 'EDITAR' | 'PRESUPUESTO' | 'CLAVE' | 'REASIGNAR_REGISTRO' | 'ESTADO' | 'NUEVO_SERVICIO', u: UsuarioSodega): void {
+  accion(tipo: AccionFila['tipo'], u: UsuarioSodega): void {
     switch (tipo) {
       case 'EDITAR':
         this.router.navigate(['/usuarios', u.id], { queryParams: { modo: 'editar' } });
@@ -548,7 +593,7 @@ export class GestionUsuariosComponent {
         break;
       }
       case 'REASIGNAR_REGISTRO':
-        this.reasignarOrigen.set(u);
+        this.abrirReasignarRegistro(u);
         break;
       case 'ESTADO': {
         const actualizado = this.usuariosService.toggleEstado(u.id);
@@ -561,11 +606,27 @@ export class GestionUsuariosComponent {
     }
   }
 
-  /** Cierre exitoso del modal Reasignar Registro: mensaje y refresco reactivo. */
-  onReasignado(r: ResultadoReasignacion): void {
-    const origen = this.reasignarOrigen();
-    this.reasignarOrigen.set(null);
-    const nombreOrigen = origen ? toTitleCase(`${origen.nombres} ${origen.apePat}`) : '';
+  /** Transferencia de capacitaciones y asistencias hacia otro técnico. */
+  private abrirReasignarRegistro(origen: UsuarioSodega): void {
+    const ref = this.dialog.open<
+      ReasignarRegistroDialogComponent,
+      ReasignarRegistroData,
+      ResultadoReasignacion
+    >(ReasignarRegistroDialogComponent, {
+      data: { origen },
+      width: '1100px',
+      maxWidth: '95vw',
+      autoFocus: 'first-tabbable',
+      restoreFocus: true,
+    });
+    ref.afterClosed().subscribe((r) => {
+      if (r) this.onReasignado(origen, r);
+    });
+  }
+
+  /** Cierre exitoso del diálogo Reasignar Registro: mensaje y refresco reactivo. */
+  private onReasignado(origen: UsuarioSodega, r: ResultadoReasignacion): void {
+    const nombreOrigen = toTitleCase(`${origen.nombres} ${origen.apePat}`);
     const nombreDestino = toTitleCase(`${r.destino.nombres} ${r.destino.apePat}`);
     void this.modales.openSuccess(
       'Reasignación Completada',
@@ -574,14 +635,14 @@ export class GestionUsuariosComponent {
     );
   }
 
-  /** Exportación simulada (mensajes progresivos del prototipo). */
+  /** Exportación simulada (mensajes progresivos del prototipo, ahora en snackbar). */
   exportarExcel(): void {
     // TODO(backend): GET /usuarios/reporte-excel
-    this.toastExcel.set('Generando libro unificado de datos SODEGA (Procesando registros)...');
+    this.toast.info('Generando libro unificado de datos SODEGA (Procesando registros)...');
     setTimeout(() => {
-      this.toastExcel.set('Consolidando Ámbitos Territoriales de las OPAs... 45%');
+      this.toast.info('Consolidando Ámbitos Territoriales de las OPAs... 45%');
       setTimeout(() => {
-        this.toastExcel.set('¡Libro unificado de Reporte SODEGA_2026.xlsx exportado con éxito!');
+        this.toast.success('¡Libro unificado de Reporte SODEGA_2026.xlsx exportado con éxito!');
       }, 1000);
     }, 1000);
   }

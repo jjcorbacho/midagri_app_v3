@@ -4,25 +4,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { provideNativeDateAdapter } from '@angular/material/core';
+import { MAT_DATE_LOCALE, provideNativeDateAdapter } from '@angular/material/core';
+import { dateAIso, isoADate } from '../../utils/fecha.util';
 
 /** Rango emitido por el selector (fechas ISO `YYYY-MM-DD`; '' = sin límite). */
 export interface RangoFechas {
   desde: string;
   hasta: string;
-}
-
-/** ISO `YYYY-MM-DD` ↔ Date, en hora local para no desplazar el día. */
-function isoADate(iso: string): Date | null {
-  if (!iso) return null;
-  const [a, m, d] = iso.split('-').map(Number);
-  return Number.isFinite(a) && Number.isFinite(m) && Number.isFinite(d) ? new Date(a, m - 1, d) : null;
-}
-
-function dateAIso(fecha: Date | null): string {
-  if (!fecha) return '';
-  const dos = (n: number) => String(n).padStart(2, '0');
-  return `${fecha.getFullYear()}-${dos(fecha.getMonth() + 1)}-${dos(fecha.getDate())}`;
 }
 
 /**
@@ -33,7 +21,7 @@ function dateAIso(fecha: Date | null): string {
 @Component({
   selector: 'app-date-range-picker',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [provideNativeDateAdapter()],
+  providers: [provideNativeDateAdapter(), { provide: MAT_DATE_LOCALE, useValue: 'es-PE' }],
   imports: [
     MatDatepickerModule,
     MatFormFieldModule,

@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import {
   FeedbackDialogComponent,
   FeedbackDialogData,
@@ -24,6 +24,9 @@ export type TipoModalFeedback = 'info' | 'warning' | 'confirm' | 'success' | 'er
 @Injectable({ providedIn: 'root' })
 export class ModalService {
   private readonly dialog = inject(MatDialog);
+
+  /** Modal de feedback visible, para reemplazarlo sin tocar otros diálogos. */
+  private refActual?: MatDialogRef<FeedbackDialogComponent, boolean>;
 
   /** Modal informativo: icono info + Aceptar. */
   openInfo(titulo: string, mensaje: string): Promise<boolean> {
@@ -52,8 +55,11 @@ export class ModalService {
   }
 
   private abrir(data: FeedbackDialogData): Promise<boolean> {
-    // Igual que antes, solo hay un modal de feedback a la vez.
-    this.dialog.closeAll();
+    // Solo hay un modal de feedback a la vez, pero se cierra únicamente el
+    // anterior de feedback: los diálogos de los módulos (por ejemplo
+    // "Reasignar registros") piden confirmación desde dentro y deben seguir
+    // abiertos debajo.
+    this.refActual?.close(false);
     const ref = this.dialog.open<FeedbackDialogComponent, FeedbackDialogData, boolean>(
       FeedbackDialogComponent,
       {
@@ -64,8 +70,12 @@ export class ModalService {
         restoreFocus: true,
       },
     );
+    this.refActual = ref;
     return new Promise<boolean>((resolver) => {
-      ref.afterClosed().subscribe((r) => resolver(r === true));
+      ref.afterClosed().subscribe((r) => {
+        if (this.refActual === ref) this.refActual = undefined;
+        resolver(r === true);
+      });
     });
   }
 }

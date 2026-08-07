@@ -1,11 +1,29 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import {
-  LucideAngularModule,
-  IdCard, KeyRound, UserCheck, Wallet, ShieldHalf, Search, LoaderCircle,
-  ArrowLeft, ArrowRight, Save, Trash2, SquarePlus, Target, CircleCheck, TriangleAlert,
-} from 'lucide-angular';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatChipsModule } from '@angular/material/chips';
+import { MAT_DATE_LOCALE, provideNativeDateAdapter } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDialog } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
+import { MatTableModule } from '@angular/material/table';
+import { MatTabGroup, MatTabsModule } from '@angular/material/tabs';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../core/services/auth.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { ListasAdminService } from '../../core/services/listas-admin.service';
@@ -39,8 +57,10 @@ import {
 } from '../../core/models/usuario-sodega.model';
 import { PermisosMenu, combinarPermisos } from '../../core/models/permisos-menu.model';
 import { PermisosMenuFormComponent } from './permisos-menu-form.component';
-import { ModalComponent } from '../../shared/components/modal/modal.component';
-import { INPUT_BASE, INPUT_DISABLED, INPUT_REQUIRED } from '../../shared/utils/input-styles.const';
+import {
+  DatosPresupuestalesData,
+  DatosPresupuestalesDialogComponent,
+} from './datos-presupuestales-dialog.component';
 import {
   CATEGORIAS_PRESUPUESTALES,
   CATEGORIAS_PRESUPUESTALES_JEFE_AREA,
@@ -56,6 +76,7 @@ import {
 } from '../../core/constants/sodega.const';
 import { AutocompleteComponent } from '../../shared/components/autocomplete/autocomplete.component';
 import { normalizarBusqueda } from '../../shared/utils/texto.util';
+import { dateAIso, isoADate } from '../../shared/utils/fecha.util';
 
 type ModoForm = 'nuevo' | 'editar' | 'presupuesto' | 'servicio';
 
@@ -65,476 +86,459 @@ type MetaAmbitoForm = FormGroup<{
   cantidadAsistenciaTecnica: FormControl<number>;
 }>;
 
-/* Estilos de input compartidos del design system N1 (obligatorios en ámbar). */
-const INP_MANDATORY = INPUT_REQUIRED;
-const INP_DISABLED = INPUT_DISABLED;
-const INP_NORMAL = INPUT_BASE;
-
 /**
  * Formulario multi-pestaña de Gestión de Usuarios (Datos del usuario / Permisos).
- * Modos: nuevo · editar · presupuesto (nueva partida presupuestal para un usuario existente).
+ * Modos: nuevo · editar · presupuesto (nueva partida presupuestal para un
+ * usuario existente) · servicio (nuevo servicio conservando el historial).
  */
 @Component({
   selector: 'app-usuario-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [provideNativeDateAdapter(), { provide: MAT_DATE_LOCALE, useValue: 'es-PE' }],
   imports: [
     ReactiveFormsModule,
-    LucideAngularModule,
+    MatButtonModule,
+    MatCardModule,
+    MatCheckboxModule,
+    MatChipsModule,
+    MatDatepickerModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatProgressSpinnerModule,
+    MatSelectModule,
+    MatTableModule,
+    MatTabsModule,
+    MatTooltipModule,
     PermisosMenuFormComponent,
     AutocompleteComponent,
-    ModalComponent,
   ],
-  // ESC cierra el modal presupuestal descartando los cambios (igual que Cancelar).
-  host: { '(document:keydown.escape)': 'onEscape()' },
   template: `
-    <section class="p-6 lg:p-8 max-w-[1200px] mx-auto space-y-5 animate-page-in">
-      <h1 class="text-h1 text-foreground">{{ titulo() }}</h1>
+    <section class="pagina">
+      <h1>{{ titulo() }}</h1>
 
-      <div class="inline-flex p-1 bg-card ring-1 ring-border rounded-lg">
-        <button
-          (click)="irAPestana('datos')"
-          class="h-8 px-3 rounded-md text-xs font-bold transition-colors flex items-center gap-2"
-          [class]="tab() === 'datos' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'"
-        >
-          <lucide-angular [img]="IdCardIcon" class="size-4" /> Datos del usuario
-        </button>
-        <button
-          (click)="irAPestana('permisos')"
-          class="h-8 px-3 rounded-md text-xs font-bold transition-colors flex items-center gap-2"
-          [class]="tab() === 'permisos' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'"
-        >
-          <lucide-angular [img]="KeyRoundIcon" class="size-4" /> Permisos
-        </button>
-      </div>
+      <mat-tab-group class="pestanas" [mat-stretch-tabs]="false" (selectedIndexChange)="onCambioTab($event)">
+        <!-- ================= PESTAÑA A: DATOS DEL USUARIO ================= -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="icono-tab" fontSet="material-symbols-outlined">badge</mat-icon>
+            Datos del usuario
+          </ng-template>
 
-      <!-- ================= PESTAÑA A: DATOS DEL USUARIO ================= -->
-      @if (tab() === 'datos') {
-        <div class="space-y-5" [formGroup]="form">
-          <!-- Datos personales -->
-          <div class="bg-card rounded-xl ring-1 ring-border shadow-sm p-5 space-y-4">
-            <div class="flex items-center gap-2 border-b border-border pb-2 text-brand">
-              <lucide-angular [img]="UserCheckIcon" class="size-4" />
-              <h3 class="text-[11px] font-semibold uppercase tracking-wider">Datos Personales</h3>
-            </div>
+          <div class="contenido-tab" [formGroup]="form">
+            <!-- Datos personales -->
+            <mat-card appearance="outlined" class="bloque">
+              <div class="seccion">
+                <mat-icon fontSet="material-symbols-outlined">how_to_reg</mat-icon>
+                <h3>Datos Personales</h3>
+              </div>
 
-            <div class="grid grid-cols-12 gap-3">
-              <div class="col-span-4">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Nro DNI <span class="text-destructive">*</span></label>
-                <div class="flex gap-1.5">
-                  <input
-                    type="text" maxlength="8" placeholder="Ingrese DNI"
-                    formControlName="dni"
-                    class="w-2/3"
-                    [class]="reniecEditable() ? inpMandatory : inpDisabled"
-                  />
+              <div class="rejilla">
+                <div class="c4 consulta-dni">
+                  <mat-form-field class="campo">
+                    <mat-label>Nro DNI</mat-label>
+                    <input
+                      matInput
+                      type="text"
+                      maxlength="8"
+                      required
+                      placeholder="Ingrese DNI"
+                      formControlName="dni"
+                      [readonly]="!reniecEditable()"
+                    />
+                  </mat-form-field>
                   <button
+                    matButton="filled"
                     type="button"
                     (click)="consultarReniec()"
                     [disabled]="!reniecEditable() || buscandoReniec()"
-                    class="btn-primary w-1/3 px-2"
                   >
-                    <span>{{ buscandoReniec() ? 'Buscando...' : 'Buscar' }}</span>
-                    <lucide-angular [img]="buscandoReniec() ? LoaderIcon : SearchIcon" class="size-3 ml-1" [class.animate-spin]="buscandoReniec()" />
+                    @if (buscandoReniec()) {
+                      <mat-spinner diameter="16" />
+                    } @else {
+                      <mat-icon fontSet="material-symbols-outlined">search</mat-icon>
+                    }
+                    {{ buscandoReniec() ? 'Buscando...' : 'Buscar' }}
                   </button>
                 </div>
               </div>
-            </div>
 
-            <div class="grid grid-cols-12 gap-3">
-              <div class="col-span-4">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Apellido paterno</label>
-                <input formControlName="apePat" readonly placeholder="Apellido paterno" [class]="inpDisabled" />
+              <div class="rejilla">
+                <mat-form-field class="c4">
+                  <mat-label>Apellido paterno</mat-label>
+                  <input matInput formControlName="apePat" readonly placeholder="Apellido paterno" />
+                </mat-form-field>
+                <mat-form-field class="c4">
+                  <mat-label>Apellido materno</mat-label>
+                  <input matInput formControlName="apeMat" readonly placeholder="Apellido materno" />
+                </mat-form-field>
+                <mat-form-field class="c4">
+                  <mat-label>Nombre(s)</mat-label>
+                  <input matInput formControlName="nombres" readonly placeholder="Nombre(s)" />
+                </mat-form-field>
               </div>
-              <div class="col-span-4">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Apellido materno</label>
-                <input formControlName="apeMat" readonly placeholder="Apellido materno" [class]="inpDisabled" />
-              </div>
-              <div class="col-span-4">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Nombre(s)</label>
-                <input formControlName="nombres" readonly placeholder="Nombre(s)" [class]="inpDisabled" />
-              </div>
-            </div>
 
-            <div class="grid grid-cols-12 gap-3">
-              <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Estado civil</label>
-                <input formControlName="estCivil" readonly placeholder="Estado civil" [class]="inpDisabled" />
-              </div>
-              <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Profesión - especialidad <span class="text-destructive">*</span></label>
-                <select formControlName="profesion" [class]="reniecEditable() ? inpMandatory : inpDisabled">
-                  <option value="">--Seleccione--</option>
-                  @for (p of profesiones(); track p) {
-                    <option [value]="p">{{ p }}</option>
-                  }
-                </select>
-              </div>
-              <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Dirección domiciliaria</label>
-                <input formControlName="direccion" readonly placeholder="Dirección domiciliaria" [class]="inpDisabled" />
-              </div>
-              <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Ubigeo RENIEC</label>
-                <input formControlName="ubigeo" readonly placeholder="UBIGEO" [class]="inpDisabled" />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-12 gap-3">
-              <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Restricciones</label>
-                <input formControlName="restricciones" readonly placeholder="Restricciones" [class]="inpDisabled" />
-              </div>
-              <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Sexo <span class="text-destructive">*</span></label>
-                <select formControlName="sexo" [class]="reniecEditable() ? inpMandatory : inpDisabled">
-                  <option value="">--Seleccione--</option>
-                  @for (s of sexos(); track s) {
-                    <option [value]="s">{{ s }}</option>
-                  }
-                </select>
-              </div>
-              <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Fecha nac. (RENIEC)</label>
-                <input formControlName="fechaNac" readonly placeholder="dd/mm/aaaa" [class]="inpDisabled" />
-              </div>
-              <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Edad calculada</label>
-                <input formControlName="edad" readonly placeholder="Edad calculada" [class]="inpDisabled" />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-12">
-              <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Celular de contacto</label>
-                <input formControlName="celular" placeholder="999 999 999" [class]="inpNormal" />
-              </div>
-            </div>
-          </div>
-
-          <!-- Datos presupuestales -->
-          <div class="bg-card rounded-xl ring-1 ring-border shadow-sm p-5 space-y-4">
-            <div class="flex items-center gap-2 border-b border-border pb-2 text-brand">
-              <lucide-angular [img]="WalletIcon" class="size-4" />
-              <h3 class="text-[11px] font-semibold uppercase tracking-wider">Datos Presupuestales</h3>
-            </div>
-            <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Unidad Responsable <span class="text-destructive">*</span></label>
-              <select formControlName="unidad" [class]="unidadBloqueada() ? inpDisabled : inpMandatory">
-                <option value="">--Seleccione--</option>
-                @for (u of unidadesResponsables(); track u) {
-                  <option [value]="u">{{ u }}</option>
-                }
-              </select>
-            </div>
-
-            @if (mostrarPresupuesto()) {
-              <div class="grid gap-3 border-t border-border pt-4" [class]="modoJefeArea() ? 'grid-cols-3' : 'grid-cols-4'">
-                <div>
-                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">Fuente de financ. <span class="text-destructive">*</span></label>
-                  <select formControlName="fuenteFinanc" [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory">
-                    <option value="">Seleccione</option>
-                    @for (f of fuentes(); track f) {
-                      <option [value]="f">{{ f }}</option>
+              <div class="rejilla">
+                <mat-form-field class="c3">
+                  <mat-label>Estado civil</mat-label>
+                  <input matInput formControlName="estCivil" readonly placeholder="Estado civil" />
+                </mat-form-field>
+                <mat-form-field class="c3">
+                  <mat-label>Profesión - especialidad</mat-label>
+                  <mat-select formControlName="profesion" required>
+                    @for (p of profesiones(); track p) {
+                      <mat-option [value]="p">{{ p }}</mat-option>
                     }
-                  </select>
-                </div>
-                @if (!modoJefeArea()) {
-                  <div>
-                    <label class="block text-[11px] font-medium text-muted-foreground mb-1">Categoría presup. <span class="text-destructive">*</span></label>
-                    <select formControlName="categoriaPresup" (change)="onCategoriaChange()" [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory">
-                      <option value="">Seleccione</option>
-                      @for (c of categorias(); track c) {
-                        <option [value]="c">{{ c }}</option>
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field class="c3">
+                  <mat-label>Dirección domiciliaria</mat-label>
+                  <input matInput formControlName="direccion" readonly placeholder="Dirección domiciliaria" />
+                </mat-form-field>
+                <mat-form-field class="c3">
+                  <mat-label>Ubigeo RENIEC</mat-label>
+                  <input matInput formControlName="ubigeo" readonly placeholder="UBIGEO" />
+                </mat-form-field>
+              </div>
+
+              <div class="rejilla">
+                <mat-form-field class="c3">
+                  <mat-label>Restricciones</mat-label>
+                  <input matInput formControlName="restricciones" readonly placeholder="Restricciones" />
+                </mat-form-field>
+                <mat-form-field class="c3">
+                  <mat-label>Sexo</mat-label>
+                  <mat-select formControlName="sexo" required>
+                    @for (s of sexos(); track s) {
+                      <mat-option [value]="s">{{ s }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field class="c3">
+                  <mat-label>Fecha nac. (RENIEC)</mat-label>
+                  <input matInput formControlName="fechaNac" readonly placeholder="dd/mm/aaaa" />
+                </mat-form-field>
+                <mat-form-field class="c3">
+                  <mat-label>Edad calculada</mat-label>
+                  <input matInput formControlName="edad" readonly placeholder="Edad calculada" />
+                </mat-form-field>
+              </div>
+
+              <div class="rejilla">
+                <mat-form-field class="c3">
+                  <mat-label>Celular de contacto</mat-label>
+                  <input matInput formControlName="celular" placeholder="999 999 999" />
+                </mat-form-field>
+              </div>
+            </mat-card>
+
+            <!-- Datos presupuestales -->
+            <mat-card appearance="outlined" class="bloque">
+              <div class="seccion">
+                <mat-icon fontSet="material-symbols-outlined">account_balance_wallet</mat-icon>
+                <h3>Datos Presupuestales</h3>
+              </div>
+
+              <mat-form-field class="campo">
+                <mat-label>Unidad Responsable</mat-label>
+                <mat-select formControlName="unidad" required>
+                  @for (u of unidadesResponsables(); track u) {
+                    <mat-option [value]="u">{{ u }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              @if (mostrarPresupuesto()) {
+                <div class="rejilla separada">
+                  <mat-form-field [class]="modoJefeArea() ? 'c4' : 'c3'">
+                    <mat-label>Fuente de financ.</mat-label>
+                    <mat-select formControlName="fuenteFinanc" required>
+                      @for (f of fuentes(); track f) {
+                        <mat-option [value]="f">{{ f }}</mat-option>
                       }
-                    </select>
-                  </div>
-                }
-                <div>
-                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">
-                    {{ modoJefeArea() ? 'Categoría' : 'Programa presupuestal' }} <span class="text-destructive">*</span>
-                  </label>
-                  <select formControlName="programaPresup" (change)="onProgramaChange()" [class]="presupuestoBloqueado() || !programaHabilitado() ? inpDisabled : inpMandatory">
-                    <option value="">Seleccione</option>
-                    @for (p of programas(); track p) {
-                      <option [value]="p">{{ p }}</option>
-                    }
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">
-                    {{ modoJefeArea() ? 'Unidad Funcional' : 'Unidad funcional (Opas)' }} <span class="text-destructive">*</span>
-                  </label>
-                  <select formControlName="unidadFuncional" [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory">
-                    <option value="">Seleccione</option>
-                    @for (u of unidadesFuncionales(); track u) {
-                      <option [value]="u">{{ u }}</option>
-                    }
-                  </select>
-                </div>
-              </div>
-            }
-          </div>
+                    </mat-select>
+                  </mat-form-field>
 
-          <div class="flex justify-end gap-2 pt-2">
-            <button (click)="cancelar()" class="btn-secondary">
-              Cancelar
-            </button>
-            <button (click)="guardarYContinuar()" class="btn-primary px-5">
-              <span>Siguiente</span> <lucide-angular [img]="ArrowRightIcon" class="size-3.5" />
-            </button>
-          </div>
-        </div>
-      }
-
-      <!-- ================= PESTAÑA B: PERMISOS ================= -->
-      @if (tab() === 'permisos') {
-        <div class="space-y-5" [formGroup]="form">
-          <div class="bg-card rounded-xl ring-1 ring-border shadow-sm p-5 space-y-4">
-            <div class="flex items-center gap-2 border-b border-border pb-2 text-brand">
-              <lucide-angular [img]="ShieldHalfIcon" class="size-4" />
-              <h3 class="text-[11px] font-semibold uppercase tracking-wider">Cuenta de acceso institucional</h3>
-            </div>
-
-            <div class="grid grid-cols-12 gap-3">
-              <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Usuario generado</label>
-                <input formControlName="userGen" readonly placeholder="Usuario Automático" [class]="inpDisabled" />
-              </div>
-              <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Correo Personal <span class="text-destructive">*</span></label>
-                <input formControlName="correo" placeholder="correo@midagri.gob.pe" [class]="inpMandatory" />
-              </div>
-              <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Régimen laboral <span class="text-destructive">*</span></label>
-                <select formControlName="regimen" (change)="onRegimenChange()" [class]="inpMandatory">
-                  <option value="">--Seleccione--</option>
-                  @for (r of regimenesDisponibles(); track r) {
-                    <option [value]="r">{{ r }}</option>
-                  }
-                </select>
-              </div>
-              <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Estado de cuenta</label>
-                <select formControlName="estado" [class]="inpNormal">
-                  <option value="HABILITADO">Habilitado</option>
-                  <option value="INHABILITADO">Inhabilitado</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Fechas de contrato / Nro de orden (OS y CAS Temporal) -->
-            @if (regimenTemporal()) {
-              <div class="grid grid-cols-12 gap-3 p-4 bg-brand-soft/50 rounded-xl ring-1 ring-brand/20">
-                <div [class]="esLocador() ? 'col-span-4' : 'col-span-6'">
-                  <label class="block text-[11px] font-medium text-brand mb-1">Fecha de inicio <span class="text-destructive">*</span></label>
-                  <input
-                    type="date"
-                    formControlName="fechaIni"
-                    [max]="fechaMaxVigencia"
-                    (change)="onFechasContratoChange()"
-                    [class]="inpMandatory"
-                  />
-                </div>
-                <div [class]="esLocador() ? 'col-span-4' : 'col-span-6'">
-                  <label class="block text-[11px] font-medium text-brand mb-1">Fecha fin <span class="text-destructive">*</span></label>
-                  <input
-                    type="date"
-                    formControlName="fechaFin"
-                    [max]="fechaMaxVigencia"
-                    (change)="onFechasContratoChange()"
-                    [class]="inpMandatory"
-                  />
-                </div>
-                <p class="col-span-12 text-[11px] text-muted-foreground">
-                  La vigencia no puede superar el {{ fechaMaxVigenciaTexto }} (año de gestión {{ anioGestion }}).
-                </p>
-                @if (esLocador()) {
-                  <div class="col-span-4">
-                    <label class="block text-[11px] font-medium text-brand mb-1">Nro. de Orden (O.S.) <span class="text-destructive">*</span></label>
-                    <input formControlName="nroOrden" placeholder="Ejem: O.S. N° 00421-2026" [class]="inpMandatory + ' uppercase'" />
-                  </div>
-                }
-              </div>
-            }
-
-            <!-- Tipo de Periodo (se habilita al elegir el Régimen Laboral) -->
-            @if (mostrarSeccionPeriodo()) {
-              <div class="p-4 bg-brand-soft/50 rounded-xl ring-1 ring-brand/20 space-y-3">
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-brand">Tipo de Periodo</p>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label for="periodo-tipo" class="block text-[11px] font-medium text-brand mb-1">
-                      Tipo de periodo <span class="text-destructive">*</span>
-                    </label>
-                    <select id="periodo-tipo" formControlName="periodoTipo" (change)="onTipoPeriodoChange()" [class]="inpMandatory">
-                      <option value="">--Seleccione--</option>
-                      @for (t of tiposPeriodo; track t) {
-                        <option [value]="t">{{ t }}</option>
-                      }
-                    </select>
-                  </div>
-                  @if (form.controls.periodoTipo.value === 'Regular') {
-                    <div>
-                      <label for="periodo-anio" class="block text-[11px] font-medium text-brand mb-1">
-                        Año de Gestión <span class="text-destructive">*</span>
-                      </label>
-                      <select id="periodo-anio" formControlName="periodoAnio" (change)="onAnioGestionChange()" [class]="inpMandatory">
-                        @for (a of aniosGestion(); track a) {
-                          <option [value]="a">{{ a }}</option>
+                  @if (!modoJefeArea()) {
+                    <mat-form-field class="c3">
+                      <mat-label>Categoría presup.</mat-label>
+                      <mat-select formControlName="categoriaPresup" required (valueChange)="onCategoriaChange()">
+                        @for (c of categorias(); track c) {
+                          <mat-option [value]="c">{{ c }}</mat-option>
                         }
-                      </select>
-                    </div>
+                      </mat-select>
+                    </mat-form-field>
                   }
-                </div>
 
-                @if (form.controls.periodoTipo.value === 'Regular') {
-                  <!-- Regular: selección múltiple de meses -->
-                  <div>
-                    <p class="text-[11px] font-medium text-brand mb-2">
-                      Meses del periodo <span class="text-destructive">*</span>
+                  <mat-form-field [class]="modoJefeArea() ? 'c4' : 'c3'">
+                    <mat-label>{{ modoJefeArea() ? 'Categoría' : 'Programa presupuestal' }}</mat-label>
+                    <mat-select formControlName="programaPresup" required (valueChange)="onProgramaChange()">
+                      @for (p of programas(); track p) {
+                        <mat-option [value]="p">{{ p }}</mat-option>
+                      }
+                    </mat-select>
+                    @if (!programaHabilitado()) {
+                      <mat-hint>Seleccione primero la Categoría presupuestal.</mat-hint>
+                    }
+                  </mat-form-field>
+
+                  <mat-form-field [class]="modoJefeArea() ? 'c4' : 'c3'">
+                    <mat-label>{{ modoJefeArea() ? 'Unidad Funcional' : 'Unidad funcional (Opas)' }}</mat-label>
+                    <mat-select formControlName="unidadFuncional" required>
+                      @for (u of unidadesFuncionales(); track u) {
+                        <mat-option [value]="u">{{ u }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                </div>
+              }
+            </mat-card>
+
+            <div class="botonera">
+              <button matButton type="button" (click)="cancelar()">Cancelar</button>
+              <button matButton="filled" type="button" (click)="guardarYContinuar()">
+                Siguiente
+                <mat-icon fontSet="material-symbols-outlined" iconPositionEnd>arrow_forward</mat-icon>
+              </button>
+            </div>
+          </div>
+        </mat-tab>
+
+        <!-- ================= PESTAÑA B: PERMISOS ================= -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="icono-tab" fontSet="material-symbols-outlined">key</mat-icon>
+            Permisos
+          </ng-template>
+
+          <div class="contenido-tab" [formGroup]="form">
+            <mat-card appearance="outlined" class="bloque">
+              <div class="seccion">
+                <mat-icon fontSet="material-symbols-outlined">shield_person</mat-icon>
+                <h3>Cuenta de acceso institucional</h3>
+              </div>
+
+              <div class="rejilla">
+                <mat-form-field class="c3">
+                  <mat-label>Usuario generado</mat-label>
+                  <input matInput formControlName="userGen" readonly placeholder="Usuario Automático" />
+                </mat-form-field>
+                <mat-form-field class="c3">
+                  <mat-label>Correo Personal</mat-label>
+                  <input matInput formControlName="correo" required placeholder="correo@midagri.gob.pe" />
+                </mat-form-field>
+                <mat-form-field class="c3">
+                  <mat-label>Régimen laboral</mat-label>
+                  <mat-select formControlName="regimen" required (valueChange)="onRegimenChange()">
+                    @for (r of regimenesDisponibles(); track r) {
+                      <mat-option [value]="r">{{ r }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field class="c3">
+                  <mat-label>Estado de cuenta</mat-label>
+                  <mat-select formControlName="estado">
+                    <mat-option value="HABILITADO">Habilitado</mat-option>
+                    <mat-option value="INHABILITADO">Inhabilitado</mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <!-- Fechas de contrato / Nro de orden (OS y CAS Temporal) -->
+              @if (regimenTemporal()) {
+                <div class="rejilla panel-marca">
+                  <mat-form-field [class]="esLocador() ? 'c4' : 'c6'">
+                    <mat-label>Fecha de inicio</mat-label>
+                    <input
+                      matInput
+                      required
+                      [matDatepicker]="dpIni"
+                      [max]="fechaMaxVigenciaDate"
+                      [value]="fechaIniDate()"
+                      (dateChange)="setFechaContrato('fechaIni', $event.value)"
+                    />
+                    <mat-datepicker-toggle matIconSuffix [for]="dpIni" />
+                    <mat-datepicker #dpIni />
+                  </mat-form-field>
+                  <mat-form-field [class]="esLocador() ? 'c4' : 'c6'">
+                    <mat-label>Fecha fin</mat-label>
+                    <input
+                      matInput
+                      required
+                      [matDatepicker]="dpFin"
+                      [max]="fechaMaxVigenciaDate"
+                      [value]="fechaFinDate()"
+                      (dateChange)="setFechaContrato('fechaFin', $event.value)"
+                    />
+                    <mat-datepicker-toggle matIconSuffix [for]="dpFin" />
+                    <mat-datepicker #dpFin />
+                  </mat-form-field>
+                  @if (esLocador()) {
+                    <mat-form-field class="c4">
+                      <mat-label>Nro. de Orden (O.S.)</mat-label>
+                      <input matInput required class="mayusculas" formControlName="nroOrden" placeholder="Ejem: O.S. N° 00421-2026" />
+                    </mat-form-field>
+                  }
+                  <p class="c12 nota">
+                    La vigencia no puede superar el {{ fechaMaxVigenciaTexto }} (año de gestión {{ anioGestion }}).
+                  </p>
+                </div>
+              }
+
+              <!-- Tipo de Periodo (se habilita al elegir el Régimen Laboral) -->
+              @if (mostrarSeccionPeriodo()) {
+                <div class="panel-marca periodo">
+                  <p class="subtitulo">Tipo de Periodo</p>
+
+                  <div class="rejilla">
+                    <mat-form-field class="c6">
+                      <mat-label>Tipo de periodo</mat-label>
+                      <mat-select formControlName="periodoTipo" required (valueChange)="onTipoPeriodoChange()">
+                        @for (t of tiposPeriodo; track t) {
+                          <mat-option [value]="t">{{ t }}</mat-option>
+                        }
+                      </mat-select>
+                    </mat-form-field>
+                    @if (form.controls.periodoTipo.value === 'Regular') {
+                      <mat-form-field class="c6">
+                        <mat-label>Año de Gestión</mat-label>
+                        <mat-select formControlName="periodoAnio" required (valueChange)="onAnioGestionChange()">
+                          @for (a of aniosGestion(); track a) {
+                            <mat-option [value]="a.toString()">{{ a }}</mat-option>
+                          }
+                        </mat-select>
+                      </mat-form-field>
+                    }
+                  </div>
+
+                  @if (form.controls.periodoTipo.value === 'Regular') {
+                    <!-- Regular: selección múltiple de meses -->
+                    <p class="etiqueta-meses">
+                      Meses del periodo
                       @if (mesesAutomaticos()) {
-                        <span class="normal-case font-normal text-muted-foreground">
-                          · calculados automáticamente según la vigencia del contrato
-                        </span>
+                        <span> · calculados automáticamente según la vigencia del contrato</span>
                       } @else if (mesesHabilitados().length === 0) {
-                        <span class="normal-case font-normal text-muted-foreground">
-                          · ningún mes puede activarse para el año de gestión seleccionado
-                        </span>
+                        <span> · ningún mes puede activarse para el año de gestión seleccionado</span>
                       }
                     </p>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-1.5" role="group" aria-label="Meses del periodo">
+                    <div class="meses" role="group" aria-label="Meses del periodo">
                       @for (m of mesesCatalogo; track m.numero) {
-                        <label
-                          class="flex items-center gap-2 text-sm select-none rounded-lg px-2 py-1 transition-colors"
-                          [class]="esMesHabilitado(m.numero)
-                            ? 'text-foreground/90 cursor-pointer hover:bg-card/60'
-                            : 'text-muted-foreground/60 cursor-not-allowed'"
-                          [title]="esMesHabilitado(m.numero)
-                            ? ''
-                            : (mesesAutomaticos()
-                                ? 'Este mes está fuera de la vigencia del contrato'
-                                : 'Este mes ya no puede activarse para el año de gestión seleccionado')"
-                        >
-                          <input
-                            type="checkbox"
-                            class="accent-brand size-4 disabled:cursor-not-allowed"
+                        <span [matTooltip]="ayudaMes(m.numero)" [matTooltipDisabled]="esMesHabilitado(m.numero)">
+                          <mat-checkbox
                             [checked]="mesesSeleccionados().includes(m.numero)"
                             [disabled]="!esMesHabilitado(m.numero)"
-                            (change)="toggleMes(m.numero, $any($event.target).checked)"
-                          />
-                          <span>{{ m.nombre }}</span>
-                        </label>
+                            (change)="toggleMes(m.numero, $event.checked)"
+                          >{{ m.nombre }}</mat-checkbox>
+                        </span>
                       }
                     </div>
-                  </div>
-                } @else if (form.controls.periodoTipo.value === 'Extraordinario') {
-                  <!-- Extraordinario: rango de fechas -->
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label for="periodo-desde" class="block text-[11px] font-medium text-brand mb-1">
-                        Fecha Inicio <span class="text-destructive">*</span>
-                      </label>
-                      <input
-                        id="periodo-desde"
-                        type="date"
-                        formControlName="periodoFechaIni"
-                        [max]="fechaMaxVigencia"
-                        [class]="inpMandatory"
-                      />
+                  } @else if (form.controls.periodoTipo.value === 'Extraordinario') {
+                    <!-- Extraordinario: rango de fechas -->
+                    <div class="rejilla">
+                      <mat-form-field class="c6">
+                        <mat-label>Fecha Inicio</mat-label>
+                        <input
+                          matInput
+                          required
+                          [matDatepicker]="dpPerIni"
+                          [max]="fechaMaxVigenciaDate"
+                          [value]="periodoIniDate()"
+                          (dateChange)="setFechaPeriodo('periodoFechaIni', $event.value)"
+                        />
+                        <mat-datepicker-toggle matIconSuffix [for]="dpPerIni" />
+                        <mat-datepicker #dpPerIni />
+                      </mat-form-field>
+                      <mat-form-field class="c6">
+                        <mat-label>Fecha Fin</mat-label>
+                        <input
+                          matInput
+                          required
+                          [matDatepicker]="dpPerFin"
+                          [max]="fechaMaxVigenciaDate"
+                          [value]="periodoFinDate()"
+                          (dateChange)="setFechaPeriodo('periodoFechaFin', $event.value)"
+                        />
+                        <mat-datepicker-toggle matIconSuffix [for]="dpPerFin" />
+                        <mat-datepicker #dpPerFin />
+                      </mat-form-field>
                     </div>
-                    <div>
-                      <label for="periodo-hasta" class="block text-[11px] font-medium text-brand mb-1">
-                        Fecha Fin <span class="text-destructive">*</span>
-                      </label>
-                      <input
-                        id="periodo-hasta"
-                        type="date"
-                        formControlName="periodoFechaFin"
-                        [max]="fechaMaxVigencia"
-                        [class]="inpMandatory"
-                      />
-                    </div>
-                  </div>
-                }
-
-                @if (form.controls.periodoTipo.value) {
-                  <div class="flex justify-end">
-                    <button type="button" (click)="agregarPeriodo()" class="btn-secondary">
-                      <span>Agregar Periodo</span>
-                      <lucide-angular [img]="SquarePlusIcon" class="size-4 text-muted-foreground" />
-                    </button>
-                  </div>
-                }
-
-                <!-- Tabla de periodos del servicio (máximo uno) -->
-                <div class="bg-card rounded-xl ring-1 ring-border shadow-sm overflow-x-auto">
-                  <table class="w-full min-w-[520px] text-left">
-                    <thead class="bg-secondary">
-                      <tr class="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                        <th class="px-4 py-3 w-40">Tipo de Periodo</th>
-                        <th class="px-4 py-3">Meses / Fechas Activas</th>
-                        <th class="px-4 py-3 w-32 text-center">Estado</th>
-                        <th class="px-4 py-3 w-20 text-center">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y divide-border">
-                      @if (periodos().length === 0) {
-                        <tr>
-                          <td colspan="4" class="px-4 py-4 text-center text-sm text-muted-foreground italic">
-                            Sin periodo registrado para este servicio.
-                          </td>
-                        </tr>
-                      }
-                      @for (pg of periodos(); track $index; let i = $index) {
-                        <tr class="hover:bg-secondary/40 transition-colors">
-                          <td class="px-4 py-3 text-sm font-semibold text-foreground">{{ pg.tipo }}</td>
-                          <td class="px-4 py-3 text-sm text-foreground/80">{{ formatearPeriodo(pg) }}</td>
-                          <td class="px-4 py-3 text-center">
-                            <span
-                              class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 whitespace-nowrap"
-                              [class]="estadoPeriodo(pg) === 'Expirado'
-                                ? 'bg-destructive/10 text-destructive ring-destructive/30'
-                                : 'bg-state-aprobado-soft text-state-aprobado-foreground ring-state-aprobado/30'"
-                            >{{ estadoPeriodo(pg) }}</span>
-                          </td>
-                          <td class="px-2 py-3 text-center">
-                            <button type="button" (click)="eliminarPeriodo(i)" class="p-2 rounded-lg transition-all bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground" title="Eliminar periodo" aria-label="Eliminar periodo">
-                              <lucide-angular [img]="Trash2Icon" class="size-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            }
-
-            <!-- Perfil autorizado + Ámbito asignado (apilado a ancho completo) -->
-            <div class="space-y-4 border-t border-border pt-5">
-              <div class="space-y-1">
-                <label for="perfil-autorizado" class="block text-[11px] font-medium text-muted-foreground mb-1">Perfil autorizado <span class="text-destructive">*</span></label>
-                <select id="perfil-autorizado" formControlName="perfil" (change)="onPerfilChange()" [class]="inpMandatory">
-                  <option value="">--Seleccione--</option>
-                  @for (p of perfilesRegistrables(); track p) {
-                    <option [value]="p">{{ p }}</option>
                   }
-                </select>
-              </div>
 
-              @if (mostrarAmbito()) {
-                <div class="space-y-4">
+                  @if (form.controls.periodoTipo.value) {
+                    <div class="botonera">
+                      <button matButton="outlined" type="button" (click)="agregarPeriodo()">
+                        <mat-icon fontSet="material-symbols-outlined">add_box</mat-icon>
+                        Agregar Periodo
+                      </button>
+                    </div>
+                  }
+
+                  <!-- Tabla de periodos del servicio (máximo uno) -->
+                  <div class="tabla-contenedor">
+                    <table mat-table [dataSource]="filasPeriodo()">
+                      <ng-container matColumnDef="tipo">
+                        <th mat-header-cell *matHeaderCellDef>Tipo de Periodo</th>
+                        <td mat-cell *matCellDef="let fila" class="destacado">{{ fila.pg.tipo }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="detalle">
+                        <th mat-header-cell *matHeaderCellDef>Meses / Fechas Activas</th>
+                        <td mat-cell *matCellDef="let fila">{{ formatearPeriodo(fila.pg) }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="estado">
+                        <th mat-header-cell *matHeaderCellDef>Estado</th>
+                        <td mat-cell *matCellDef="let fila">
+                          <mat-chip
+                            disableRipple
+                            [class]="estadoPeriodo(fila.pg) === 'Expirado' ? 'c-observado' : 'c-aprobado'"
+                          >{{ estadoPeriodo(fila.pg) }}</mat-chip>
+                        </td>
+                      </ng-container>
+                      <ng-container matColumnDef="acciones">
+                        <th mat-header-cell *matHeaderCellDef>Acciones</th>
+                        <td mat-cell *matCellDef="let fila">
+                          <button
+                            matIconButton
+                            type="button"
+                            class="eliminar"
+                            matTooltip="Eliminar periodo"
+                            aria-label="Eliminar periodo"
+                            (click)="eliminarPeriodo(fila.indice)"
+                          >
+                            <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>
+                          </button>
+                        </td>
+                      </ng-container>
+                      <tr mat-header-row *matHeaderRowDef="columnasPeriodo"></tr>
+                      <tr mat-row *matRowDef="let fila; columns: columnasPeriodo"></tr>
+                      <tr class="fila-vacia" *matNoDataRow>
+                        <td [attr.colspan]="columnasPeriodo.length">Sin periodo registrado para este servicio.</td>
+                      </tr>
+                    </table>
+                  </div>
+                </div>
+              }
+
+              <!-- Perfil autorizado + Ámbito asignado -->
+              <div class="bloque-perfil">
+                <mat-form-field class="campo">
+                  <mat-label>Perfil autorizado</mat-label>
+                  <mat-select formControlName="perfil" required (valueChange)="onPerfilChange()">
+                    @for (p of perfilesRegistrables(); track p) {
+                      <mat-option [value]="p">{{ p }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                @if (mostrarAmbito()) {
                   @if (esModoServicio()) {
-                    <p class="text-[11px] text-muted-foreground italic">
+                    <p class="nota">
                       Ámbitos territoriales del servicio anterior (solo lectura en un nuevo servicio).
                     </p>
-                  }
-                  @if (!esModoServicio()) {
-                  <!-- Fila territorial: Región | Provincia | Distrito | Agregar (apila en móvil) -->
-                  <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
-                    <div class="md:col-span-3">
+                  } @else {
+                    <!-- Fila territorial: Región | Provincia | Distrito | Agregar -->
+                    <div class="rejilla">
                       <app-autocomplete
+                        class="c3"
                         label="Región"
                         placeholder="Escriba para buscar una región..."
                         ariaLabel="Buscar región"
@@ -542,10 +546,8 @@ const INP_NORMAL = INPUT_BASE;
                         [value]="ambitoRegion()"
                         (valueChange)="onRegionSeleccionada($event)"
                       />
-                    </div>
-
-                    <div class="md:col-span-3">
                       <app-autocomplete
+                        class="c3"
                         label="Provincia"
                         placeholder="Escriba para buscar una provincia..."
                         ariaLabel="Buscar provincia"
@@ -554,375 +556,415 @@ const INP_NORMAL = INPUT_BASE;
                         [deshabilitado]="soloRegion() || !ambitoRegion()"
                         (valueChange)="onProvinciaSeleccionada($event)"
                       />
-                    </div>
 
-                  @if (esTecnicoSeleccionado()) {
-                    <!-- Buscador + multi-selección de distritos (solo Técnicos) -->
-                    <div class="md:col-span-4">
-                      <label for="buscador-distrito" class="block text-[11px] font-medium text-muted-foreground mb-1">Distrito</label>
-                      <div class="relative">
-                        <input
-                          id="buscador-distrito"
-                          type="text"
-                          autocomplete="off"
-                          aria-label="Buscar distrito"
-                          placeholder="Escriba para filtrar distritos..."
-                          [value]="distritoFiltro()"
-                          (input)="distritoFiltro.set($any($event.target).value)"
-                          [disabled]="!ambitoProvincia()"
-                          [class]="(!ambitoProvincia() ? inpDisabled : inpNormal) + ' pr-9'"
-                        />
-                        <lucide-angular [img]="SearchIcon" class="size-4 text-muted-foreground/60 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      </div>
-
-                      <div class="mt-2 rounded-xl ring-1 ring-border bg-card overflow-hidden">
-                        <div class="flex items-center justify-between gap-2 px-3 py-2 bg-brand-soft border-b border-brand/10">
-                          <label class="flex items-center gap-2 text-xs font-bold text-brand cursor-pointer select-none">
+                      @if (esTecnicoSeleccionado()) {
+                        <!-- Buscador + multi-selección de distritos (solo Técnicos) -->
+                        <div class="c4">
+                          <mat-form-field subscriptSizing="dynamic" class="campo">
+                            <mat-label>Distrito</mat-label>
                             <input
-                              type="checkbox"
-                              class="accent-brand size-4"
-                              [checked]="todosDistritosSeleccionados()"
-                              [disabled]="!ambitoProvincia() || distritosFiltrados().length === 0"
-                              (change)="toggleTodosDistritos($any($event.target).checked)"
+                              matInput
+                              type="text"
+                              autocomplete="off"
+                              aria-label="Buscar distrito"
+                              placeholder="Escriba para filtrar distritos..."
+                              [value]="distritoFiltro()"
+                              [disabled]="!ambitoProvincia()"
+                              (input)="distritoFiltro.set($any($event.target).value)"
                             />
-                            <span>Seleccionar todos</span>
-                          </label>
-                          <span class="shrink-0 rounded-full bg-card px-2 py-0.5 text-[10px] font-bold text-brand tabular-nums ring-1 ring-brand/20">
-                            {{ distritosSeleccionados().length }} seleccionados
-                          </span>
+                            <mat-icon matSuffix fontSet="material-symbols-outlined">search</mat-icon>
+                          </mat-form-field>
+
+                          <div class="lista-distritos">
+                            <div class="cabecera-distritos">
+                              <mat-checkbox
+                                [checked]="todosDistritosSeleccionados()"
+                                [disabled]="!ambitoProvincia() || distritosFiltrados().length === 0"
+                                (change)="toggleTodosDistritos($event.checked)"
+                              >Seleccionar todos</mat-checkbox>
+                              <span class="contador">{{ distritosSeleccionados().length }} seleccionados</span>
+                            </div>
+                            <!-- Máx. 4 distritos visibles: el resto se alcanza con el scroll interno. -->
+                            <div class="items-distritos" role="group" aria-label="Distritos disponibles">
+                              @if (!ambitoProvincia()) {
+                                <p class="vacio">Seleccione una Región y una Provincia para listar los distritos.</p>
+                              } @else if (distritosFiltrados().length === 0) {
+                                <p class="vacio">Sin coincidencias para "{{ distritoFiltro() }}".</p>
+                              }
+                              @for (d of distritosFiltrados(); track d) {
+                                <mat-checkbox
+                                  [checked]="distritosSeleccionados().includes(d)"
+                                  (change)="toggleDistrito(d, $event.checked)"
+                                >{{ d }}</mat-checkbox>
+                              }
+                            </div>
+                          </div>
                         </div>
-                        <!-- Máx. 4 distritos visibles: el resto se alcanza con el scroll interno. -->
-                        <div class="max-h-[150px] overflow-y-auto p-2 space-y-0.5 thin-scroll" role="group" aria-label="Distritos disponibles">
-                          @if (!ambitoProvincia()) {
-                            <p class="px-2 py-2 text-sm text-muted-foreground italic">Seleccione una Región y una Provincia para listar los distritos.</p>
-                          } @else if (distritosFiltrados().length === 0) {
-                            <p class="px-2 py-2 text-sm text-muted-foreground italic">Sin coincidencias para "{{ distritoFiltro() }}".</p>
-                          }
-                          @for (d of distritosFiltrados(); track d) {
-                            <label class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-foreground/90 hover:bg-secondary/60 cursor-pointer select-none">
-                              <input
-                                type="checkbox"
-                                class="accent-brand size-4"
-                                [checked]="distritosSeleccionados().includes(d)"
-                                (change)="toggleDistrito(d, $any($event.target).checked)"
-                              />
-                              <span>{{ d }}</span>
-                            </label>
-                          }
-                        </div>
+                      } @else {
+                        <mat-form-field class="c4">
+                          <mat-label>Distrito</mat-label>
+                          <mat-select
+                            [value]="ambitoDistrito()"
+                            [disabled]="soloRegion() || !ambitoProvincia()"
+                            (valueChange)="ambitoDistrito.set($event)"
+                          >
+                            @for (d of distritosDisponibles(); track d) {
+                              <mat-option [value]="d">{{ d }}</mat-option>
+                            }
+                          </mat-select>
+                        </mat-form-field>
+                      }
+
+                      <div class="c2 alinear-boton">
+                        <button matButton="outlined" type="button" (click)="agregarAmbito()">
+                          <mat-icon fontSet="material-symbols-outlined">add_box</mat-icon>
+                          Agregar
+                        </button>
                       </div>
                     </div>
-                  } @else {
-                    <div class="md:col-span-4">
-                      <label for="ambito-distrito" class="block text-[11px] font-medium text-muted-foreground mb-1">Distrito</label>
-                      <select
-                        id="ambito-distrito"
-                        [value]="ambitoDistrito()"
-                        (change)="ambitoDistrito.set($any($event.target).value)"
-                        [disabled]="soloRegion() || !ambitoProvincia()"
-                        class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none transition-colors disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
-                      >
-                        <option value="">Seleccione</option>
-                        @for (d of distritosDisponibles(); track d) {
-                          <option [value]="d">{{ d }}</option>
-                        }
-                      </select>
-                    </div>
                   }
 
-                    <div class="md:col-span-2">
-                      <!-- Espaciador con la altura del label para alinear el botón con los campos. -->
-                      <span class="hidden md:block text-[11px] font-medium mb-1" aria-hidden="true">&nbsp;</span>
-                      <button
-                        type="button"
-                        (click)="agregarAmbito()"
-                        class="btn-secondary w-full"
-                      >
-                        <span>Agregar</span>
-                        <lucide-angular [img]="SquarePlusIcon" class="size-4 text-muted-foreground" />
-                      </button>
-                    </div>
-                  </div>
-
-                  }
-
-                  <div class="mt-2 bg-card rounded-xl ring-1 ring-border shadow-sm overflow-hidden">
-                    <table class="w-full text-left">
-                      <thead class="bg-secondary">
-                        <tr class="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                          <th class="px-4 py-3 w-1/3 text-center">Región</th>
-                          <th class="px-4 py-3 w-1/3 text-center">Provincia</th>
-                          <th class="px-4 py-3 w-1/3 text-center">Distrito</th>
-                          <th class="px-4 py-3 w-12 text-center"></th>
-                        </tr>
-                      </thead>
-                      <tbody class="divide-y divide-border">
-                        @if (ambitos().length === 0) {
-                          <tr>
-                            <td colspan="4" class="px-4 py-4 text-center text-sm text-muted-foreground italic">Sin ámbitos territoriales asignados.</td>
-                          </tr>
-                        }
-                        @for (amb of ambitos(); track $index; let i = $index) {
-                          <tr class="hover:bg-secondary/40 transition-colors">
-                            <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ amb.region }}</td>
-                            <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ amb.provincia }}</td>
-                            <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ amb.distrito }}</td>
-                            <td class="px-2 py-3 text-center">
-                              @if (!esModoServicio()) {
-                                <button type="button" (click)="eliminarAmbito(i)" class="p-2 rounded-lg transition-all bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground" title="Eliminar ámbito">
-                                  <lucide-angular [img]="Trash2Icon" class="size-3.5" />
-                                </button>
-                              }
-                            </td>
-                          </tr>
-                        }
-                      </tbody>
+                  <div class="tabla-contenedor">
+                    <table mat-table [dataSource]="filasAmbito()">
+                      <ng-container matColumnDef="region">
+                        <th mat-header-cell *matHeaderCellDef>Región</th>
+                        <td mat-cell *matCellDef="let fila">{{ fila.region }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="provincia">
+                        <th mat-header-cell *matHeaderCellDef>Provincia</th>
+                        <td mat-cell *matCellDef="let fila">{{ fila.provincia }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="distrito">
+                        <th mat-header-cell *matHeaderCellDef>Distrito</th>
+                        <td mat-cell *matCellDef="let fila">{{ fila.distrito }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="acciones">
+                        <th mat-header-cell *matHeaderCellDef></th>
+                        <td mat-cell *matCellDef="let fila">
+                          @if (!esModoServicio()) {
+                            <button
+                              matIconButton
+                              type="button"
+                              class="eliminar"
+                              matTooltip="Eliminar ámbito"
+                              aria-label="Eliminar ámbito"
+                              (click)="eliminarAmbito(fila.indice)"
+                            >
+                              <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>
+                            </button>
+                          }
+                        </td>
+                      </ng-container>
+                      <tr mat-header-row *matHeaderRowDef="columnasAmbito"></tr>
+                      <tr mat-row *matRowDef="let fila; columns: columnasAmbito"></tr>
+                      <tr class="fila-vacia" *matNoDataRow>
+                        <td [attr.colspan]="columnasAmbito.length">Sin ámbitos territoriales asignados.</td>
+                      </tr>
                     </table>
                   </div>
 
                   <!-- Metas asignadas por ámbito territorial (solo Admin DZ → Técnico) -->
                   @if (mostrarMetas()) {
-                    <div class="space-y-3 pt-1">
-                      <div class="flex items-center gap-2 border-b border-border pb-2 text-brand">
-                        <lucide-angular [img]="TargetIcon" class="size-4" />
-                        <h3 class="text-[11px] font-semibold uppercase tracking-wider">Metas asignadas por ámbito territorial</h3>
-                      </div>
-                      <div class="bg-card rounded-xl ring-1 ring-border shadow-sm overflow-x-auto">
-                        <table class="w-full min-w-[640px] text-left">
-                          <thead class="bg-secondary">
-                            <tr class="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                              <th class="px-4 py-3 text-center">Región</th>
-                              <th class="px-4 py-3 text-center">Provincia</th>
-                              <th class="px-4 py-3 text-center">Distrito</th>
-                              <th class="px-4 py-3 text-center">Cantidad de Capacitaciones</th>
-                              <th class="px-4 py-3 text-center">Cantidad de Asistencia Técnica</th>
-                            </tr>
-                          </thead>
-                          <tbody class="divide-y divide-border">
-                            <!-- track por instancia de FormGroup: al eliminar un ámbito se
-                                 destruye su fila (formGroupName por índice no se re-vincula). -->
-                            @for (grupo of metasAmbito.controls; track grupo; let i = $index) {
-                              <tr [formGroup]="grupo" class="hover:bg-secondary/40 transition-colors">
-                                <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ ambitos()[i]?.region }}</td>
-                                <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ ambitos()[i]?.provincia }}</td>
-                                <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ ambitos()[i]?.distrito }}</td>
-                                <td class="px-4 py-2 text-center">
-                                  <input
-                                    type="number" min="0" step="1" inputmode="numeric"
-                                    formControlName="cantidadCapacitaciones"
-                                    (keydown)="bloquearNoEnteros($event)"
-                                    (blur)="normalizarMeta(i, 'cantidadCapacitaciones')"
-                                    [class]="inpNormal + ' max-w-[110px] mx-auto text-center'"
-                                  />
-                                </td>
-                                <td class="px-4 py-2 text-center">
-                                  <input
-                                    type="number" min="0" step="1" inputmode="numeric"
-                                    formControlName="cantidadAsistenciaTecnica"
-                                    (keydown)="bloquearNoEnteros($event)"
-                                    (blur)="normalizarMeta(i, 'cantidadAsistenciaTecnica')"
-                                    [class]="inpNormal + ' max-w-[110px] mx-auto text-center'"
-                                  />
-                                </td>
-                              </tr>
-                            }
-                          </tbody>
-                        </table>
-                      </div>
+                    <div class="seccion">
+                      <mat-icon fontSet="material-symbols-outlined">target</mat-icon>
+                      <h3>Metas asignadas por ámbito territorial</h3>
+                    </div>
+                    <div class="tabla-contenedor">
+                      <table mat-table [dataSource]="filasMetas()">
+                        <ng-container matColumnDef="region">
+                          <th mat-header-cell *matHeaderCellDef>Región</th>
+                          <td mat-cell *matCellDef="let fila">{{ fila.amb.region }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="provincia">
+                          <th mat-header-cell *matHeaderCellDef>Provincia</th>
+                          <td mat-cell *matCellDef="let fila">{{ fila.amb.provincia }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="distrito">
+                          <th mat-header-cell *matHeaderCellDef>Distrito</th>
+                          <td mat-cell *matCellDef="let fila">{{ fila.amb.distrito }}</td>
+                        </ng-container>
+                        <ng-container matColumnDef="capacitaciones">
+                          <th mat-header-cell *matHeaderCellDef>Cantidad de Capacitaciones</th>
+                          <!-- El formGroup vive en la propia celda: las plantillas de mat-table
+                               se declaran fuera de la fila y no heredan su contenedor. -->
+                          <td mat-cell *matCellDef="let fila" [formGroup]="fila.grupo">
+                            <mat-form-field subscriptSizing="dynamic" class="meta">
+                              <input
+                                matInput
+                                type="number"
+                                min="0"
+                                step="1"
+                                inputmode="numeric"
+                                aria-label="Cantidad de Capacitaciones"
+                                formControlName="cantidadCapacitaciones"
+                                (keydown)="bloquearNoEnteros($event)"
+                                (blur)="normalizarMeta(fila.indice, 'cantidadCapacitaciones')"
+                              />
+                            </mat-form-field>
+                          </td>
+                        </ng-container>
+                        <ng-container matColumnDef="asistencias">
+                          <th mat-header-cell *matHeaderCellDef>Cantidad de Asistencia Técnica</th>
+                          <td mat-cell *matCellDef="let fila" [formGroup]="fila.grupo">
+                            <mat-form-field subscriptSizing="dynamic" class="meta">
+                              <input
+                                matInput
+                                type="number"
+                                min="0"
+                                step="1"
+                                inputmode="numeric"
+                                aria-label="Cantidad de Asistencia Técnica"
+                                formControlName="cantidadAsistenciaTecnica"
+                                (keydown)="bloquearNoEnteros($event)"
+                                (blur)="normalizarMeta(fila.indice, 'cantidadAsistenciaTecnica')"
+                              />
+                            </mat-form-field>
+                          </td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="columnasMetas"></tr>
+                        <tr mat-row *matRowDef="let fila; columns: columnasMetas"></tr>
+                      </table>
                     </div>
                   }
-                </div>
+                }
+              </div>
+
+              <!-- Permisos de menú por usuario (esquema según perfil seleccionado) -->
+              @if (esquemaPermisos(); as esquema) {
+                <app-permisos-menu-form [esquema]="esquema" [(permisos)]="permisosMenuEdit" />
               }
-            </div>
+            </mat-card>
 
-            <!-- Permisos de menú por usuario (esquema según perfil seleccionado) -->
-            @if (esquemaPermisos(); as esquema) {
-              <app-permisos-menu-form [esquema]="esquema" [(permisos)]="permisosMenuEdit" />
-            }
-          </div>
-
-          <div class="flex justify-end gap-2 pt-2">
-            <button (click)="irAPestana('datos')" class="btn-secondary">
-              <lucide-angular [img]="ArrowLeftIcon" class="size-3.5" /> Atrás
-            </button>
-            @if (requierePresupuestoAdminGeneral()) {
-              <!-- Abre el modal (no cambia de pestaña) y refleja el estado completado. -->
-              <button
-                (click)="abrirModalPresupuesto()"
-                [class]="(presupuestoRegistrado() ? 'btn-success' : 'btn-primary') + ' px-5'"
-                [attr.aria-label]="presupuestoRegistrado()
-                  ? 'Datos presupuestales registrados. Abrir para revisar o editar'
-                  : 'Registrar datos presupuestales'"
-              >
-                <lucide-angular [img]="presupuestoRegistrado() ? CircleCheckIcon : WalletIcon" class="size-3.5" />
-                <span>{{ presupuestoRegistrado() ? 'Datos Presupuestales Registrados' : 'Registrar Datos Presupuestales' }}</span>
+            <div class="botonera">
+              <button matButton type="button" (click)="irAPestana('datos')">
+                <mat-icon fontSet="material-symbols-outlined">arrow_back</mat-icon>
+                Atrás
               </button>
-            }
-            <button
-              (click)="guardarRegistroCompleto()"
-              [disabled]="guardarBloqueado()"
-              [title]="guardarBloqueado() ? motivoGuardarBloqueado() : ''"
-              class="btn-success px-5 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <lucide-angular [img]="SaveIcon" class="size-3.5" />
-              <span>{{ modo() === 'editar' ? 'Guardar Cambios' : 'Guardar Registro' }}</span>
-            </button>
-          </div>
-        </div>
-      }
-
-      <!-- ===== Modal Datos Presupuestales (Admin General → UE / DZ / Técnico) =====
-           Reutiliza los mismos controles del formulario y sus catálogos, por lo que
-           las cascadas (Unidad Responsable → Unidad Funcional) siguen operando sin
-           lógica duplicada. Cancelar restaura el estado previo a abrir el modal. -->
-      @if (modalPresupuesto()) {
-        <app-modal
-          title="Datos Presupuestales"
-          maxWidth="max-w-2xl"
-          mensaje="Complete la información presupuestal requerida para habilitar el registro del usuario."
-          (closed)="cancelarPresupuesto()"
-        >
-          <div class="space-y-4 text-left" [formGroup]="form">
-            <div>
-              <label for="mp-unidad" class="block text-[11px] font-medium text-muted-foreground mb-1">
-                Unidad Responsable <span class="text-destructive">*</span>
-              </label>
-              <select
-                id="mp-unidad"
-                formControlName="unidad"
-                aria-label="Unidad Responsable"
-                [attr.aria-invalid]="!!erroresPresupuesto()['unidad']"
-                [attr.aria-describedby]="erroresPresupuesto()['unidad'] ? 'mp-unidad-error' : null"
-                [class]="unidadBloqueada() ? inpDisabled : inpMandatory"
-              >
-                <option value="">--Seleccione--</option>
-                @for (u of unidadesResponsables(); track u) {
-                  <option [value]="u">{{ u }}</option>
-                }
-              </select>
-              @if (erroresPresupuesto()['unidad']; as e) {
-                <p id="mp-unidad-error" class="text-[11px] text-destructive mt-1">{{ e }}</p>
-              }
-            </div>
-
-            <div>
-              <label for="mp-fuente" class="block text-[11px] font-medium text-muted-foreground mb-1">
-                Fuente de Financiamiento <span class="text-destructive">*</span>
-              </label>
-              <select
-                id="mp-fuente"
-                formControlName="fuenteFinanc"
-                aria-label="Fuente de Financiamiento"
-                [attr.aria-invalid]="!!erroresPresupuesto()['fuenteFinanc']"
-                [attr.aria-describedby]="erroresPresupuesto()['fuenteFinanc'] ? 'mp-fuente-error' : null"
-                [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory"
-              >
-                <option value="">Seleccione</option>
-                @for (f of fuentes(); track f) {
-                  <option [value]="f">{{ f }}</option>
-                }
-              </select>
-              @if (erroresPresupuesto()['fuenteFinanc']; as e) {
-                <p id="mp-fuente-error" class="text-[11px] text-destructive mt-1">{{ e }}</p>
-              }
-            </div>
-
-            <!-- Categoría presupuestal: solo fuera de la vista Jefe de Área (mismo criterio del formulario). -->
-            @if (!modoJefeArea()) {
-              <div>
-                <label for="mp-categoria-presup" class="block text-[11px] font-medium text-muted-foreground mb-1">
-                  Categoría presupuestal <span class="text-destructive">*</span>
-                </label>
-                <select
-                  id="mp-categoria-presup"
-                  formControlName="categoriaPresup"
-                  (change)="onCategoriaChange()"
-                  aria-label="Categoría presupuestal"
-                  [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory"
+              @if (requierePresupuestoAdminGeneral()) {
+                <!-- Abre el diálogo (no cambia de pestaña) y refleja el estado completado. -->
+                <button
+                  matButton="filled"
+                  type="button"
+                  [class.completado]="presupuestoRegistrado()"
+                  [attr.aria-label]="presupuestoRegistrado()
+                    ? 'Datos presupuestales registrados. Abrir para revisar o editar'
+                    : 'Registrar datos presupuestales'"
+                  (click)="abrirDialogoPresupuesto()"
                 >
-                  <option value="">Seleccione</option>
-                  @for (c of categorias(); track c) {
-                    <option [value]="c">{{ c }}</option>
-                  }
-                </select>
-                @if (erroresPresupuesto()['categoriaPresup']; as e) {
-                  <p class="text-[11px] text-destructive mt-1">{{ e }}</p>
-                }
-              </div>
-            }
-
-            <div>
-              <label for="mp-categoria" class="block text-[11px] font-medium text-muted-foreground mb-1">
-                {{ modoJefeArea() ? 'Categoría' : 'Programa presupuestal' }} <span class="text-destructive">*</span>
-              </label>
-              <select
-                id="mp-categoria"
-                formControlName="programaPresup"
-                (change)="onProgramaChange()"
-                [attr.aria-label]="modoJefeArea() ? 'Categoría' : 'Programa presupuestal'"
-                [attr.aria-invalid]="!!erroresPresupuesto()['programaPresup']"
-                [attr.aria-describedby]="erroresPresupuesto()['programaPresup'] ? 'mp-categoria-error' : null"
-                [class]="presupuestoBloqueado() || !programaHabilitado() ? inpDisabled : inpMandatory"
-              >
-                <option value="">Seleccione</option>
-                @for (p of programas(); track p) {
-                  <option [value]="p">{{ p }}</option>
-                }
-              </select>
-              @if (erroresPresupuesto()['programaPresup']; as e) {
-                <p id="mp-categoria-error" class="text-[11px] text-destructive mt-1">{{ e }}</p>
+                  <mat-icon fontSet="material-symbols-outlined">
+                    {{ presupuestoRegistrado() ? 'check_circle' : 'account_balance_wallet' }}
+                  </mat-icon>
+                  {{ presupuestoRegistrado() ? 'Datos Presupuestales Registrados' : 'Registrar Datos Presupuestales' }}
+                </button>
               }
+              <span [matTooltip]="guardarBloqueado() ? motivoGuardarBloqueado() : ''">
+                <button
+                  matButton="filled"
+                  type="button"
+                  class="guardar"
+                  [disabled]="guardarBloqueado()"
+                  (click)="guardarRegistroCompleto()"
+                >
+                  <mat-icon fontSet="material-symbols-outlined">save</mat-icon>
+                  {{ modo() === 'editar' ? 'Guardar Cambios' : 'Guardar Registro' }}
+                </button>
+              </span>
             </div>
-
-            <div>
-              <label for="mp-unidad-func" class="block text-[11px] font-medium text-muted-foreground mb-1">
-                Unidad Funcional <span class="text-destructive">*</span>
-              </label>
-              <select
-                id="mp-unidad-func"
-                formControlName="unidadFuncional"
-                aria-label="Unidad Funcional"
-                [attr.aria-invalid]="!!erroresPresupuesto()['unidadFuncional']"
-                [attr.aria-describedby]="erroresPresupuesto()['unidadFuncional'] ? 'mp-unidad-func-error' : null"
-                [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory"
-              >
-                <option value="">Seleccione</option>
-                @for (u of unidadesFuncionales(); track u) {
-                  <option [value]="u">{{ u }}</option>
-                }
-              </select>
-              @if (erroresPresupuesto()['unidadFuncional']; as e) {
-                <p id="mp-unidad-func-error" class="text-[11px] text-destructive mt-1">{{ e }}</p>
-              }
-            </div>
-
-            <!-- Resumen accesible de la validación (se anuncia al fallar Aceptar). -->
-            <p role="alert" aria-live="assertive" class="sr-only">{{ resumenErroresPresupuesto() }}</p>
-            @if (resumenErroresPresupuesto()) {
-              <div class="flex items-start gap-2 rounded-lg bg-destructive/10 ring-1 ring-destructive/25 px-3 py-2">
-                <lucide-angular [img]="TriangleAlertIcon" class="size-4 text-destructive shrink-0 mt-0.5" />
-                <p class="text-xs text-destructive">{{ resumenErroresPresupuesto() }}</p>
-              </div>
-            }
           </div>
-
-          <!-- Botonera propia, alineada a la derecha (mostrarAcciones queda en false). -->
-          <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-8">
-            <button
-              type="button"
-              (click)="cancelarPresupuesto()"
-              class="btn-secondary w-full sm:w-auto sm:min-w-[130px]"
-            >Cancelar</button>
-            <button
-              type="button"
-              (click)="aceptarPresupuesto()"
-              class="btn-primary w-full sm:w-auto sm:min-w-[130px]"
-            >Aceptar</button>
-          </div>
-        </app-modal>
-      }
-
+        </mat-tab>
+      </mat-tab-group>
     </section>
+  `,
+  styles: `
+    .pagina {
+      padding: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    @media (min-width: 1024px) { .pagina { padding: 32px; } }
+    h1 {
+      margin: 0;
+      font: var(--mat-sys-headline-small);
+      color: var(--mat-sys-on-surface);
+    }
+
+    /* Caja fija: la ligadura no ensancha la pestaña mientras carga la fuente
+       (con el ancho provisional el encabezado activaba su paginación). */
+    .icono-tab {
+      margin-right: 8px;
+      font-size: 20px; width: 20px; height: 20px;
+      overflow: hidden;
+    }
+    .contenido-tab {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      padding-top: 20px;
+    }
+
+    .bloque {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .seccion {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+      color: var(--mat-sys-primary);
+    }
+    .seccion mat-icon { font-size: 20px; width: 20px; height: 20px; }
+    .seccion h3 {
+      margin: 0;
+      font: var(--mat-sys-label-large);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* Rejilla de 12 columnas equivalente a la del design system anterior. */
+    .rejilla {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 12px;
+      align-items: start;
+    }
+    .rejilla > * { grid-column: span 12; }
+    .separada { border-top: 1px solid var(--mat-sys-outline-variant); padding-top: 16px; }
+    @media (min-width: 768px) {
+      .rejilla > .c2 { grid-column: span 2; }
+      .rejilla > .c3 { grid-column: span 3; }
+      .rejilla > .c4 { grid-column: span 4; }
+      .rejilla > .c6 { grid-column: span 6; }
+    }
+    .campo, mat-form-field { width: 100%; }
+
+    .consulta-dni { display: flex; align-items: flex-start; gap: 8px; }
+    .consulta-dni .campo { flex: 1 1 auto; }
+    .consulta-dni button { margin-top: 8px; }
+    .mayusculas { text-transform: uppercase; }
+
+    .panel-marca {
+      padding: 16px;
+      border-radius: var(--mat-sys-corner-medium);
+      background: var(--mat-sys-surface-container-low);
+      border: 1px solid var(--mat-sys-outline-variant);
+    }
+    .periodo { display: flex; flex-direction: column; gap: 12px; }
+    .subtitulo {
+      margin: 0;
+      font: var(--mat-sys-label-large);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--mat-sys-primary);
+    }
+    .nota, .etiqueta-meses {
+      margin: 0;
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .etiqueta-meses { color: var(--mat-sys-primary); }
+    .etiqueta-meses span { color: var(--mat-sys-on-surface-variant); }
+
+    .meses {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0 16px;
+    }
+    @media (min-width: 640px) { .meses { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (min-width: 1024px) { .meses { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+    .lista-distritos, .tabla-contenedor {
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: var(--mat-sys-corner-medium);
+    }
+    .lista-distritos { margin-top: 8px; overflow: hidden; }
+    .cabecera-distritos {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 4px 8px;
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
+    }
+    .contador {
+      flex: 0 0 auto;
+      padding: 2px 8px;
+      border-radius: var(--mat-sys-corner-full);
+      background: var(--mat-sys-surface);
+      font: var(--mat-sys-label-small);
+      font-variant-numeric: tabular-nums;
+    }
+    .items-distritos {
+      display: flex;
+      flex-direction: column;
+      max-height: 150px;
+      overflow-y: auto;
+      padding: 4px 8px;
+    }
+    .items-distritos .vacio {
+      margin: 0;
+      padding: 8px;
+      font: var(--mat-sys-body-small);
+      font-style: italic;
+      color: var(--mat-sys-on-surface-variant);
+    }
+    /* Alinea el botón con los campos que llevan label flotante. */
+    .alinear-boton { padding-top: 8px; }
+
+    .bloque-perfil {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      border-top: 1px solid var(--mat-sys-outline-variant);
+      padding-top: 20px;
+    }
+
+    .tabla-contenedor { overflow: auto; }
+    table { width: 100%; }
+    th.mat-mdc-header-cell {
+      font: var(--mat-sys-label-medium);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .destacado { font-weight: 600; }
+    .fila-vacia td {
+      padding: 16px;
+      text-align: center;
+      font: var(--mat-sys-body-small);
+      font-style: italic;
+      color: var(--mat-sys-on-surface-variant);
+    }
+    /* Cantidades centradas en su columna, como en el diseño original. */
+    .mat-column-capacitaciones, .mat-column-asistencias { text-align: center; }
+    .meta { width: 96px; }
+    .meta input { text-align: center; }
+    .eliminar {
+      background: var(--mat-sys-error-container);
+      color: var(--mat-sys-on-error-container);
+      width: 36px; height: 36px; padding: 8px;
+    }
+    .eliminar mat-icon { font-size: 18px; width: 18px; height: 18px; }
+
+    .botonera {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    /* Guardado y presupuesto completado en el verde de estado aprobado. */
+    .guardar:not([disabled]), .completado {
+      --mat-button-filled-container-color: var(--estado-aprobado);
+      --mat-button-filled-label-text-color: var(--mat-sys-on-primary);
+    }
   `,
 })
 export class UsuarioFormComponent implements OnInit {
@@ -935,26 +977,10 @@ export class UsuarioFormComponent implements OnInit {
   private readonly permisosService = inject(PermisosMenuService);
   private readonly modales = inject(ModalService);
   private readonly toast = inject(ToastService);
+  private readonly dialog = inject(MatDialog);
 
-  readonly IdCardIcon = IdCard;
-  readonly KeyRoundIcon = KeyRound;
-  readonly UserCheckIcon = UserCheck;
-  readonly WalletIcon = Wallet;
-  readonly ShieldHalfIcon = ShieldHalf;
-  readonly SearchIcon = Search;
-  readonly LoaderIcon = LoaderCircle;
-  readonly ArrowLeftIcon = ArrowLeft;
-  readonly ArrowRightIcon = ArrowRight;
-  readonly SaveIcon = Save;
-  readonly Trash2Icon = Trash2;
-  readonly SquarePlusIcon = SquarePlus;
-  readonly TargetIcon = Target;
-  readonly CircleCheckIcon = CircleCheck;
-  readonly TriangleAlertIcon = TriangleAlert;
-
-  readonly inpMandatory = INP_MANDATORY;
-  readonly inpDisabled = INP_DISABLED;
-  readonly inpNormal = INP_NORMAL;
+  /** Grupo de pestañas: la navegación programática y el veto pasan por aquí. */
+  private readonly grupoTabs = viewChild.required(MatTabGroup);
 
   /* Catálogos reactivos: base del proyecto ⊕ opciones de Administración de Listas */
   readonly profesiones = computed(() => this.listasAdmin.opcionesFormulario('Profesión - Especialidad', PROFESIONES));
@@ -984,6 +1010,11 @@ export class UsuarioFormComponent implements OnInit {
   readonly formTick = signal(0);
   /** Permisos de menú en edición (esquema del perfil seleccionado). */
   readonly permisosMenuEdit = signal<PermisosMenu>({});
+
+  /* Columnas de las tres tablas del formulario. */
+  readonly columnasPeriodo = ['tipo', 'detalle', 'estado', 'acciones'];
+  readonly columnasAmbito = ['region', 'provincia', 'distrito', 'acciones'];
+  readonly columnasMetas = ['region', 'provincia', 'distrito', 'capacitaciones', 'asistencias'];
 
   private usuarioBase: UsuarioSodega | null = null;
 
@@ -1086,9 +1117,14 @@ export class UsuarioFormComponent implements OnInit {
     // En edición el DNI no cambia; en nueva partida/servicio la sección RENIEC queda bloqueada.
     this.reniecEditable.set(!nuevaPartida);
     if (this.modo() === 'editar') this.form.controls.dni.disable();
-    // Agregar Nuevo Servicio: identidad completa bloqueada, solo el celular es editable.
+    // Nueva partida o nuevo servicio: la identidad viene de RENIEC y no se
+    // reescribe aquí (antes solo se atenuaba visualmente).
+    if (nuevaPartida) {
+      ['dni', 'profesion', 'sexo'].forEach((c) => this.form.get(c)?.disable());
+    }
+    // Agregar Nuevo Servicio: además, la cuenta y el perfil se conservan.
     if (esServicio) {
-      ['dni', 'profesion', 'sexo', 'correo', 'perfil'].forEach((c) => this.form.get(c)?.disable());
+      ['correo', 'perfil'].forEach((c) => this.form.get(c)?.disable());
     }
   }
 
@@ -1139,23 +1175,12 @@ export class UsuarioFormComponent implements OnInit {
     return this.usuariosService.perfilesRegistrables(s.perfil, disponibles);
   });
 
-  readonly unidadBloqueada = computed(() => {
-    this.formTick();
-    return this.form.controls.unidad.disabled;
-  });
-
   presupuestoBloqueado(): boolean {
     const s = this.auth.session();
     if (!s || this.auth.esAdminGeneralAutenticado()) return false;
     return ['Administrador Unidad Ejecutora(UE)', 'Administrador DZ_Cap_Asit.'].includes(s.perfil);
   }
 
-  /**
-   * Detalle presupuestal (fuente, categoría, programa y unidad funcional)
-   * visible solo para perfiles de gestión: para el Administrador General
-   * (como objetivo, o registrando sin perfil elegido aún) se muestra
-   * únicamente la Unidad Responsable, igual que el prototipo.
-   */
   /** Perfiles que heredan la vista presupuestal del Jefe de Área. */
   private static readonly PERFILES_HEREDEROS_PRESUPUESTO = [
     'Administrador Unidad Ejecutora(UE)',
@@ -1181,6 +1206,12 @@ export class UsuarioFormComponent implements OnInit {
     );
   });
 
+  /**
+   * Detalle presupuestal (fuente, categoría, programa y unidad funcional)
+   * visible solo para perfiles de gestión: para el Administrador General
+   * (como objetivo, o registrando sin perfil elegido aún) se muestra
+   * únicamente la Unidad Responsable, igual que el prototipo.
+   */
   readonly mostrarPresupuesto = computed(() => {
     this.formTick();
     const target = this.form.controls.perfil.value;
@@ -1274,6 +1305,11 @@ export class UsuarioFormComponent implements OnInit {
   /** Meses marcados mientras se configura un periodo Regular. */
   readonly mesesSeleccionados = signal<number[]>([]);
 
+  /** Filas de la tabla de periodos (con su índice para eliminar). */
+  readonly filasPeriodo = computed(() =>
+    this.periodos().map((pg, indice) => ({ pg, indice })),
+  );
+
   /** La sección se habilita al elegir el Régimen Laboral. */
   readonly mostrarSeccionPeriodo = computed(() => {
     this.formTick();
@@ -1341,6 +1377,14 @@ export class UsuarioFormComponent implements OnInit {
     return this.mesesHabilitados().includes(mes);
   }
 
+  /** Motivo por el que un mes no puede activarse (tooltip del checkbox). */
+  ayudaMes(mes: number): string {
+    if (this.esMesHabilitado(mes)) return '';
+    return this.mesesAutomaticos()
+      ? 'Este mes está fuera de la vigencia del contrato'
+      : 'Este mes ya no puede activarse para el año de gestión seleccionado';
+  }
+
   toggleMes(mes: number, marcado: boolean): void {
     // Defensa en profundidad: un mes bloqueado nunca entra a la selección.
     if (marcado && !this.esMesHabilitado(mes)) return;
@@ -1391,12 +1435,45 @@ export class UsuarioFormComponent implements OnInit {
   readonly anioGestion = anioGestionVigente();
   readonly fechaMaxVigencia = fechaMaximaVigencia();
   readonly fechaMaxVigenciaTexto = fechaMaximaVigencia().split('-').reverse().join('/');
+  /** Tope para los `mat-datepicker` (mismo valor, en Date local). */
+  readonly fechaMaxVigenciaDate = isoADate(fechaMaximaVigencia());
+
+  /* Fechas del formulario expuestas como Date para los calendarios; el
+     formulario sigue guardando ISO `YYYY-MM-DD`, que es lo que consumen las
+     reglas de negocio y el backend. */
+  readonly fechaIniDate = computed(() => {
+    this.formTick();
+    return isoADate(this.form.controls.fechaIni.value);
+  });
+  readonly fechaFinDate = computed(() => {
+    this.formTick();
+    return isoADate(this.form.controls.fechaFin.value);
+  });
+  readonly periodoIniDate = computed(() => {
+    this.formTick();
+    return isoADate(this.form.controls.periodoFechaIni.value);
+  });
+  readonly periodoFinDate = computed(() => {
+    this.formTick();
+    return isoADate(this.form.controls.periodoFechaFin.value);
+  });
+
+  /** Vigencia del contrato: escribe en ISO y dispara las reglas del periodo. */
+  setFechaContrato(campo: 'fechaIni' | 'fechaFin', fecha: Date | null): void {
+    this.form.patchValue({ [campo]: dateAIso(fecha) });
+    this.onFechasContratoChange();
+  }
+
+  /** Fechas del periodo Extraordinario (se validan al agregar el periodo). */
+  setFechaPeriodo(campo: 'periodoFechaIni' | 'periodoFechaFin', fecha: Date | null): void {
+    this.form.patchValue({ [campo]: dateAIso(fecha) });
+  }
 
   /**
-   * El atributo `max` impide elegir fechas posteriores en el calendario, pero
-   * no cubre el tecleo manual ni el pegado: aquí se detecta ese caso, se avisa
-   * con el modal estándar y se limpia el campo infractor para que no quede una
-   * vigencia inválida en el formulario. Devuelve `true` si hubo rechazo.
+   * El `max` del calendario impide elegir fechas posteriores, pero no cubre el
+   * tecleo manual ni el pegado: aquí se detecta ese caso, se avisa con el modal
+   * estándar y se limpia el campo infractor para que no quede una vigencia
+   * inválida en el formulario. Devuelve `true` si hubo rechazo.
    */
   private rechazarFechasFueraDeAnioGestion(): boolean {
     const { fechaIni, fechaFin } = this.form.getRawValue();
@@ -1522,6 +1599,20 @@ export class UsuarioFormComponent implements OnInit {
       periodoFechaIni: '',
       periodoFechaFin: '',
     });
+    this.reiniciarCamposPeriodo();
+  }
+
+  /**
+   * Los campos con los que se arma el periodo son de trabajo: al vaciarlos no
+   * deben quedar marcados en rojo (su obligatoriedad se valida con mensaje al
+   * pulsar "Agregar Periodo").
+   */
+  private reiniciarCamposPeriodo(): void {
+    for (const nombre of ['periodoTipo', 'periodoFechaIni', 'periodoFechaFin'] as const) {
+      const control = this.form.controls[nombre];
+      control.markAsUntouched();
+      control.markAsPristine();
+    }
   }
 
   eliminarPeriodo(i: number): void {
@@ -1536,6 +1627,7 @@ export class UsuarioFormComponent implements OnInit {
       periodoAnio: String(this.aniosGestion()[0] ?? new Date().getFullYear()),
     });
     this.formTick.update((t) => t + 1);
+    this.reiniciarCamposPeriodo();
   }
 
   readonly esLocador = computed(() => {
@@ -1593,39 +1685,19 @@ export class UsuarioFormComponent implements OnInit {
     return !!(v.unidad && v.fuenteFinanc && categoriaOk && v.programaPresup && v.unidadFuncional);
   }
 
-  /* ===== Modal de Datos Presupuestales ===== */
+  /* ===== Diálogo de Datos Presupuestales ===== */
 
-  readonly modalPresupuesto = signal(false);
-  /** Los datos presupuestales se aceptaron en el modal (habilita el guardado). */
+  /** Los datos presupuestales se aceptaron en el diálogo (habilita el guardado). */
   readonly presupuestoRegistrado = signal(false);
-  readonly erroresPresupuesto = signal<Record<string, string>>({});
-  /** Valores al abrir el modal; Cancelar los restaura sin guardar nada. */
+  /** Valores al abrir el diálogo; Cancelar los restaura sin guardar nada. */
   private snapshotPresupuesto: Record<string, string> | null = null;
 
-  readonly resumenErroresPresupuesto = computed(() => {
-    const n = Object.keys(this.erroresPresupuesto()).length;
-    if (!n) return '';
-    return n === 1
-      ? 'Falta completar 1 campo obligatorio de los datos presupuestales.'
-      : `Faltan completar ${n} campos obligatorios de los datos presupuestales.`;
-  });
-
-  /** Campos del modal, en el mismo orden en que se muestran. */
-  private camposPresupuesto(): { control: string; etiqueta: string }[] {
-    const campos = [
-      { control: 'unidad', etiqueta: 'Unidad Responsable' },
-      { control: 'fuenteFinanc', etiqueta: 'Fuente de Financiamiento' },
-    ];
-    if (!this.modoJefeArea()) campos.push({ control: 'categoriaPresup', etiqueta: 'Categoría presupuestal' });
-    campos.push(
-      { control: 'programaPresup', etiqueta: this.modoJefeArea() ? 'Categoría' : 'Programa presupuestal' },
-      { control: 'unidadFuncional', etiqueta: 'Unidad Funcional' },
-    );
-    return campos;
-  }
-
-  /** Abre el modal conservando lo ya registrado (permite revisarlo y editarlo). */
-  abrirModalPresupuesto(): void {
+  /**
+   * Abre el diálogo conservando lo ya registrado (permite revisarlo y editarlo).
+   * Trabaja sobre el mismo formulario, de modo que las cascadas de catálogos
+   * siguen viviendo en un solo sitio.
+   */
+  abrirDialogoPresupuesto(): void {
     const v = this.form.getRawValue();
     this.snapshotPresupuesto = {
       unidad: v.unidad,
@@ -1634,48 +1706,47 @@ export class UsuarioFormComponent implements OnInit {
       programaPresup: v.programaPresup,
       unidadFuncional: v.unidadFuncional,
     };
-    this.erroresPresupuesto.set({});
-    this.modalPresupuesto.set(true);
-    // Foco inicial en el primer campo (mismo patrón de scroll/foco del formulario).
-    setTimeout(() => (document.getElementById('mp-unidad') as HTMLSelectElement | null)?.focus(), 60);
-  }
 
-  /** Cancelar: restaura los valores previos y no registra nada. */
-  cancelarPresupuesto(): void {
-    if (this.snapshotPresupuesto) this.form.patchValue(this.snapshotPresupuesto);
-    this.snapshotPresupuesto = null;
-    this.erroresPresupuesto.set({});
-    this.modalPresupuesto.set(false);
-    this.formTick.update((t) => t + 1);
-  }
+    const datos: DatosPresupuestalesData = {
+      form: this.form,
+      modoJefeArea: this.modoJefeArea,
+      unidadesResponsables: this.unidadesResponsables,
+      fuentes: this.fuentes,
+      categorias: this.categorias,
+      programas: this.programas,
+      unidadesFuncionales: this.unidadesFuncionales,
+      programaHabilitado: this.programaHabilitado,
+      onCategoriaChange: () => this.onCategoriaChange(),
+      onProgramaChange: () => this.onProgramaChange(),
+    };
 
-  /** ESC equivale a Cancelar (descarta los cambios del modal). */
-  onEscape(): void {
-    if (this.modalPresupuesto()) this.cancelarPresupuesto();
-  }
-
-  /**
-   * Aceptar: valida que no quede ningún campo vacío. Si falta alguno, marca los
-   * controles y no cierra; si está completo, deja los valores en el formulario
-   * (ya escritos por los propios controles) y marca el registro como completado.
-   */
-  aceptarPresupuesto(): void {
-    const v = this.form.getRawValue() as unknown as Record<string, string>;
-    const errores: Record<string, string> = {};
-    for (const { control, etiqueta } of this.camposPresupuesto()) {
-      if (!v[control]) errores[control] = `${etiqueta} es obligatorio.`;
-    }
-    this.erroresPresupuesto.set(errores);
-    if (Object.keys(errores).length > 0) return;
-
-    this.snapshotPresupuesto = null;
-    this.presupuestoRegistrado.set(true);
-    this.modalPresupuesto.set(false);
-    this.formTick.update((t) => t + 1);
-    this.toast.success(
-      'Datos presupuestales registrados',
-      'Ya puede continuar con el registro del usuario.',
+    const ref = this.dialog.open<DatosPresupuestalesDialogComponent, DatosPresupuestalesData, boolean>(
+      DatosPresupuestalesDialogComponent,
+      {
+        data: datos,
+        width: '560px',
+        maxWidth: '95vw',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+      },
     );
+
+    ref.afterClosed().subscribe((aceptado) => {
+      if (aceptado) {
+        this.snapshotPresupuesto = null;
+        this.presupuestoRegistrado.set(true);
+        this.formTick.update((t) => t + 1);
+        this.toast.success(
+          'Datos presupuestales registrados',
+          'Ya puede continuar con el registro del usuario.',
+        );
+        return;
+      }
+      // Cancelar y ESC descartan los cambios del diálogo.
+      if (this.snapshotPresupuesto) this.form.patchValue(this.snapshotPresupuesto);
+      this.snapshotPresupuesto = null;
+      this.formTick.update((t) => t + 1);
+    });
   }
 
   /**
@@ -1697,8 +1768,8 @@ export class UsuarioFormComponent implements OnInit {
 
   /**
    * En el flujo del Admin General el guardado exige, además del presupuesto
-   * registrado en el modal, que el resto del formulario esté completo. Para los
-   * demás perfiles se conserva el comportamiento actual.
+   * registrado en el diálogo, que el resto del formulario esté completo. Para
+   * los demás perfiles se conserva el comportamiento actual.
    */
   readonly guardarBloqueado = computed(() => {
     this.formTick();
@@ -1744,6 +1815,20 @@ export class UsuarioFormComponent implements OnInit {
     const disponibles = this.distritosDisponibles();
     return filtro ? disponibles.filter((d) => normalizarBusqueda(d).includes(filtro)) : disponibles;
   });
+
+  /** Filas de la tabla de ámbitos (con su índice para eliminar). */
+  readonly filasAmbito = computed(() =>
+    this.ambitos().map((amb, indice) => ({ ...amb, indice })),
+  );
+
+  /**
+   * Filas de la tabla de metas: ámbito + su FormGroup, alineados por índice.
+   * Depende solo de `ambitos()` para que teclear una cantidad no reconstruya
+   * las filas (perdería el foco del campo).
+   */
+  readonly filasMetas = computed(() =>
+    this.ambitos().map((amb, indice) => ({ amb, indice, grupo: this.metasAmbito.at(indice) })),
+  );
 
   /* ===== Acciones ===== */
 
@@ -1961,19 +2046,39 @@ export class UsuarioFormComponent implements OnInit {
     });
   }
 
+  /* ===== Navegación entre pestañas ===== */
+
+  /** Identidad mínima exigida para configurar los permisos. */
+  private identidadMinima(): boolean {
+    const v = this.form.getRawValue();
+    return !!(v.dni.trim() && v.apePat);
+  }
+
+  /**
+   * La pestaña Permisos exige haber validado la identidad en RENIEC: si no,
+   * se avisa y el grupo vuelve a Datos del usuario.
+   */
+  onCambioTab(indice: number): void {
+    if (indice === 1 && !this.identidadMinima()) {
+      this.mostrarAlerta({
+        titulo: 'Acceso Restringido',
+        mensaje: 'Debe ingresar el DNI y validar los datos de RENIEC antes de configurar los permisos.',
+      });
+      setTimeout(() => (this.grupoTabs().selectedIndex = 0));
+      return;
+    }
+    this.tab.set(indice === 1 ? 'permisos' : 'datos');
+  }
 
   irAPestana(tab: 'datos' | 'permisos'): void {
-    if (tab === 'permisos') {
-      const v = this.form.getRawValue();
-      if (!v.dni.trim() || !v.apePat) {
-        this.mostrarAlerta({
-          titulo: 'Acceso Restringido',
-          mensaje: 'Debe ingresar el DNI y validar los datos de RENIEC antes de configurar los permisos.',
-        });
-        return;
-      }
+    if (tab === 'permisos' && !this.identidadMinima()) {
+      this.mostrarAlerta({
+        titulo: 'Acceso Restringido',
+        mensaje: 'Debe ingresar el DNI y validar los datos de RENIEC antes de configurar los permisos.',
+      });
+      return;
     }
-    this.tab.set(tab);
+    this.grupoTabs().selectedIndex = tab === 'permisos' ? 1 : 0;
   }
 
   /** Validación de la pestaña Datos (equivale a guardarYContinuar del prototipo). */
@@ -2003,7 +2108,7 @@ export class UsuarioFormComponent implements OnInit {
       return;
     }
     if (!this.validarPresupuesto(v)) return;
-    this.tab.set('permisos');
+    this.grupoTabs().selectedIndex = 1;
   }
 
   /** Perfiles cuyo Programa/Categoría y Unidad Funcional son opcionales al validar. */

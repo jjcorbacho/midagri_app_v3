@@ -113,6 +113,28 @@ mat-icon.material-symbols-outlined,
    se declaran como tokens propios: son los únicos colores fuera de
    la paleta del tema y conservan el significado de los badges.
    ------------------------------------------------------------ */
+/* Chips de dato con los tonos de estado: los comparten `estado-badge`, la
+   grilla de usuarios y las tablas del formulario, así que se declaran una vez
+   aquí. Los tokens son los `--mat-chip-*` de Material 3 (los `--mdc-chip-*`
+   de versiones anteriores ya no los lee el componente). */
+@mixin chip-dato($fondo, $texto) {
+  --mat-chip-container-height: 24px;
+  --mat-chip-label-text-size: 11px;
+  --mat-chip-label-text-weight: 600;
+  --mat-chip-outline-width: 0;
+  --mat-chip-elevated-container-color: #{$fondo};
+  --mat-chip-label-text-color: #{$texto};
+}
+.mat-mdc-chip {
+  &.c-marca { @include chip-dato(var(--mat-sys-primary-container), var(--mat-sys-on-primary-container)); }
+  &.c-registrado { @include chip-dato(var(--estado-registrado-fondo), var(--estado-registrado)); }
+  &.c-aprobado { @include chip-dato(var(--estado-aprobado-fondo), var(--estado-aprobado)); }
+  &.c-observado { @include chip-dato(var(--estado-observado-fondo), var(--estado-observado)); }
+  &.c-enviado { @include chip-dato(var(--estado-enviado-fondo), var(--estado-enviado)); }
+  &.c-subsanado { @include chip-dato(var(--estado-subsanado-fondo), var(--estado-subsanado)); }
+  &.c-validado { @include chip-dato(var(--estado-validado-fondo), var(--estado-validado)); }
+}
+
 :root {
   --estado-registrado: #5b6470;      --estado-registrado-fondo: #eef0f2;
   --estado-enviado: #8a6d00;         --estado-enviado-fondo: #fdf4d6;

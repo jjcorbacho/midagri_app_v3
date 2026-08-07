@@ -1,75 +1,140 @@
 import { ChangeDetectionStrategy, Component, input, model } from '@angular/core';
-import { LucideAngularModule, FolderOpen, Eye, ListChecks } from 'lucide-angular';
-import type { LucideIconData } from 'lucide-angular';
+import { MatCardModule } from '@angular/material/card';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatIconModule } from '@angular/material/icon';
 import {
   EsquemaPermisosMenu,
   IconoGrupoPermiso,
   PermisosMenu,
 } from '../../core/models/permisos-menu.model';
 
-const ICONOS_GRUPO: Record<IconoGrupoPermiso, LucideIconData> = {
-  registrar: FolderOpen,
-  visualizar: Eye,
+/** Ligaduras de Material Symbols por tipo de grupo. */
+const ICONOS_GRUPO: Record<IconoGrupoPermiso, string> = {
+  registrar: 'folder_open',
+  visualizar: 'visibility',
 };
 
 /**
- * Permisos de menú por usuario en dos tablas (Registrar | Visualizar),
+ * Permisos de menú por usuario en dos tarjetas (Registrar | Visualizar),
  * según la matriz oficial permisos.xlsx. Componente 100 % presentacional:
  * la lógica vive en PermisosMenuService y en permisos-menu.model.ts.
  */
 @Component({
   selector: 'app-permisos-menu-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule],
+  imports: [MatCardModule, MatCheckboxModule, MatDividerModule, MatIconModule],
   template: `
-    <div class="border-t border-border pt-5 space-y-3">
-      <div>
-        <h4 class="text-[11px] font-semibold uppercase tracking-wider text-brand flex items-center gap-2">
-          <lucide-angular [img]="ListChecksIcon" class="size-4" /> {{ esquema().titulo }}
-        </h4>
-        <p class="text-xs text-muted-foreground mt-0.5">{{ esquema().descripcion }}</p>
-      </div>
+    <section class="permisos">
+      <header class="encabezado">
+        <mat-icon fontSet="material-symbols-outlined">checklist</mat-icon>
+        <div>
+          <h4>{{ esquema().titulo }}</h4>
+          <p>{{ esquema().descripcion }}</p>
+        </div>
+      </header>
 
       <!-- Registrar | Visualizar: 50/50 en escritorio, apiladas en móvil -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+      <div class="grupos">
         @for (grupo of esquema().grupos; track grupo.key) {
-          <div class="bg-card rounded-xl ring-1 ring-border overflow-hidden flex flex-col">
-            <div class="bg-brand-soft text-brand px-3 py-2 border-b border-brand/10 flex items-center justify-between gap-2">
-              <span class="flex items-center gap-2 text-xs font-bold">
-                <lucide-angular [img]="iconoDe(grupo.icono)" class="size-4" /> {{ grupo.label }}
+          <mat-card appearance="outlined" class="grupo">
+            <div class="cabecera">
+              <span class="titulo-grupo">
+                <mat-icon fontSet="material-symbols-outlined">{{ iconoDe(grupo.icono) }}</mat-icon>
+                {{ grupo.label }}
               </span>
-              <span class="text-[10px] font-bold bg-card/80 ring-1 ring-brand/20 rounded-full px-2 py-0.5 tabular-nums">
-                {{ activosDe(grupo.key) }} / {{ grupo.items.length }}
-              </span>
+              <span class="contador">{{ activosDe(grupo.key) }} / {{ grupo.items.length }}</span>
             </div>
-            <div class="max-h-72 overflow-y-auto divide-y divide-border thin-scroll" role="group" [attr.aria-label]="grupo.label">
+            <mat-divider />
+            <div class="items" role="group" [attr.aria-label]="grupo.label">
               @for (item of grupo.items; track item.key) {
-                <label class="flex items-center gap-2.5 px-3 py-2 text-sm text-foreground/90 cursor-pointer hover:bg-secondary/40 transition-colors select-none">
-                  <input
-                    type="checkbox"
-                    class="accent-brand size-4 shrink-0"
-                    [checked]="estaActivo(grupo.key, item.key)"
-                    (change)="toggle(grupo.key, item.key, $event)"
-                  />
-                  {{ item.label }}
-                </label>
+                <mat-checkbox
+                  [checked]="estaActivo(grupo.key, item.key)"
+                  (change)="toggle(grupo.key, item.key, $event.checked)"
+                >{{ item.label }}</mat-checkbox>
               }
             </div>
-          </div>
+          </mat-card>
         }
       </div>
-    </div>
+    </section>
+  `,
+  styles: `
+    :host { display: block; }
+    .permisos {
+      border-top: 1px solid var(--mat-sys-outline-variant);
+      padding-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .encabezado {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      color: var(--mat-sys-primary);
+    }
+    .encabezado mat-icon { font-size: 20px; width: 20px; height: 20px; }
+    .encabezado h4 {
+      margin: 0;
+      font: var(--mat-sys-label-large);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .encabezado p {
+      margin: 2px 0 0;
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .grupos {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    @media (min-width: 768px) { .grupos { grid-template-columns: 1fr 1fr; } }
+
+    .grupo { padding: 0; overflow: hidden; }
+    .cabecera {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
+    }
+    .titulo-grupo {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font: var(--mat-sys-label-large);
+    }
+    .titulo-grupo mat-icon { font-size: 18px; width: 18px; height: 18px; }
+    .contador {
+      font: var(--mat-sys-label-small);
+      font-variant-numeric: tabular-nums;
+      background: var(--mat-sys-surface);
+      border-radius: var(--mat-sys-corner-full);
+      padding: 2px 8px;
+    }
+    /* Máx. ~8 ítems visibles: el resto se alcanza con el scroll interno. */
+    .items {
+      display: flex;
+      flex-direction: column;
+      max-height: 288px;
+      overflow-y: auto;
+      padding: 4px 12px 8px;
+    }
   `,
 })
 export class PermisosMenuFormComponent {
-  readonly ListChecksIcon = ListChecks;
-
   /** Esquema del perfil seleccionado (define grupos, ítems y defaults del Excel). */
   readonly esquema = input.required<EsquemaPermisosMenu>();
   /** Permisos del usuario en edición (two-way binding). */
   readonly permisos = model.required<PermisosMenu>();
 
-  iconoDe(icono: IconoGrupoPermiso): LucideIconData {
+  iconoDe(icono: IconoGrupoPermiso): string {
     return ICONOS_GRUPO[icono];
   }
 
@@ -84,11 +149,10 @@ export class PermisosMenuFormComponent {
     return (grupo?.items ?? []).filter((i) => valores[i.key] === true).length;
   }
 
-  toggle(grupo: string, item: string, event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
+  toggle(grupo: string, item: string, marcado: boolean): void {
     this.permisos.update((prev) => ({
       ...prev,
-      [grupo]: { ...prev[grupo], [item]: checked },
+      [grupo]: { ...prev[grupo], [item]: marcado },
     }));
   }
 }

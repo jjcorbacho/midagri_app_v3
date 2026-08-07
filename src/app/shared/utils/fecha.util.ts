@@ -21,6 +21,24 @@ export function todayDDMMYYYY(): string {
   return `${dd}/${mm}/${d.getFullYear()}`;
 }
 
+/**
+ * ISO `YYYY-MM-DD` → Date en hora local, para los `mat-datepicker` del
+ * sistema: construirla con `new Date(iso)` la interpreta en UTC y desplaza el
+ * día en zonas negativas como la de Perú.
+ */
+export function isoADate(iso: string): Date | null {
+  if (!iso) return null;
+  const [a, m, d] = iso.split('-').map(Number);
+  return Number.isFinite(a) && Number.isFinite(m) && Number.isFinite(d) ? new Date(a, m - 1, d) : null;
+}
+
+/** Date → ISO `YYYY-MM-DD` (vacío si no hay fecha). */
+export function dateAIso(fecha: Date | null | undefined): string {
+  if (!fecha) return '';
+  const dos = (n: number) => String(n).padStart(2, '0');
+  return `${fecha.getFullYear()}-${dos(fecha.getMonth() + 1)}-${dos(fecha.getDate())}`;
+}
+
 export function isoToDDMMYYYY(iso: string): string {
   if (!iso) return '';
   const [y, m, d] = iso.split('-');
