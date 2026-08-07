@@ -1,8 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { Router } from '@angular/router';
-import { LucideAngularModule, ChevronDown, User as UserIcon, KeyRound, LogOut, CalendarRange } from 'lucide-angular';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatDialog } from '@angular/material/dialog';
+import { MatSelectModule } from '@angular/material/select';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { AuthService } from '../../core/services/auth.service';
-import { ModalComponent } from '../../shared/components/modal/modal.component';
+import { CambiarClaveDialogComponent } from './cambiar-clave-dialog.component';
 import { AreaService } from '../../core/services/area.service';
 import { AREAS } from '../../core/constants/areas.const';
 import { etiquetaPeriodoCabecera } from '../../core/models/usuario-sodega.model';
@@ -17,140 +23,178 @@ const MOSTRAR_SELECTOR_AREA = false;
 @Component({
   selector: 'app-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, ModalComponent],
+  imports: [
+    MatToolbarModule,
+    MatButtonModule,
+    MatIconModule,
+    MatMenuModule,
+    MatSelectModule,
+    MatFormFieldModule,
+  ],
   template: `
-    <header class="h-16 bg-card/95 backdrop-blur border-b border-border flex items-center justify-between px-6 sticky top-0 z-20">
-      <div class="flex items-center gap-6">
-        <div class="flex flex-col justify-center leading-tight min-w-0">
-          <span class="text-[10px] uppercase tracking-wider font-semibold text-brand">MIDAGRI</span>
-          <span class="text-sm font-medium text-muted-foreground">Sistema de Capacitaciones</span>
-          <!-- Periodo de gestión del usuario autenticado (visible en toda la app). -->
-          @if (periodoTexto(); as periodo) {
-            <span
-              class="flex items-center gap-1 text-[11px] text-brand font-medium mt-0.5 min-w-0"
-              [title]="'Periodo: ' + periodo"
-            >
-              <lucide-angular [img]="CalendarRangeIcon" class="size-3 shrink-0" />
-              <span class="truncate max-w-[220px] sm:max-w-[420px] lg:max-w-[560px]">
-                Periodo: {{ periodo }}
-              </span>
-            </span>
-          }
-        </div>
-        @if (mostrarSelectorArea) {
-          <div class="h-8 w-px bg-border"></div>
-
-          <div class="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-full ring-1 ring-border">
-            <span class="text-[11px] font-semibold text-muted-foreground">ÁREA ACTIVA:</span>
-            <select
-              [value]="areaService.currentArea()"
-              (change)="onAreaChange($event)"
-              class="bg-transparent text-sm font-semibold text-brand focus:outline-none cursor-pointer max-w-[280px]"
-            >
-              @for (a of areas; track a.code) {
-                <option [value]="a.code">{{ a.code }}</option>
-              }
-            </select>
-          </div>
-          <span class="hidden md:inline text-xs text-muted-foreground truncate max-w-xs">
-            {{ areaService.area().name }}
+    <mat-toolbar class="cabecera">
+      @if (mostrarBotonMenu()) {
+        <button matIconButton (click)="menuClick.emit()" aria-label="Abrir menú de navegación">
+          <mat-icon fontSet="material-symbols-outlined">menu</mat-icon>
+        </button>
+      }
+      <div class="identidad">
+        <span class="ministerio">MIDAGRI</span>
+        <span class="sistema">Sistema de Capacitaciones</span>
+        <!-- Periodo de gestión del usuario autenticado (visible en toda la app). -->
+        @if (periodoTexto(); as periodo) {
+          <span class="periodo" [title]="'Periodo: ' + periodo">
+            <mat-icon fontSet="material-symbols-outlined">date_range</mat-icon>
+            <span class="periodo-texto">Periodo: {{ periodo }}</span>
           </span>
         }
       </div>
 
-      <div class="flex items-center gap-3 relative">
-        <button
-          (click)="menuOpen.set(!menuOpen())"
-          class="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-secondary transition-colors"
-        >
-          <div class="text-right hidden sm:block">
-            <div class="text-sm font-medium">{{ nombreHeader() }}</div>
-            <div class="text-[11px] text-muted-foreground tracking-tight">
-              <span class="font-bold text-brand">{{ perfilHeader() }}</span>
-              @if (!auth.isAdministrador()) {
-                <span class="truncate max-w-[220px] inline-block align-bottom" [title]="auth.session()?.unidad">
-                  · {{ auth.session()?.unidad }}
-                </span>
-              }
-            </div>
-          </div>
-          <div class="size-9 rounded-full bg-secondary ring-1 ring-border flex items-center justify-center">
-            <span class="text-xs font-semibold text-muted-foreground">
-              {{ iniciales() }}
-            </span>
-          </div>
-          <lucide-angular [img]="ChevronDownIcon" class="size-4 text-muted-foreground" />
-        </button>
-
-        @if (menuOpen()) {
-          <div class="fixed inset-0 z-30" (click)="menuOpen.set(false)"></div>
-          <div class="absolute right-0 top-full mt-2 w-56 bg-popover rounded-xl shadow-lg ring-1 ring-border py-1.5 z-40 animate-modal-in">
-            <button
-              (click)="goPerfil()"
-              class="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
-            >
-              <lucide-angular [img]="UserIconRef" class="size-4 text-muted-foreground" /> Perfil
-            </button>
-            <button
-              (click)="menuOpen.set(false); pwdOpen.set(true)"
-              class="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
-            >
-              <lucide-angular [img]="KeyRoundIcon" class="size-4 text-muted-foreground" /> Cambiar clave
-            </button>
-            <div class="border-t border-border my-1"></div>
-            <button
-              (click)="logout()"
-              class="w-full flex items-center gap-3 px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
-            >
-              <lucide-angular [img]="LogOutIcon" class="size-4" /> Cerrar sesión
-            </button>
-          </div>
-        }
-      </div>
-
-      @if (pwdOpen()) {
-        <app-modal
-          title="Cambiar clave"
-          maxWidth="max-w-md"
-          tipo="info"
-          mensaje="Mínimo 8 caracteres, una mayúscula, un número y un carácter especial (estándar SBS)."
-          [mostrarAcciones]="true"
-          (aceptado)="pwdOpen.set(false)"
-          (cancelado)="pwdOpen.set(false)"
-          (closed)="pwdOpen.set(false)"
-        >
-            <form class="space-y-3" (submit)="$event.preventDefault(); pwdOpen.set(false)">
-              @for (l of ['Clave actual', 'Clave nueva', 'Confirmar clave nueva']; track l) {
-                <div>
-                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">{{ l }}</label>
-                  <input
-                    type="password"
-                    required
-                    class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-ring outline-none transition-[box-shadow] duration-150"
-                  />
-                </div>
-              }
-            </form>
-        </app-modal>
+      @if (mostrarSelectorArea) {
+        <mat-form-field subscriptSizing="dynamic" class="selector-area">
+          <mat-label>Área activa</mat-label>
+          <mat-select
+            [value]="areaService.currentArea()"
+            (valueChange)="areaService.setCurrentArea($event)"
+            aria-label="Área activa"
+          >
+            @for (a of areas; track a.code) {
+              <mat-option [value]="a.code">{{ a.code }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
       }
-    </header>
+
+      <span class="separador"></span>
+
+      <button matButton [matMenuTriggerFor]="menuUsuario" class="boton-usuario" aria-label="Menú de usuario">
+        <span class="datos-usuario">
+          <span class="nombre">{{ nombreHeader() }}</span>
+          <span class="perfil">
+            {{ perfilHeader() }}
+            @if (!auth.isAdministrador()) {
+              <span class="unidad" [title]="auth.session()?.unidad">· {{ auth.session()?.unidad }}</span>
+            }
+          </span>
+        </span>
+        <span class="avatar" aria-hidden="true">{{ iniciales() }}</span>
+        <mat-icon fontSet="material-symbols-outlined">expand_more</mat-icon>
+      </button>
+
+      <mat-menu #menuUsuario="matMenu">
+        <button mat-menu-item (click)="goPerfil()">
+          <mat-icon fontSet="material-symbols-outlined">person</mat-icon>
+          <span>Perfil</span>
+        </button>
+        <button mat-menu-item (click)="abrirCambiarClave()">
+          <mat-icon fontSet="material-symbols-outlined">key</mat-icon>
+          <span>Cambiar clave</span>
+        </button>
+        <button mat-menu-item (click)="logout()">
+          <mat-icon fontSet="material-symbols-outlined">logout</mat-icon>
+          <span>Cerrar sesión</span>
+        </button>
+      </mat-menu>
+    </mat-toolbar>
+  `,
+  styles: `
+    /* La cabecera ya no necesita sticky: vive fuera del área desplazable del
+       shell. Se le da altura propia porque el bloque de usuario (nombre +
+       perfil + unidad) es más alto que los 64 px por defecto de mat-toolbar. */
+    .cabecera {
+      flex: 0 0 auto;
+      height: auto;
+      min-height: 72px;
+      padding-block: 8px;
+      align-items: center;
+      background: var(--mat-sys-surface);
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+      gap: 16px;
+    }
+    .identidad {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      line-height: 1.2;
+      min-width: 0;
+    }
+    .ministerio {
+      font: var(--mat-sys-label-small);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--mat-sys-primary);
+      font-weight: 600;
+    }
+    .sistema {
+      font: var(--mat-sys-body-medium);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .periodo {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 2px;
+      min-width: 0;
+      font: var(--mat-sys-label-small);
+      color: var(--mat-sys-primary);
+    }
+    .periodo mat-icon { font-size: 14px; width: 14px; height: 14px; }
+    .periodo-texto {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 220px;
+    }
+    @media (min-width: 640px) { .periodo-texto { max-width: 420px; } }
+    @media (min-width: 1024px) { .periodo-texto { max-width: 560px; } }
+
+    .separador { flex: 1 1 auto; }
+    .selector-area { width: 160px; }
+
+    .boton-usuario { height: auto; min-height: 52px; padding-block: 4px; }
+    .datos-usuario {
+      display: none;
+      flex-direction: column;
+      align-items: flex-end;
+      line-height: 1.2;
+      margin-right: 8px;
+    }
+    @media (min-width: 640px) { .datos-usuario { display: flex; } }
+    .nombre { font: var(--mat-sys-body-medium); }
+    .perfil {
+      font: var(--mat-sys-label-small);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .unidad {
+      display: inline-block;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: bottom;
+    }
+    .avatar {
+      width: 36px; height: 36px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
+      font: var(--mat-sys-label-large);
+    }
   `,
 })
 export class HeaderComponent {
   readonly auth = inject(AuthService);
   readonly areaService = inject(AreaService);
   private readonly router = inject(Router);
-
-  readonly ChevronDownIcon = ChevronDown;
-  readonly UserIconRef = UserIcon;
-  readonly KeyRoundIcon = KeyRound;
-  readonly LogOutIcon = LogOut;
-  readonly CalendarRangeIcon = CalendarRange;
+  private readonly dialog = inject(MatDialog);
 
   readonly areas = AREAS;
   readonly mostrarSelectorArea = MOSTRAR_SELECTOR_AREA;
-  readonly menuOpen = signal(false);
-  readonly pwdOpen = signal(false);
+
+  /** En pantallas pequeñas el menú lateral se abre desde la cabecera. */
+  readonly mostrarBotonMenu = input(false);
+  readonly menuClick = output<void>();
 
   /**
    * Periodo(s) del usuario autenticado, con el formato de la cabecera:
@@ -185,12 +229,16 @@ export class HeaderComponent {
     return perfil === 'Administrador General' ? 'Administrador G.' : perfil;
   }
 
-  onAreaChange(event: Event): void {
-    this.areaService.setCurrentArea((event.target as HTMLSelectElement).value);
+  abrirCambiarClave(): void {
+    this.dialog.open(CambiarClaveDialogComponent, {
+      width: '420px',
+      maxWidth: '95vw',
+      autoFocus: 'first-tabbable',
+      restoreFocus: true,
+    });
   }
 
   goPerfil(): void {
-    this.menuOpen.set(false);
     this.router.navigate(['/perfil']);
   }
 

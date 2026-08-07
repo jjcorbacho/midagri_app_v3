@@ -76,8 +76,13 @@ body {
   font: var(--mat-sys-body-medium);
 }
 
-/* Material Symbols: ligadura y ajuste óptico estándar de Material 3. */
+/* Material Symbols: ligadura y ajuste óptico estándar de Material 3.
+   La familia se fuerza porque algunos contenedores de Material (por ejemplo
+   `.mat-mdc-list-item-meta`) imponen la tipografía del componente sobre el
+   icono y la ligadura se vería como texto. */
+mat-icon.material-symbols-outlined,
 .material-symbols-outlined {
+  font-family: 'Material Symbols Outlined' !important;
   font-variation-settings:
     'FILL' 0,
     'wght' 400,

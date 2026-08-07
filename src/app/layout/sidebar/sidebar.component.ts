@@ -2,24 +2,11 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { Router, RouterLink, NavigationEnd } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
-import {
-  LucideAngularModule,
-  Home,
-  GraduationCap,
-  ClipboardCheck,
-  FileText,
-  Settings,
-  Sliders,
-  Wrench,
-  UsersRound,
-  Cog,
-  ListChecks,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-} from 'lucide-angular';
-import type { LucideIconData } from 'lucide-angular';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatListModule } from '@angular/material/list';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDividerModule } from '@angular/material/divider';
 import { AuthService } from '../../core/services/auth.service';
 import { PermisosMenuService } from '../../core/services/permisos-menu.service';
 import {
@@ -43,28 +30,29 @@ import {
 interface NavChild {
   to: string;
   label: string;
-  icon: LucideIconData;
+  /** Ligadura de Material Symbols. */
+  icon: string;
 }
 
 interface NavItem {
   to: string;
   label: string;
-  icon: LucideIconData;
+  icon: string;
   matchPrefix?: string[];
   children?: NavChild[];
 }
 
-const CHILD_USUARIOS: NavChild = { to: '/usuarios', label: 'Gestión de Usuarios', icon: UsersRound };
-const CHILD_LISTAS: NavChild = { to: '/administracion/listas', label: 'Listas', icon: ListChecks };
-const CHILD_CONFIG_CAMPOS: NavChild = { to: '/configuracion/campos', label: 'Configuración Campos', icon: Sliders };
-const CHILD_CONFIG_REGLAS: NavChild = { to: '/configuracion/reglas', label: 'Configuración Reglas', icon: Wrench };
+const CHILD_USUARIOS: NavChild = { to: '/usuarios', label: 'Gestión de Usuarios', icon: 'group' };
+const CHILD_LISTAS: NavChild = { to: '/administracion/listas', label: 'Listas', icon: 'checklist' };
+const CHILD_CONFIG_CAMPOS: NavChild = { to: '/configuracion/campos', label: 'Configuración Campos', icon: 'tune' };
+const CHILD_CONFIG_REGLAS: NavChild = { to: '/configuracion/reglas', label: 'Configuración Reglas', icon: 'build' };
 
 /** Grupo Administración (Gestión de Usuarios + Listas, según permisos). */
 function grupoAdministracion(children: NavChild[]): NavItem {
   return {
     to: children[0]?.to ?? '/usuarios',
     label: 'Administración',
-    icon: Cog,
+    icon: 'admin_panel_settings',
     matchPrefix: ['/usuarios', '/administracion'],
     children,
   };
@@ -75,32 +63,32 @@ function grupoConfiguracion(children: NavChild[]): NavItem {
   return {
     to: children[0]?.to ?? '/configuracion',
     label: 'Configuración',
-    icon: Settings,
+    icon: 'settings',
     matchPrefix: ['/configuracion'],
     children,
   };
 }
 
 const NAV_FULL: NavItem[] = [
-  { to: '/dashboard', label: 'Inicio', icon: Home },
+  { to: '/dashboard', label: 'Inicio', icon: 'home' },
   {
     to: '/capacitaciones-n1',
     label: 'Capacitaciones / Asist. Técnica N1',
-    icon: GraduationCap,
+    icon: 'school',
     matchPrefix: ['/capacitaciones-n1'],
   },
   // Vista unificada: la botonera interna Revisión/Aprobación cambia de modo.
-  { to: '/seguimiento/revision', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] },
-  { to: '/reportes', label: 'Reportes', icon: FileText },
+  { to: '/seguimiento/revision', label: 'Seguimiento', icon: 'fact_check', matchPrefix: ['/seguimiento'] },
+  { to: '/reportes', label: 'Reportes', icon: 'description' },
   grupoAdministracion([CHILD_USUARIOS, CHILD_LISTAS]),
   {
     to: '/configuracion',
     label: 'Configuración',
-    icon: Settings,
+    icon: 'settings',
     matchPrefix: ['/configuracion'],
     children: [
-      { to: '/configuracion/campos', label: 'Configuración Campos', icon: Sliders },
-      { to: '/configuracion/reglas', label: 'Configuración Reglas', icon: Wrench },
+      { to: '/configuracion/campos', label: 'Configuración Campos', icon: 'tune' },
+      { to: '/configuracion/reglas', label: 'Configuración Reglas', icon: 'build' },
     ],
   },
 ];
@@ -110,108 +98,148 @@ const COLLAPSE_KEY = 'midagri.sidebar.collapsed';
 @Component({
   selector: 'app-sidebar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, LucideAngularModule],
+  imports: [
+    RouterLink,
+    MatButtonModule,
+    MatIconModule,
+    MatListModule,
+    MatTooltipModule,
+    MatDividerModule,
+  ],
   template: `
-    <aside
-      class="flex-shrink-0 bg-sidebar text-sidebar-foreground flex flex-col py-3 z-30 sticky top-0 h-screen transition-[width] duration-200"
-      [class]="collapsed() ? 'w-16 items-center' : 'w-60'"
-    >
-      <div class="flex items-center mb-3 w-full" [class]="collapsed() ? 'justify-center' : 'justify-between px-3'">
-        <a
-          routerLink="/dashboard"
-          class="size-10 rounded-md flex items-center justify-center ring-1 ring-sidebar-foreground/20 bg-brand text-brand-foreground font-bold text-sm shrink-0"
-          aria-label="MIDAGRI - Inicio"
-        >M</a>
+    <div class="barra" [class.colapsada]="collapsed()">
+      <div class="cabecera">
+        <a routerLink="/dashboard" class="logo" aria-label="MIDAGRI - Inicio">M</a>
         @if (!collapsed()) {
-          <span class="text-[11px] font-semibold tracking-wider text-sidebar-foreground/70 uppercase">MIDAGRI</span>
+          <span class="marca">MIDAGRI</span>
         }
         <button
+          matIconButton
           (click)="toggle()"
-          class="p-1.5 rounded-md hover:bg-sidebar-foreground/10 text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors"
-          [class]="collapsed() ? 'absolute top-3 right-[-12px] bg-sidebar ring-1 ring-sidebar-foreground/15' : ''"
           [attr.aria-label]="collapsed() ? 'Expandir menú' : 'Colapsar menú'"
-          [title]="collapsed() ? 'Expandir menú' : 'Colapsar menú'"
+          [matTooltip]="collapsed() ? 'Expandir menú' : 'Colapsar menú'"
+          matTooltipPosition="right"
         >
-          <lucide-angular [img]="collapsed() ? ChevronRightIcon : ChevronLeftIcon" class="size-4" />
+          <mat-icon fontSet="material-symbols-outlined">{{ collapsed() ? 'chevron_right' : 'chevron_left' }}</mat-icon>
         </button>
       </div>
 
-      <nav class="flex flex-col gap-0.5 flex-1 w-full" [class]="collapsed() ? 'items-center px-0' : 'px-2'">
+      <mat-nav-list class="navegacion">
         @for (item of nav(); track item.to) {
           @if (item.children?.length && !collapsed()) {
-            <div class="flex flex-col">
-              <button
-                (click)="toggleGroup(item.to)"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors w-full text-left"
-                [class]="isActive(item) ? 'bg-brand text-brand-foreground' : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-foreground/10'"
-              >
-                <lucide-angular [img]="item.icon" class="size-5 shrink-0" [strokeWidth]="1.75" />
-                <span class="text-sm flex-1">{{ item.label }}</span>
-                <lucide-angular [img]="ChevronDownIcon" class="size-4 transition-transform" [class.rotate-180]="isGroupOpen(item.to)" />
-              </button>
-              @if (isGroupOpen(item.to)) {
-                <div class="ml-7 flex flex-col gap-0.5 mt-0.5 mb-1">
-                  @for (sub of item.children; track sub.to) {
-                    <a
-                      [routerLink]="sub.to"
-                      class="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs transition-colors"
-                      [class]="isChildActive(sub) ? 'bg-sidebar-foreground/15 text-sidebar-foreground' : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-foreground/5'"
-                    >
-                      <lucide-angular [img]="sub.icon" class="size-4" [strokeWidth]="1.75" />
-                      <span>{{ sub.label }}</span>
-                    </a>
-                  }
-                </div>
-              }
-            </div>
+            <a
+              mat-list-item
+              (click)="toggleGroup(item.to)"
+              [activated]="isActive(item)"
+              [attr.aria-expanded]="isGroupOpen(item.to)"
+              class="grupo"
+            >
+              <mat-icon matListItemIcon fontSet="material-symbols-outlined">{{ item.icon }}</mat-icon>
+              <span matListItemTitle>{{ item.label }}</span>
+              <mat-icon matListItemMeta fontSet="material-symbols-outlined" class="chevron" [class.abierto]="isGroupOpen(item.to)">expand_more</mat-icon>
+            </a>
+            @if (isGroupOpen(item.to)) {
+              <div class="subnivel">
+                @for (sub of item.children; track sub.to) {
+                  <a mat-list-item [routerLink]="sub.to" [activated]="isChildActive(sub)">
+                    <mat-icon matListItemIcon fontSet="material-symbols-outlined">{{ sub.icon }}</mat-icon>
+                    <span matListItemTitle>{{ sub.label }}</span>
+                  </a>
+                }
+              </div>
+            }
           } @else {
             <a
+              mat-list-item
               [routerLink]="item.to"
-              class="group relative flex items-center gap-3 rounded-lg transition-colors"
-              [class]="(collapsed() ? 'p-2.5 justify-center ' : 'px-3 py-2 ') + (isActive(item) ? 'bg-brand text-brand-foreground' : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-foreground/10')"
+              [activated]="isActive(item)"
+              [matTooltip]="collapsed() ? item.label : ''"
+              matTooltipPosition="right"
+              [attr.aria-label]="item.label"
             >
-              <lucide-angular [img]="item.icon" class="size-5 shrink-0" [strokeWidth]="1.75" />
+              <mat-icon matListItemIcon fontSet="material-symbols-outlined">{{ item.icon }}</mat-icon>
               @if (!collapsed()) {
-                <span class="text-sm">{{ item.label }}</span>
-              } @else {
-                <span class="pointer-events-none absolute left-14 top-1/2 -translate-y-1/2 scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all bg-foreground text-background text-xs font-medium px-2.5 py-1.5 rounded whitespace-nowrap z-50 shadow-lg">
-                  {{ item.label }}
-                </span>
+                <span matListItemTitle>{{ item.label }}</span>
               }
             </a>
           }
         }
-      </nav>
+      </mat-nav-list>
 
-      <div class="flex flex-col gap-1 w-full" [class]="collapsed() ? 'items-center px-0' : 'px-2'">
-        <button
+      <mat-divider />
+
+      <mat-nav-list class="pie">
+        <a
+          mat-list-item
           (click)="logout()"
-          class="group relative flex items-center gap-3 rounded-lg text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-foreground/10 transition-colors"
-          [class]="collapsed() ? 'p-2.5 justify-center' : 'px-3 py-2'"
+          [matTooltip]="collapsed() ? 'Cerrar sesión' : ''"
+          matTooltipPosition="right"
           aria-label="Cerrar sesión"
         >
-          <lucide-angular [img]="LogOutIcon" class="size-5 shrink-0" [strokeWidth]="1.75" />
+          <mat-icon matListItemIcon fontSet="material-symbols-outlined">logout</mat-icon>
           @if (!collapsed()) {
-            <span class="text-sm">Cerrar sesión</span>
-          } @else {
-            <span class="pointer-events-none absolute left-14 top-1/2 -translate-y-1/2 scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all bg-foreground text-background text-xs font-medium px-2.5 py-1.5 rounded whitespace-nowrap z-50 shadow-lg">
-              Cerrar sesión
-            </span>
+            <span matListItemTitle>Cerrar sesión</span>
           }
-        </button>
-      </div>
-    </aside>
+        </a>
+      </mat-nav-list>
+    </div>
+  `,
+  styles: `
+    :host { display: block; height: 100%; }
+    /* Superficie del menú: Material no define una variante "sidebar",
+       así que se deriva de los tokens del tema activo. */
+    .barra {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      width: 240px;
+      background: var(--mat-sys-surface-container-highest);
+      color: var(--mat-sys-on-surface);
+      transition: width 200ms var(--mat-sys-motion-easing-standard, ease);
+      overflow-x: hidden;
+    }
+    .barra.colapsada { width: 72px; }
+
+    .cabecera {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      min-height: 64px;
+    }
+    .colapsada .cabecera { flex-direction: column; gap: 4px; }
+    .logo {
+      width: 40px; height: 40px; flex: 0 0 40px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: var(--mat-sys-corner-small);
+      background: var(--mat-sys-primary);
+      color: var(--mat-sys-on-primary);
+      font: var(--mat-sys-title-medium);
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .marca {
+      flex: 1;
+      font: var(--mat-sys-label-medium);
+      letter-spacing: 0.1em;
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    .navegacion { flex: 1; overflow-y: auto; overflow-x: hidden; }
+    .pie { padding-bottom: 8px; }
+    .grupo { cursor: pointer; }
+    .chevron { transition: transform 200ms ease; }
+    .chevron.abierto { transform: rotate(180deg); }
+    .subnivel { padding-left: 16px; }
+
+    /* En modo colapsado la lista muestra solo el icono, centrado. */
+    .colapsada .mat-mdc-list-item { padding-left: 16px; padding-right: 16px; }
   `,
 })
 export class SidebarComponent {
   private readonly auth = inject(AuthService);
   private readonly permisosMenu = inject(PermisosMenuService);
   private readonly router = inject(Router);
-
-  readonly ChevronLeftIcon = ChevronLeft;
-  readonly ChevronRightIcon = ChevronRight;
-  readonly ChevronDownIcon = ChevronDown;
-  readonly LogOutIcon = LogOut;
 
   readonly collapsed = signal(this.restoreCollapsed());
   private readonly openGroups = signal<Set<string>>(new Set());
@@ -228,36 +256,36 @@ export class SidebarComponent {
   /** Menú filtrado por perfil SODEGA + permisos de menú del usuario (matriz permisos.xlsx). */
   readonly nav = computed<NavItem[]>(() => {
     if (this.auth.isJefeArea()) {
-      const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
+      const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: 'home' }];
       if (this.registra(PERMISO_APROBACION_EVALUACION_UO)) {
-        items.push({ to: '/seguimiento/aprobacion', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] });
+        items.push({ to: '/seguimiento/aprobacion', label: 'Seguimiento', icon: 'fact_check', matchPrefix: ['/seguimiento'] });
       }
       if (this.puedeVerReportes()) {
-        items.push({ to: '/reportes', label: 'Reportes', icon: FileText });
+        items.push({ to: '/reportes', label: 'Reportes', icon: 'description' });
       }
       const admin = this.childrenAdministracion();
       if (admin.length) items.push(grupoAdministracion(admin));
       return items;
     }
     if (this.auth.isAdminDZ()) {
-      const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
+      const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: 'home' }];
       if (this.registra(PERMISO_EVALUACION_TECNICOS)) {
-        items.push({ to: '/seguimiento/revision', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] });
+        items.push({ to: '/seguimiento/revision', label: 'Seguimiento', icon: 'fact_check', matchPrefix: ['/seguimiento'] });
       }
       if (this.puedeVerReportes()) {
-        items.push({ to: '/reportes', label: 'Reportes', icon: FileText });
+        items.push({ to: '/reportes', label: 'Reportes', icon: 'description' });
       }
       const admin = this.childrenAdministracion();
       if (admin.length) items.push(grupoAdministracion(admin));
       return items;
     }
     if (this.auth.isAdminUE()) {
-      const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
+      const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: 'home' }];
       if (this.registra(PERMISO_EVALUACION_ADMIN_DZ)) {
-        items.push({ to: '/seguimiento/aprobacion', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] });
+        items.push({ to: '/seguimiento/aprobacion', label: 'Seguimiento', icon: 'fact_check', matchPrefix: ['/seguimiento'] });
       }
       if (this.puedeVerReportes()) {
-        items.push({ to: '/reportes', label: 'Reportes', icon: FileText });
+        items.push({ to: '/reportes', label: 'Reportes', icon: 'description' });
       }
       const admin = this.childrenAdministracion();
       if (admin.length) items.push(grupoAdministracion(admin));
@@ -266,12 +294,12 @@ export class SidebarComponent {
       return items;
     }
     if (this.auth.isTecnico1()) {
-      const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
+      const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: 'home' }];
       if (this.registra(PERMISO_CAPACITACION) || this.registra(PERMISO_ASISTENCIA_TECNICA)) {
         items.push({
           to: '/capacitaciones-n1',
           label: 'Capacitaciones / Asist. Técnica N1',
-          icon: GraduationCap,
+          icon: 'school',
           matchPrefix: ['/capacitaciones-n1'],
         });
       }
@@ -280,24 +308,24 @@ export class SidebarComponent {
     // Administrador General y perfiles personalizados (lista "Perfil Autorizado"):
     // menú derivado íntegramente de los permisos del registro activo.
     if (this.auth.session()) {
-      const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
+      const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: 'home' }];
       if (this.registra(PERMISO_CAPACITACION) || this.registra(PERMISO_ASISTENCIA_TECNICA)) {
         items.push({
           to: '/capacitaciones-n1',
           label: 'Capacitaciones / Asist. Técnica N1',
-          icon: GraduationCap,
+          icon: 'school',
           matchPrefix: ['/capacitaciones-n1'],
         });
       }
       // Entrada única "Seguimiento": abre revisión si el permiso lo cubre;
       // de lo contrario, aprobación. La botonera interna alterna los modos.
       if (this.registra(PERMISO_SEGUIMIENTO_REVISION)) {
-        items.push({ to: '/seguimiento/revision', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] });
+        items.push({ to: '/seguimiento/revision', label: 'Seguimiento', icon: 'fact_check', matchPrefix: ['/seguimiento'] });
       } else if (this.registra(PERMISO_SEGUIMIENTO_APROBACION)) {
-        items.push({ to: '/seguimiento/aprobacion', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] });
+        items.push({ to: '/seguimiento/aprobacion', label: 'Seguimiento', icon: 'fact_check', matchPrefix: ['/seguimiento'] });
       }
       if (this.puedeVerReportes()) {
-        items.push({ to: '/reportes', label: 'Reportes', icon: FileText });
+        items.push({ to: '/reportes', label: 'Reportes', icon: 'description' });
       }
       const admin = this.childrenAdministracion();
       if (admin.length) items.push(grupoAdministracion(admin));
