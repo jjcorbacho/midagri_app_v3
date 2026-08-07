@@ -1,37 +1,43 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { MatChipsModule } from '@angular/material/chips';
 
 /**
- * EstadoBadge — Renderiza el estado de un registro de capacitación / asist. técnica.
- * Usa tokens semánticos `--state-*` definidos en src/styles.css.
+ * EstadoBadge — estado de un registro de capacitación / asistencia técnica.
+ * Usa `mat-chip` con los tokens semánticos `--estado-*` del tema.
  */
-const STATE_CLASSES: Record<string, string> = {
-  Registrado:
-    'bg-state-registrado-soft text-state-registrado-foreground ring-state-registrado/30',
-  Enviado:
-    'bg-state-enviado-soft text-state-enviado-foreground ring-state-enviado/30',
-  'Enviado-Subsanado':
-    'bg-state-subsanado-soft text-state-subsanado-foreground ring-state-subsanado/30',
-  Validado:
-    'bg-state-validado-soft text-state-validado-foreground ring-state-validado/30',
-  Observado:
-    'bg-state-observado-soft text-state-observado-foreground ring-state-observado/30',
-  Aprobado:
-    'bg-state-aprobado-soft text-state-aprobado-foreground ring-state-aprobado/30',
+const CLASES_ESTADO: Record<string, string> = {
+  Registrado: 'e-registrado',
+  Enviado: 'e-enviado',
+  'Enviado-Subsanado': 'e-subsanado',
+  Validado: 'e-validado',
+  Observado: 'e-observado',
+  Aprobado: 'e-aprobado',
 };
 
 @Component({
   selector: 'app-estado-badge',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [MatChipsModule],
   template: `
-    <span
-      class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 whitespace-nowrap tracking-wide"
-      [class]="cls()"
-    >{{ estado() }}</span>
+    <mat-chip [class]="cls()" [attr.aria-label]="'Estado: ' + estado()" disableRipple>
+      {{ estado() }}
+    </mat-chip>
+  `,
+  styles: `
+    mat-chip {
+      --mdc-chip-label-text-size: 11px;
+      --mdc-chip-container-height: 24px;
+      font-weight: 600;
+    }
+    .e-registrado { --mdc-chip-elevated-container-color: var(--estado-registrado-fondo); --mdc-chip-label-text-color: var(--estado-registrado); }
+    .e-enviado    { --mdc-chip-elevated-container-color: var(--estado-enviado-fondo);    --mdc-chip-label-text-color: var(--estado-enviado); }
+    .e-subsanado  { --mdc-chip-elevated-container-color: var(--estado-subsanado-fondo);  --mdc-chip-label-text-color: var(--estado-subsanado); }
+    .e-validado   { --mdc-chip-elevated-container-color: var(--estado-validado-fondo);   --mdc-chip-label-text-color: var(--estado-validado); }
+    .e-observado  { --mdc-chip-elevated-container-color: var(--estado-observado-fondo);  --mdc-chip-label-text-color: var(--estado-observado); }
+    .e-aprobado   { --mdc-chip-elevated-container-color: var(--estado-aprobado-fondo);   --mdc-chip-label-text-color: var(--estado-aprobado); }
   `,
 })
 export class EstadoBadgeComponent {
   readonly estado = input.required<string>();
-  readonly cls = computed(
-    () => STATE_CLASSES[this.estado()] ?? 'bg-muted text-muted-foreground ring-border',
-  );
+  readonly cls = computed(() => CLASES_ESTADO[this.estado()] ?? 'e-registrado');
 }

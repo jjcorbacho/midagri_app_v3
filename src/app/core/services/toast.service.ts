@@ -1,20 +1,18 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 export type ToastKind = 'success' | 'info' | 'warning' | 'error';
 
-export interface Toast {
-  id: number;
-  kind: ToastKind;
-  message: string;
-  description?: string;
-}
-
-/** Notificaciones tipo "sonner" (equivalente al toast del sistema original). */
+/**
+ * Notificaciones temporales del sistema, sobre `MatSnackBar`.
+ *
+ * La API pública (success / info / warning / error) no cambió al migrar a
+ * Angular Material, por lo que todos los llamadores siguen igual. El tono se
+ * aplica con una clase por tipo, resuelta con los tokens del tema activo.
+ */
 @Injectable({ providedIn: 'root' })
 export class ToastService {
-  private seq = 0;
-  private readonly _toasts = signal<Toast[]>([]);
-  readonly toasts = this._toasts.asReadonly();
+  private readonly snackBar = inject(MatSnackBar);
 
   success(message: string, description?: string): void { this.push('success', message, description); }
   info(message: string, description?: string): void { this.push('info', message, description); }
@@ -22,12 +20,16 @@ export class ToastService {
   error(message: string, description?: string): void { this.push('error', message, description); }
 
   private push(kind: ToastKind, message: string, description?: string): void {
-    const toast: Toast = { id: ++this.seq, kind, message, description };
-    this._toasts.update((t) => [...t, toast]);
-    setTimeout(() => this.dismiss(toast.id), 4000);
+    this.snackBar.open(description ? `${message} — ${description}` : message, 'Cerrar', {
+      duration: kind === 'error' ? 7000 : 4000,
+      horizontalPosition: 'end',
+      verticalPosition: 'bottom',
+      panelClass: [`toast-${kind}`],
+    });
   }
 
-  dismiss(id: number): void {
-    this._toasts.update((t) => t.filter((x) => x.id !== id));
+  /** Cierra la notificación visible (equivalente al descarte manual previo). */
+  dismiss(): void {
+    this.snackBar.dismiss();
   }
 }

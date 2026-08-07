@@ -78,16 +78,16 @@ const ICON_TONES: Record<string, string> = {
             : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'"
         >
           @if (kpiView() === 'general') {
-            <app-kpi-card label="Eventos Registrados" [value]="counts().registrados" [icon]="BookOpenIcon" tone="blue" />
-            <app-kpi-card label="Capacitaciones" [value]="counts().caps" [icon]="ClipboardCheckIcon" tone="teal" />
-            <app-kpi-card label="Asistencias Técnicas" [value]="counts().ast" [icon]="WrenchIcon" tone="emerald" />
-            <app-kpi-card label="Participantes Inscritos" [value]="counts().productores" [icon]="UsersIcon" tone="indigo" />
+            <app-kpi-card label="Eventos Registrados" [value]="counts().registrados" icon="menu_book" tone="blue" />
+            <app-kpi-card label="Capacitaciones" [value]="counts().caps" icon="assignment_turned_in" tone="teal" />
+            <app-kpi-card label="Asistencias Técnicas" [value]="counts().ast" icon="build" tone="emerald" />
+            <app-kpi-card label="Participantes Inscritos" [value]="counts().productores" icon="groups" tone="indigo" />
           } @else {
-            <app-kpi-card label="Pendiente de envío (registrado)" [value]="counts().pendientes" [icon]="FileEditIcon" tone="slate" />
-            <app-kpi-card label="Enviados a Revisión (enviado)" [value]="counts().enviados" [icon]="SendHorizonalIcon" tone="blue" />
-            <app-kpi-card label="Observados" [value]="counts().observados" [icon]="AlertOctagonIcon" tone="amber" />
-            <app-kpi-card label="Subsanados" [value]="counts().subsanados" [icon]="FileCheckIcon" tone="subsanado" />
-            <app-kpi-card label="Aprobado" [value]="counts().aprobados" [icon]="BadgeCheckIcon" tone="emerald" />
+            <app-kpi-card label="Pendiente de envío (registrado)" [value]="counts().pendientes" icon="edit_document" tone="slate" />
+            <app-kpi-card label="Enviados a Revisión (enviado)" [value]="counts().enviados" icon="send" tone="blue" />
+            <app-kpi-card label="Observados" [value]="counts().observados" icon="report" tone="amber" />
+            <app-kpi-card label="Subsanados" [value]="counts().subsanados" icon="fact_check" tone="subsanado" />
+            <app-kpi-card label="Aprobado" [value]="counts().aprobados" icon="verified" tone="emerald" />
           }
         </div>
       </div>

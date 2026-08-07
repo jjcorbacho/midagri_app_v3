@@ -89,3 +89,35 @@ mat-icon.material-symbols-outlined,
     'GRAD' 0,
     'opsz' 24;
 }
+
+/* ------------------------------------------------------------
+   Notificaciones (MatSnackBar): un tono por tipo, sobre los
+   tokens del tema activo. Los aplica ToastService con panelClass.
+   Se estiliza la superficie directamente porque Material pinta
+   `.mdc-snackbar__surface` con una regla más específica que la
+   variable de contenedor.
+   ------------------------------------------------------------ */
+@mixin tono-toast($fondo, $texto) {
+  .mdc-snackbar__surface { background-color: $fondo !important; }
+  .mdc-snackbar__label { color: $texto !important; }
+  .mat-mdc-snack-bar-action { color: $texto !important; }
+}
+.toast-success { @include tono-toast(var(--mat-sys-primary-container), var(--mat-sys-on-primary-container)); }
+.toast-error   { @include tono-toast(var(--mat-sys-error-container), var(--mat-sys-on-error-container)); }
+.toast-warning { @include tono-toast(var(--mat-sys-tertiary-container), var(--mat-sys-on-tertiary-container)); }
+.toast-info    { @include tono-toast(var(--mat-sys-secondary-container), var(--mat-sys-on-secondary-container)); }
+
+/* ------------------------------------------------------------
+   Estados de negocio del flujo N1. Material no tiene una noción
+   equivalente (Registrado, Enviado-Subsanado, Observado…), así que
+   se declaran como tokens propios: son los únicos colores fuera de
+   la paleta del tema y conservan el significado de los badges.
+   ------------------------------------------------------------ */
+:root {
+  --estado-registrado: #5b6470;      --estado-registrado-fondo: #eef0f2;
+  --estado-enviado: #8a6d00;         --estado-enviado-fondo: #fdf4d6;
+  --estado-subsanado: #7a6a00;       --estado-subsanado-fondo: #fbf6d2;
+  --estado-validado: #1a4fa0;        --estado-validado-fondo: #e6eefb;
+  --estado-observado: #a32b1c;       --estado-observado-fondo: #fbe9e6;
+  --estado-aprobado: #1c6b3f;        --estado-aprobado-fondo: #e4f3ea;
+}
