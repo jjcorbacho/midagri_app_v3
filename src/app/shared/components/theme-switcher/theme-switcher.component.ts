@@ -1,104 +1,101 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { LucideAngularModule, Check, Palette, X } from 'lucide-angular';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { ThemeService } from '../../../core/services/theme.service';
 
 /**
- * Botón flotante permanente (lado derecho) que abre el panel
- * "Personalizar apariencia" con los temas visuales de la plataforma.
+ * Botón flotante permanente que abre "Personalizar apariencia" con los temas
+ * visuales de la plataforma, sobre `mat-fab` + `mat-menu`.
  * Solo presentación: delega la aplicación y persistencia al ThemeService.
  */
 @Component({
   selector: 'app-theme-switcher',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule],
-  host: { '(document:keydown.escape)': 'cerrar()' },
+  imports: [MatButtonModule, MatIconModule, MatMenuModule, MatDividerModule, MatTooltipModule],
   template: `
-    <!-- Botón flotante permanente -->
     <button
-      type="button"
-      (click)="abierto.set(!abierto())"
+      matFab
+      class="flotante"
+      [matMenuTriggerFor]="menu"
       aria-label="Personalizar apariencia"
-      title="Personalizar apariencia"
-      [attr.aria-expanded]="abierto()"
-      class="fixed right-4 bottom-6 z-40 size-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+      matTooltip="Personalizar apariencia"
+      matTooltipPosition="left"
     >
-      <lucide-angular [img]="PaletteIcon" class="size-5" />
+      <mat-icon fontSet="material-symbols-outlined">palette</mat-icon>
     </button>
 
-    @if (abierto()) {
-      <!-- Fondo del panel -->
-      <div class="fixed inset-0 z-40 bg-foreground/30 animate-overlay-in" (click)="cerrar()" aria-hidden="true"></div>
-
-      <!-- Panel lateral -->
-      <aside
-        role="dialog"
-        aria-modal="true"
-        aria-label="Personalizar apariencia"
-        class="fixed right-0 top-0 z-50 h-full w-full max-w-xs bg-card shadow-lg ring-1 ring-border flex flex-col animate-modal-in"
-      >
-        <header class="flex items-center justify-between gap-2 px-5 py-4 border-b border-border">
-          <div class="flex items-center gap-2 text-brand">
-            <lucide-angular [img]="PaletteIcon" class="size-4" />
-            <h2 class="text-sm font-bold text-foreground">Personalizar apariencia</h2>
-          </div>
-          <button type="button" (click)="cerrar()" aria-label="Cerrar panel de apariencia" class="btn-icon">
-            <lucide-angular [img]="XIcon" class="size-4" />
-          </button>
-        </header>
-
-        <p class="px-5 pt-3 text-xs text-muted-foreground leading-relaxed">
-          Elija el tema visual de la plataforma. El cambio se aplica al instante y se recuerda en este dispositivo.
+    <mat-menu #menu="matMenu" class="menu-temas">
+      <div class="cabecera" (click)="$event.stopPropagation()">
+        <p class="titulo">Personalizar apariencia</p>
+        <p class="ayuda">
+          El cambio se aplica al instante y se recuerda en este dispositivo.
         </p>
+      </div>
+      <mat-divider />
 
-        <div class="flex-1 overflow-y-auto thin-scroll p-4 space-y-2" role="radiogroup" aria-label="Temas visuales">
-          @for (tema of servicio.temas; track tema.id) {
-            <button
-              type="button"
-              role="radio"
-              [attr.aria-checked]="servicio.temaId() === tema.id"
-              (click)="servicio.seleccionar(tema.id)"
-              class="w-full text-left rounded-xl p-3 ring-1 transition-colors"
-              [class]="
-                servicio.temaId() === tema.id
-                  ? 'bg-brand-soft ring-brand/40'
-                  : 'bg-card ring-border hover:bg-secondary/60'
-              "
-            >
-              <span class="flex items-center justify-between gap-2">
-                <span class="text-sm font-semibold text-foreground">{{ tema.nombre }}</span>
-                @if (servicio.temaId() === tema.id) {
-                  <lucide-angular [img]="CheckIcon" class="size-4 text-brand shrink-0" />
-                }
-              </span>
-              <span class="mt-1 block text-[11px] text-muted-foreground leading-snug">{{ tema.descripcion }}</span>
-              <!-- Vista previa 60-30-10 -->
-              <span class="mt-2 flex items-center gap-1.5" aria-hidden="true">
-                <span class="h-3 flex-[6] rounded-full" [style.background]="tema.colores[0]"></span>
-                <span class="h-3 flex-[3] rounded-full" [style.background]="tema.colores[1]"></span>
-                <span class="h-3 flex-[1] rounded-full" [style.background]="tema.colores[2]"></span>
-              </span>
-            </button>
-          }
-        </div>
+      @for (tema of servicio.temas; track tema.id) {
+        <button mat-menu-item (click)="servicio.seleccionar(tema.id)" class="opcion">
+          <mat-icon fontSet="material-symbols-outlined">
+            {{ servicio.temaId() === tema.id ? 'radio_button_checked' : 'radio_button_unchecked' }}
+          </mat-icon>
+          <span class="cuerpo">
+            <span class="nombre">{{ tema.nombre }}</span>
+            <span class="descripcion">{{ tema.descripcion }}</span>
+            <span class="muestra" aria-hidden="true">
+              @for (c of tema.colores; track $index) {
+                <span class="franja" [style.background]="c"></span>
+              }
+            </span>
+          </span>
+        </button>
+      }
 
-        <footer class="px-5 py-3 border-t border-border">
-          <p class="text-[11px] text-muted-foreground leading-relaxed">
-            Los colores de estados y alertas se mantienen en todos los temas para conservar su significado.
-          </p>
-        </footer>
-      </aside>
+      <mat-divider />
+      <div class="pie" (click)="$event.stopPropagation()">
+        Los colores de estados y alertas se mantienen en todos los temas para conservar su significado.
+      </div>
+    </mat-menu>
+  `,
+  styles: `
+    .flotante {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 40;
+    }
+    .cabecera { padding: 12px 16px 8px; max-width: 320px; }
+    .titulo { margin: 0; font: var(--mat-sys-title-small); }
+    .ayuda {
+      margin: 4px 0 0;
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+      white-space: normal;
+    }
+    .opcion { height: auto; padding-block: 10px; }
+    .cuerpo { display: flex; flex-direction: column; gap: 2px; max-width: 260px; }
+    .nombre { font: var(--mat-sys-body-medium); }
+    .descripcion {
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+      white-space: normal;
+      line-height: 1.3;
+    }
+    .muestra { display: flex; gap: 4px; margin-top: 6px; }
+    .franja { height: 10px; border-radius: 999px; flex: 1; }
+    .franja:first-child { flex: 6; }
+    .franja:nth-child(2) { flex: 3; }
+    .pie {
+      padding: 8px 16px;
+      max-width: 320px;
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+      white-space: normal;
     }
   `,
 })
 export class ThemeSwitcherComponent {
   readonly servicio = inject(ThemeService);
-  readonly abierto = signal(false);
-
-  readonly PaletteIcon = Palette;
-  readonly XIcon = X;
-  readonly CheckIcon = Check;
-
-  cerrar(): void {
-    this.abierto.set(false);
-  }
 }

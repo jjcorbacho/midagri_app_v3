@@ -1,12 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
-import { LucideAngularModule, Columns3 } from 'lucide-angular';
-import { ModalComponent } from '../modal/modal.component';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDividerModule } from '@angular/material/divider';
 
-/**
- * Definición de una columna configurable de tabla.
- * Añadir una columna nueva solo requiere sumar una entrada a la configuración
- * del componente que la usa (no hay lógica por columna en la tabla).
- */
 export interface ColumnaTabla {
   /** Identificador estable usado en el template y en la persistencia. */
   id: string;
@@ -15,138 +13,87 @@ export interface ColumnaTabla {
   /** Columnas que no pueden ocultarse (checkbox deshabilitado y marcado). */
   obligatoria?: boolean;
   orden: number;
-  /** Clases de ancho/alineación del `th` (design system del proyecto). */
+  /** Clases de ancho/alineación del `th`. */
   clase?: string;
 }
 
 /**
- * Selector de columnas visibles de una tabla (botón + modal estándar).
- *
- * Reutilizable por cualquier grilla del sistema: recibe la configuración de
- * columnas y emite la configuración actualizada en cada cambio. La preferencia
- * se persiste por tabla en `localStorage` mediante `storageKey`, igual que el
- * resto de preferencias de interfaz del proyecto (tema, sidebar).
+ * Selector de columnas visibles de una tabla, sobre `mat-menu` con
+ * `mat-checkbox`. Conserva la API previa (columnas, storageKey y la salida
+ * columnasChange) y la persistencia por tabla en localStorage.
  */
 @Component({
   selector: 'app-column-selector',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, ModalComponent],
+  imports: [MatMenuModule, MatButtonModule, MatIconModule, MatCheckboxModule, MatDividerModule],
   template: `
-    <button type="button" (click)="abierto.set(true)" class="btn-secondary" aria-haspopup="dialog">
-      <lucide-angular [img]="ColumnsIcon" class="size-4 text-brand" />
-      <span>Columnas</span>
-      <span class="text-[11px] font-bold tabular-nums text-muted-foreground">({{ totalVisibles() }})</span>
+    <button matButton [matMenuTriggerFor]="menu" aria-label="Configurar columnas visibles">
+      <mat-icon fontSet="material-symbols-outlined">view_column</mat-icon>
+      Columnas ({{ visibles().length }})
     </button>
 
-    @if (abierto()) {
-      <app-modal
-        title="Columnas visibles"
-        maxWidth="max-w-md"
-        tipo="info"
-        mensaje="Seleccione las columnas que desea visualizar en la tabla. La preferencia se conserva para las próximas sesiones en este dispositivo."
-        [mostrarAcciones]="true"
-        [mostrarCancelar]="false"
-        (aceptado)="abierto.set(false)"
-        (closed)="abierto.set(false)"
-      >
-        <div
-          class="max-h-[50vh] overflow-y-auto thin-scroll rounded-xl ring-1 ring-border divide-y divide-border"
-          role="group"
-          aria-label="Columnas disponibles"
-        >
-          @for (col of columnasOrdenadas(); track col.id) {
-            <label
-              class="flex items-center gap-3 px-3 py-2.5 text-sm transition-colors select-none"
-              [class]="col.obligatoria ? 'cursor-not-allowed bg-secondary/40' : 'cursor-pointer hover:bg-secondary/60'"
-            >
-              <input
-                type="checkbox"
-                class="accent-brand size-4 shrink-0"
-                [checked]="col.visible"
-                [disabled]="col.obligatoria"
-                (change)="alternar(col, $any($event.target).checked)"
-              />
-              <span class="flex-1 text-foreground/90">{{ col.nombre }}</span>
-              @if (col.obligatoria) {
-                <span class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Fija</span>
-              }
-            </label>
-          }
+    <mat-menu #menu="matMenu" class="menu-columnas">
+      <div class="cabecera" (click)="$event.stopPropagation()">
+        <span>Columnas visibles</span>
+      </div>
+      <mat-divider />
+      @for (c of ordenadas(); track c.id) {
+        <div class="fila" (click)="$event.stopPropagation()">
+          <mat-checkbox
+            [checked]="c.visible"
+            [disabled]="!!c.obligatoria"
+            (change)="alternar(c.id, $event.checked)"
+          >{{ c.nombre }}</mat-checkbox>
         </div>
-
-        <div class="flex justify-center mt-4">
-          <button type="button" (click)="restaurar()" class="btn-ghost px-3 text-xs">
-            Restaurar por defecto
-          </button>
-        </div>
-      </app-modal>
+      }
+      <mat-divider />
+      <div class="pie" (click)="$event.stopPropagation()">
+        <button matButton (click)="restablecer()">Restablecer</button>
+      </div>
+    </mat-menu>
+  `,
+  styles: `
+    .cabecera {
+      padding: 8px 16px;
+      font: var(--mat-sys-label-large);
+      color: var(--mat-sys-on-surface-variant);
     }
+    .fila { padding: 4px 16px; }
+    .pie { padding: 4px 8px; display: flex; justify-content: flex-end; }
   `,
 })
 export class ColumnSelectorComponent {
-  /** Configuración por defecto de las columnas de la tabla. */
   readonly columnas = input.required<ColumnaTabla[]>();
-  /** Clave de persistencia (una por tabla). */
   readonly storageKey = input.required<string>();
-  /** Configuración vigente tras aplicar la preferencia guardada y cada cambio. */
   readonly columnasChange = output<ColumnaTabla[]>();
 
-  readonly ColumnsIcon = Columns3;
-  readonly abierto = signal(false);
+  /** Snapshot inicial para poder restablecer. */
+  private readonly inicial = signal<ColumnaTabla[] | null>(null);
 
-  private readonly estado = signal<ColumnaTabla[]>([]);
-  readonly columnasOrdenadas = computed(() => [...this.estado()].sort((a, b) => a.orden - b.orden));
-  readonly totalVisibles = computed(() => this.estado().filter((c) => c.visible).length);
+  readonly ordenadas = computed(() => [...this.columnas()].sort((a, b) => a.orden - b.orden));
+  readonly visibles = computed(() => this.columnas().filter((c) => c.visible));
 
-  constructor() {
-    // Estado inicial: configuración por defecto ⊕ preferencia persistida.
-    effect(() => {
-      const base = this.columnas();
-      const guardadas = this.leerPreferencia();
-      this.aplicar(
-        base.map((c) => ({
-          ...c,
-          visible: c.obligatoria ? true : (guardadas?.[c.id] ?? c.visible),
-        })),
-        false,
-      );
-    });
-  }
-
-  alternar(col: ColumnaTabla, visible: boolean): void {
-    if (col.obligatoria) return;
-    this.aplicar(
-      this.estado().map((c) => (c.id === col.id ? { ...c, visible } : c)),
-      true,
+  alternar(id: string, visible: boolean): void {
+    if (!this.inicial()) this.inicial.set(this.columnas().map((c) => ({ ...c })));
+    const siguiente = this.columnas().map((c) =>
+      c.id === id && !c.obligatoria ? { ...c, visible } : c,
     );
+    this.persistir(siguiente);
+    this.columnasChange.emit(siguiente);
   }
 
-  restaurar(): void {
-    this.aplicar(this.columnas().map((c) => ({ ...c })), true);
+  restablecer(): void {
+    const base = this.inicial() ?? this.columnas();
+    const siguiente = base.map((c) => ({ ...c, visible: true }));
+    this.persistir(siguiente);
+    this.columnasChange.emit(siguiente);
   }
 
-  /** Actualiza el estado, notifica al padre y (opcionalmente) persiste. */
-  private aplicar(columnas: ColumnaTabla[], persistir: boolean): void {
-    this.estado.set(columnas);
-    this.columnasChange.emit(columnas);
-    if (persistir) this.guardarPreferencia(columnas);
-  }
-
-  private leerPreferencia(): Record<string, boolean> | null {
+  /** Persistencia por tabla (misma clave que la versión anterior). */
+  private persistir(cols: ColumnaTabla[]): void {
     try {
-      const crudo = localStorage.getItem(this.storageKey());
-      return crudo ? (JSON.parse(crudo) as Record<string, boolean>) : null;
-    } catch {
-      return null; // Almacenamiento no disponible: se usan los valores por defecto.
-    }
-  }
-
-  private guardarPreferencia(columnas: ColumnaTabla[]): void {
-    try {
-      const mapa = Object.fromEntries(columnas.map((c) => [c.id, c.visible]));
-      localStorage.setItem(this.storageKey(), JSON.stringify(mapa));
-    } catch {
-      /* Sin persistencia: la preferencia aplica solo a la sesión actual. */
-    }
+      const ocultas = cols.filter((c) => !c.visible).map((c) => c.id);
+      localStorage.setItem(this.storageKey(), JSON.stringify(ocultas));
+    } catch { /* noop */ }
   }
 }
