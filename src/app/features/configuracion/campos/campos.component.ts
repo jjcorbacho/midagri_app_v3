@@ -1,12 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
-import { NgTemplateOutlet } from '@angular/common';
-import {
-  LucideAngularModule,
-  ChevronRight, ChevronDown, Plus, Pencil, Trash2, GripVertical,
-  FileText, MapPin, Compass, Paperclip, User, Briefcase, Users, Info,
-  Sparkles, Monitor, Smartphone, Eye, EyeOff, Lock, Settings2, Send,
-} from 'lucide-angular';
-import type { LucideIconData } from 'lucide-angular';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog } from '@angular/material/dialog';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../../core/services/auth.service';
 import { AreaService } from '../../../core/services/area.service';
 import { CamposService } from '../../../core/services/campos.service';
@@ -14,313 +17,248 @@ import { ToastService } from '../../../core/services/toast.service';
 import { AREAS } from '../../../core/constants/areas.const';
 import { CAMPOS_BASE, FORMULARIOS } from '../../../core/constants/campos-base.const';
 import { CampoBase, CampoPersonalizado, CampoTipo, FormularioKey } from '../../../core/models/campo.model';
-import { CampoPreviewComponent } from './campo-preview.component';
-import { CampoModalComponent, CampoModalResult, TIPOS_CAMPO } from './campo-modal.component';
-import { OpcionesModalComponent } from './opciones-modal.component';
+import { PreviewFormularioComponent } from './preview-formulario.component';
+import {
+  CampoDialogComponent,
+  CampoDialogData,
+  CampoDialogResult,
+  TIPOS_CAMPO,
+} from './campo-dialog.component';
+import { OpcionesDialogComponent, OpcionesDialogData } from './opciones-dialog.component';
 
-const SECTION_ICONS: Record<string, LucideIconData> = {
-  'Datos Generales': FileText,
-  'Ubicación': MapPin,
-  'Coordenadas': Compass,
-  'Documento Sustentatorio': Paperclip,
-  'Datos de Identidad y Demográficos': User,
-  'Datos técnicos y comerciales': Briefcase,
-  'Organización y participación social': Users,
-  'Información adicional': Info,
+/** Ligadura de Material Symbols por sección del formulario. */
+const ICONOS_SECCION: Record<string, string> = {
+  'Datos Generales': 'description',
+  'Ubicación': 'location_on',
+  'Coordenadas': 'explore',
+  'Documento Sustentatorio': 'attach_file',
+  'Datos de Identidad y Demográficos': 'person',
+  'Datos técnicos y comerciales': 'work',
+  'Organización y participación social': 'groups',
+  'Información adicional': 'info',
 };
 
-/** Configuración de Formularios — gestión de campos base y personalizados por área. */
+/** Tipos de campo cuyos valores puede editar el ADMIN_UE. */
+const TIPOS_CON_OPCIONES: CampoTipo[] = ['select', 'radio', 'checkbox'];
+
+/** Configuración de Formularios — campos base y personalizados por área. */
 @Component({
   selector: 'app-campos',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, LucideAngularModule, CampoPreviewComponent, CampoModalComponent, OpcionesModalComponent],
+  imports: [
+    MatButtonModule,
+    MatCardModule,
+    MatChipsModule,
+    MatExpansionModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatSelectModule,
+    MatSlideToggleModule,
+    MatTooltipModule,
+    PreviewFormularioComponent,
+  ],
   template: `
-    <section class="p-6 lg:p-8 max-w-7xl mx-auto animate-page-in">
-      <div class="bg-card rounded-xl shadow-xl border border-border overflow-hidden flex flex-col">
-        <!-- Header -->
-        <header class="p-6 border-b border-border">
-          <div class="flex flex-col xl:flex-row xl:items-start justify-between gap-6">
-            <div class="min-w-0">
-              <div class="flex items-center gap-2 text-xs font-semibold text-brand uppercase tracking-wider mb-1">
-                <span>Configuración</span>
-                <lucide-angular [img]="ChevronRightIcon" class="size-3 text-muted-foreground/60" />
-                <span class="text-muted-foreground">Gestión de campos</span>
-                <span
-                  class="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold"
-                  [class]="isAdmin() ? 'bg-state-aprobado-soft text-state-aprobado-foreground' : 'bg-state-enviado-soft text-state-enviado-foreground'"
-                >{{ isAdmin() ? 'ADMINISTRADOR GENERAL' : 'ADMIN. UNIDAD ORGANIZACIONAL' }}</span>
-              </div>
-              <h1 class="text-h1 text-foreground">Configuración de Formularios — {{ area().code }}</h1>
-            </div>
-
-            <!-- Filter bar -->
-            <div class="flex flex-col sm:flex-row items-start gap-4 shrink-0">
-              <div class="flex flex-col gap-1.5 w-full sm:w-64">
-                <label class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Oficina responsable
-                </label>
-                @if (isAdmin()) {
-                  <select
-                    [value]="areaService.currentArea()"
-                    (change)="areaService.setCurrentArea($any($event.target).value)"
-                    class="h-9 w-full bg-background border border-border text-foreground text-sm rounded-lg px-3 focus:ring-2 focus:ring-ring outline-none"
-                  >
-                    @for (a of areas; track a.code) {
-                      <option [value]="a.code">{{ a.code }} — {{ a.name }}</option>
-                    }
-                  </select>
-                } @else {
-                  <div class="relative">
-                    <input
-                      disabled
-                      [value]="area().code + ' — ' + area().name"
-                      class="h-9 w-full bg-muted border border-border text-muted-foreground text-sm rounded-lg px-3 pr-8 cursor-not-allowed truncate"
-                    />
-                    <lucide-angular [img]="LockIcon" class="size-3.5 text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2" />
-                  </div>
-                }
-              </div>
-
-              <div class="flex flex-col gap-1.5 w-full sm:w-64">
-                <label class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Formulario a configurar
-                </label>
-                <select
-                  class="h-9 w-full bg-background border border-border text-foreground text-sm font-medium rounded-lg px-3 focus:ring-2 focus:ring-ring outline-none"
-                  [value]="formulario()"
-                  (change)="formulario.set($any($event.target).value)"
-                >
-                  @for (f of formularios; track f.key) {
-                    <option [value]="f.key">{{ f.label }}</option>
-                  }
-                </select>
-              </div>
-            </div>
+    <section class="pagina">
+      <header class="cabecera">
+        <div class="titulo">
+          <div class="ruta">
+            <span>Configuración</span>
+            <mat-icon fontSet="material-symbols-outlined">chevron_right</mat-icon>
+            <span>Gestión de campos</span>
+            <mat-chip disableRipple [class]="isAdmin() ? 'c-aprobado' : 'c-enviado'">
+              {{ isAdmin() ? 'Administrador general' : 'Admin. unidad organizacional' }}
+            </mat-chip>
           </div>
-        </header>
+          <h1>Configuración de Formularios — {{ area().code }}</h1>
+        </div>
 
-        <!-- Main split -->
-        <div class="flex flex-col lg:flex-row min-h-[600px]">
-          <!-- Left: structure -->
-          <div class="lg:w-3/5 border-r border-border/60 bg-surface-2/50 p-6 overflow-y-auto">
-            <div class="flex items-center justify-between mb-6 gap-3 flex-wrap">
-              <h2 class="text-lg font-bold text-foreground flex items-center gap-2">
+        <div class="filtros">
+          @if (isAdmin()) {
+            <mat-form-field subscriptSizing="dynamic" class="filtro">
+              <mat-label>Oficina responsable</mat-label>
+              <mat-select
+                [value]="areaService.currentArea()"
+                (valueChange)="areaService.setCurrentArea($event)"
+              >
+                @for (a of areas; track a.code) {
+                  <mat-option [value]="a.code">{{ a.code }} — {{ a.name }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          } @else {
+            <!-- El área del ADMIN_UE es fija: el control va deshabilitado. -->
+            <mat-form-field subscriptSizing="dynamic" class="filtro">
+              <mat-label>Oficina responsable</mat-label>
+              <input matInput disabled [value]="area().code + ' — ' + area().name" />
+              <mat-icon matSuffix fontSet="material-symbols-outlined">lock</mat-icon>
+            </mat-form-field>
+          }
+
+          <mat-form-field subscriptSizing="dynamic" class="filtro">
+            <mat-label>Formulario a configurar</mat-label>
+            <mat-select [value]="formulario()" (valueChange)="formulario.set($event)">
+              @for (f of formularios; track f.key) {
+                <mat-option [value]="f.key">{{ f.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </header>
+
+      <mat-card appearance="outlined" class="panel">
+        <div class="division">
+          <!-- Estructura del formulario -->
+          <div class="estructura">
+            <div class="barra">
+              <h2>
                 Estructura del formulario
-                <span class="bg-surface-3 text-muted-foreground text-[10px] px-2 py-0.5 rounded-full uppercase font-semibold">
+                <mat-chip disableRipple class="c-registrado">
                   {{ totalActivos() }} {{ isAdmin() ? 'campos activos' : 'campos visibles' }}
-                </span>
+                </mat-chip>
               </h2>
               @if (isAdmin()) {
-                <button
-                  (click)="editing.set(null); showModal.set(true)"
-                  class="btn-primary"
-                >
-                  <lucide-angular [img]="PlusIcon" class="size-4" />
+                <button matButton="filled" type="button" (click)="abrirCampo(null)">
+                  <mat-icon fontSet="material-symbols-outlined">add</mat-icon>
                   Nuevo campo personalizado
                 </button>
               }
             </div>
 
-            <!-- Grupos base -->
-            @for (grupo of grupos(); track grupo.seccion) {
-              <div class="mb-8">
-                <button
-                  type="button"
-                  (click)="toggleSeccion(grupo.seccion)"
-                  class="w-full flex items-center gap-3 mb-3 pb-2 border-b border-border text-left hover:border-brand/40 transition-colors"
-                  [attr.aria-expanded]="!isCollapsed(grupo.seccion)"
+            <mat-accordion multi displayMode="flat">
+              @for (grupo of grupos(); track grupo.seccion) {
+                <mat-expansion-panel
+                  [expanded]="!estaColapsada(grupo.seccion)"
+                  (opened)="setColapso(grupo.seccion, false)"
+                  (closed)="setColapso(grupo.seccion, true)"
                 >
-                  <div class="w-8 h-8 rounded-lg bg-brand-soft flex items-center justify-center">
-                    <lucide-angular [img]="sectionIcon(grupo.seccion)" class="size-4 text-brand" />
-                  </div>
-                  <h3 class="text-sm font-bold text-foreground uppercase tracking-tight">{{ grupo.seccion }}</h3>
-                  <span class="text-[10px] text-muted-foreground/70 ml-auto font-semibold">{{ grupo.campos.length }} campos</span>
-                  <lucide-angular
-                    [img]="ChevronDownIcon"
-                    class="size-4 text-muted-foreground/70 transition-transform"
-                    [class.-rotate-90]="isCollapsed(grupo.seccion)"
-                  />
-                </button>
-                @if (!isCollapsed(grupo.seccion)) {
-                  <div class="space-y-2">
+                  <mat-expansion-panel-header>
+                    <mat-panel-title>
+                      <mat-icon fontSet="material-symbols-outlined">{{ iconoSeccion(grupo.seccion) }}</mat-icon>
+                      {{ grupo.seccion }}
+                    </mat-panel-title>
+                    <mat-panel-description>{{ grupo.campos.length }} campos</mat-panel-description>
+                  </mat-expansion-panel-header>
+
+                  <div class="campos">
                     @for (b of grupo.campos; track b.nombre) {
-                      <div
-                        class="group bg-card border border-border p-3 rounded-xl flex items-center justify-between transition-all hover:shadow-md hover:border-brand/25"
-                        [class.opacity-60]="isBaseInactive(b)"
-                      >
-                        <div class="flex items-center gap-4 min-w-0">
-                          <div class="cursor-grab text-muted-foreground/50 group-hover:text-brand-secondary">
-                            <lucide-angular [img]="GripVerticalIcon" class="size-5" />
+                      <div class="fila-campo" [class.inactiva]="esBaseInactivo(b)">
+                        <mat-icon class="asa" fontSet="material-symbols-outlined">drag_indicator</mat-icon>
+                        <div class="datos">
+                          <div class="nombre">
+                            <span [class.tachado]="esBaseInactivo(b)">{{ b.nombre }}</span>
+                            <mat-chip disableRipple class="c-registrado">Base</mat-chip>
                           </div>
-                          <div class="min-w-0">
-                            <div class="flex items-center gap-2">
-                              <span
-                                class="text-sm font-semibold text-foreground truncate"
-                                [class]="isBaseInactive(b) ? 'line-through text-muted-foreground' : ''"
-                              >{{ b.nombre }}</span>
-                              <span class="bg-muted text-muted-foreground text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">
-                                Base
-                              </span>
-                            </div>
-                            <div class="flex items-center gap-2 mt-1 flex-wrap">
-                              <span class="text-[10px] px-2 py-0.5 rounded-full border" [class]="tipoChip(b.tipo)">
-                                {{ tipoLabel(b.tipo) }}
-                              </span>
-                              @if (b.requerido) {
-                                <span class="bg-state-observado-soft text-state-observado-foreground text-[10px] px-2 py-0.5 rounded-full border border-state-observado/25 font-medium">
-                                  Obligatorio
-                                </span>
-                              }
-                            </div>
+                          <div class="etiquetas">
+                            <mat-chip disableRipple [class]="tipoChip(b.tipo)">{{ tipoLabel(b.tipo) }}</mat-chip>
+                            @if (b.requerido) {
+                              <mat-chip disableRipple class="c-observado">Obligatorio</mat-chip>
+                            }
                           </div>
                         </div>
                         @if (isAdmin()) {
-                          <div class="flex items-center gap-2">
-                            <span class="text-[10px] font-bold uppercase" [class]="isBaseInactive(b) ? 'text-muted-foreground/50' : 'text-muted-foreground/70'">
-                              {{ isBaseInactive(b) ? 'Inactivo' : 'Activo' }}
-                            </span>
-                            <button
-                              (click)="toggleBase(b)"
-                              class="w-10 h-5 rounded-full relative transition-colors"
-                              [class]="isBaseInactive(b) ? 'bg-surface-3' : 'bg-primary'"
-                              aria-label="Activar/Inactivar"
-                            >
-                              <div
-                                class="absolute top-0.5 bg-card w-4 h-4 rounded-full shadow-sm transition-all"
-                                [class]="isBaseInactive(b) ? 'left-0.5' : 'right-0.5'"
-                              ></div>
-                            </button>
-                          </div>
+                          <mat-slide-toggle
+                            [checked]="!esBaseInactivo(b)"
+                            (change)="alternarBase(b)"
+                            [aria-label]="'Activar ' + b.nombre"
+                          >{{ esBaseInactivo(b) ? 'Inactivo' : 'Activo' }}</mat-slide-toggle>
                         }
                       </div>
                     }
                   </div>
-                }
-              </div>
-            }
+                </mat-expansion-panel>
+              }
+            </mat-accordion>
 
-            <!-- Personalizados -->
-            <div class="mb-2">
-              <div class="flex items-center gap-3 mb-3 pb-2 border-b border-brand/25">
-                <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                  <lucide-angular [img]="SparklesIcon" class="size-4 text-primary-foreground" />
-                </div>
-                <h3 class="text-sm font-bold text-brand uppercase tracking-tight">Campos personalizados</h3>
-                <span class="text-[10px] text-brand ml-auto font-semibold">{{ customsVisibles().length }} campos</span>
+            <!-- Campos personalizados -->
+            <div class="personalizados">
+              <div class="titulo-personalizados">
+                <mat-icon fontSet="material-symbols-outlined">auto_awesome</mat-icon>
+                <h3>Campos personalizados</h3>
+                <span class="conteo">{{ customsVisibles().length }} campos</span>
               </div>
 
               @if (customsVisibles().length === 0) {
-                <div class="bg-brand-soft/30 border border-dashed border-brand/25 rounded-xl p-6 text-center">
-                  <p class="text-sm text-brand/70 italic">
+                <div class="vacio">
+                  <p>
                     {{ isAdmin()
                       ? 'Sin campos personalizados en este formulario.'
-                      : 'El ADMINISTRADOR GENERAL aún no ha publicado campos personalizados activos.' }}
+                      : 'El administrador general aún no ha publicado campos personalizados activos.' }}
                   </p>
                   @if (isAdmin()) {
-                    <button
-                      (click)="editing.set(null); showModal.set(true)"
-                      class="mt-2 text-brand text-xs font-bold hover:underline"
-                    >+ Agregar el primero</button>
+                    <button matButton type="button" (click)="abrirCampo(null)">Agregar el primero</button>
                   }
                 </div>
               } @else {
-                <div class="space-y-2">
+                <div class="campos">
                   @for (c of customsVisibles(); track c.id) {
-                    <div
-                      class="group bg-brand-soft/50 border border-brand/25 p-3 rounded-xl flex items-center justify-between shadow-sm"
-                      [class.opacity-60]="isAdmin() && !c.activo"
-                    >
-                      <div class="flex items-center gap-4 min-w-0">
-                        <div class="cursor-grab text-brand-secondary">
-                          <lucide-angular [img]="GripVerticalIcon" class="size-5" />
+                    <div class="fila-campo destacada" [class.inactiva]="isAdmin() && !c.activo">
+                      <mat-icon class="asa" fontSet="material-symbols-outlined">drag_indicator</mat-icon>
+                      <div class="datos">
+                        <div class="nombre">
+                          <span>{{ c.nombre }}</span>
+                          @if (c.tieneData) {
+                            <mat-chip disableRipple class="c-enviado" matTooltip="Con información registrada">
+                              Con datos
+                            </mat-chip>
+                          }
                         </div>
-                        <div class="min-w-0">
-                          <div class="flex items-center gap-2">
-                            <span class="text-sm font-semibold text-brand truncate">{{ c.nombre }}</span>
-                            @if (c.tieneData) {
-                              <span
-                                title="Con información registrada"
-                                class="bg-warning-soft text-warning-foreground text-[9px] px-1.5 py-0.5 rounded font-bold uppercase"
-                              >Con datos</span>
-                            }
-                          </div>
-                          <div class="flex items-center gap-2 mt-1 flex-wrap">
-                            <span class="text-[10px] px-2 py-0.5 rounded-full border" [class]="tipoChip(c.tipo)">
-                              {{ tipoLabel(c.tipo) }}
-                            </span>
-                            <span
-                              class="text-[10px] px-2 py-0.5 rounded-full border font-medium"
-                              [class]="c.requerido ? 'bg-state-observado-soft text-state-observado-foreground border-state-observado/25' : 'bg-muted text-muted-foreground border-border'"
-                            >{{ c.requerido ? 'Obligatorio' : 'Opcional' }}</span>
-                          </div>
+                        <div class="etiquetas">
+                          <mat-chip disableRipple [class]="tipoChip(c.tipo)">{{ tipoLabel(c.tipo) }}</mat-chip>
+                          <mat-chip disableRipple [class]="c.requerido ? 'c-observado' : 'c-registrado'">
+                            {{ c.requerido ? 'Obligatorio' : 'Opcional' }}
+                          </mat-chip>
                         </div>
                       </div>
 
                       @if (isAdmin()) {
-                        <div class="flex items-center gap-3">
-                          <div class="flex items-center gap-1 border-r border-brand/25 pr-3">
-                            <button
-                              (click)="editing.set(c); showModal.set(true)"
-                              class="p-1.5 text-brand hover:text-brand transition-colors"
-                              title="Editar"
-                            >
-                              <lucide-angular [img]="PencilIcon" class="size-4" />
-                            </button>
-                            <button
-                              (click)="eliminarCampo(c)"
-                              class="p-1.5 transition-colors"
-                              [class]="c.tieneData ? 'text-muted-foreground/50 cursor-not-allowed' : 'text-destructive hover:text-destructive'"
-                              [title]="c.tieneData ? 'Bloqueado: tiene datos registrados' : 'Eliminar'"
-                            >
-                              <lucide-angular [img]="Trash2Icon" class="size-4" />
-                            </button>
-                          </div>
-                          <div class="flex items-center gap-2">
-                            <span class="text-[10px] font-bold uppercase" [class]="c.activo ? 'text-brand' : 'text-muted-foreground/70'">
-                              {{ c.activo ? 'Activo' : 'Inactivo' }}
-                            </span>
-                            <button
-                              (click)="camposService.update(c.id, { activo: !c.activo })"
-                              class="w-10 h-5 rounded-full relative transition-colors"
-                              [class]="c.activo ? 'bg-primary' : 'bg-surface-3'"
-                            >
-                              <div
-                                class="absolute top-0.5 bg-card w-4 h-4 rounded-full shadow-sm transition-all"
-                                [class]="c.activo ? 'right-0.5' : 'left-0.5'"
-                              ></div>
-                            </button>
-                          </div>
+                        <div class="acciones">
+                          <button
+                            matIconButton
+                            type="button"
+                            class="accion a-neutro"
+                            matTooltip="Editar"
+                            (click)="abrirCampo(c)"
+                            [attr.aria-label]="'Editar ' + c.nombre"
+                          >
+                            <mat-icon fontSet="material-symbols-outlined">edit</mat-icon>
+                          </button>
+                          <button
+                            matIconButton
+                            type="button"
+                            class="accion a-error"
+                            [class.atenuada]="c.tieneData"
+                            [matTooltip]="c.tieneData ? 'Bloqueado: tiene datos registrados' : 'Eliminar'"
+                            (click)="eliminarCampo(c)"
+                            [attr.aria-label]="'Eliminar ' + c.nombre"
+                          >
+                            <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>
+                          </button>
+                          <mat-slide-toggle
+                            [checked]="c.activo"
+                            (change)="camposService.update(c.id, { activo: !c.activo })"
+                            [aria-label]="'Activar ' + c.nombre"
+                          >{{ c.activo ? 'Activo' : 'Inactivo' }}</mat-slide-toggle>
                         </div>
                       } @else {
-                        <div class="flex items-center gap-3">
-                          @if (c.tipo === 'select' || c.tipo === 'radio' || c.tipo === 'checkbox') {
+                        <div class="acciones">
+                          @if (tieneOpciones(c)) {
                             <button
-                              (click)="editOptionsOf.set(c)"
-                              class="p-1.5 text-brand hover:text-brand"
-                              title="Editar valores"
+                              matIconButton
+                              type="button"
+                              class="accion a-marca"
+                              matTooltip="Editar valores"
+                              (click)="abrirOpciones(c)"
+                              [attr.aria-label]="'Editar valores de ' + c.nombre"
                             >
-                              <lucide-angular [img]="Settings2Icon" class="size-4" />
+                              <mat-icon fontSet="material-symbols-outlined">tune</mat-icon>
                             </button>
                           }
-                          <div class="flex items-center gap-2">
-                            <span
-                              class="text-[10px] font-bold uppercase flex items-center gap-1"
-                              [class]="visibleUE(c) ? 'text-brand' : 'text-muted-foreground/70'"
-                            >
-                              <lucide-angular [img]="visibleUE(c) ? EyeIcon : EyeOffIcon" class="size-3" />
-                              {{ visibleUE(c) ? 'Visible' : 'No visible' }}
-                            </span>
-                            <button
-                              (click)="camposService.setVisibilidad(c.id, areaService.currentArea(), !visibleUE(c))"
-                              class="w-10 h-5 rounded-full relative transition-colors"
-                              [class]="visibleUE(c) ? 'bg-primary' : 'bg-surface-3'"
-                            >
-                              <div
-                                class="absolute top-0.5 bg-card w-4 h-4 rounded-full shadow-sm transition-all"
-                                [class]="visibleUE(c) ? 'right-0.5' : 'left-0.5'"
-                              ></div>
-                            </button>
-                          </div>
+                          <mat-slide-toggle
+                            [checked]="visibleUE(c)"
+                            (change)="camposService.setVisibilidad(c.id, areaService.currentArea(), !visibleUE(c))"
+                            [aria-label]="'Mostrar ' + c.nombre"
+                          >{{ visibleUE(c) ? 'Visible' : 'No visible' }}</mat-slide-toggle>
                         </div>
                       }
                     </div>
@@ -330,128 +268,190 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
             </div>
           </div>
 
-          <!-- Right: preview -->
-          <div class="lg:flex-1 bg-muted p-8 flex flex-col items-center overflow-y-auto">
-            <div class="flex items-center justify-between w-full max-w-sm mb-6">
-              <h3 class="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-                <lucide-angular [img]="EyeIcon" class="size-3.5" /> Vista previa
-              </h3>
-              <div class="flex bg-card rounded-lg p-1 shadow-sm border border-border">
-                <button
-                  (click)="previewDevice.set('mobile')"
-                  class="p-1 rounded"
-                  [class]="previewDevice() === 'mobile' ? 'bg-muted text-foreground' : 'text-muted-foreground/70'"
-                  title="Móvil"
-                >
-                  <lucide-angular [img]="SmartphoneIcon" class="size-4" />
-                </button>
-                <button
-                  (click)="previewDevice.set('desktop')"
-                  class="p-1 rounded"
-                  [class]="previewDevice() === 'desktop' ? 'bg-muted text-foreground' : 'text-muted-foreground/70'"
-                  title="Escritorio"
-                >
-                  <lucide-angular [img]="MonitorIcon" class="size-4" />
-                </button>
-              </div>
-            </div>
-
-            @if (previewDevice() === 'mobile') {
-              <div class="w-full max-w-[340px] bg-card rounded-[40px] border-[8px] border-foreground shadow-2xl h-[600px] overflow-hidden flex flex-col">
-                <div class="h-6 bg-foreground flex justify-center items-end pb-1">
-                  <div class="w-12 h-1 bg-muted-foreground rounded-full"></div>
-                </div>
-                <div class="bg-primary p-4 text-primary-foreground">
-                  <div class="text-[10px] font-medium opacity-80 mb-1">
-                    {{ area().code }} › {{ formLabel() }}
-                  </div>
-                  <div class="text-sm font-bold">Registro</div>
-                </div>
-                <div class="flex-1 p-5 overflow-y-auto space-y-4">
-                  <ng-container *ngTemplateOutlet="previewBody" />
-                </div>
-              </div>
-            } @else {
-              <div class="w-full bg-card rounded-xl border border-border shadow-sm p-6 space-y-4">
-                <ng-container *ngTemplateOutlet="previewBody" />
-              </div>
-            }
-
-            <ng-template #previewBody>
-              @for (grupo of gruposPreview(); track grupo.seccion) {
-                <div class="space-y-3">
-                  <h4 class="text-[10px] font-bold text-brand uppercase tracking-wider border-b border-border/60 pb-1">
-                    {{ grupo.seccion }}
-                  </h4>
-                  @for (b of grupo.campos; track b.nombre) {
-                    <app-campo-preview [nombre]="b.nombre + (b.requerido ? ' *' : '')" [tipo]="b.tipo" />
-                  }
-                </div>
-              }
-              @if (customsRender().length > 0) {
-                <div class="space-y-3 pt-2">
-                  <h4 class="text-[10px] font-bold text-brand uppercase tracking-wider border-b border-brand/15 pb-1">
-                    Personalizados
-                  </h4>
-                  @for (c of customsRender(); track c.id) {
-                    <app-campo-preview
-                      [nombre]="c.nombre + (c.requerido ? ' *' : '')"
-                      [tipo]="c.tipo"
-                      [opciones]="c.opciones"
-                    />
-                  }
-                </div>
-              }
-            </ng-template>
-          </div>
+          <app-preview-formulario
+            class="previa"
+            [area]="area().code"
+            [formulario]="formLabel()"
+            [grupos]="gruposPreview()"
+            [personalizados]="customsRender()"
+          />
         </div>
 
-        <!-- Footer -->
-        <div class="px-6 py-4 border-t border-border/60 bg-card flex items-center justify-between flex-wrap gap-3">
-          <div class="flex items-center gap-2 text-xs text-muted-foreground/70 italic">
-            <lucide-angular [img]="InfoIcon" class="size-4" />
+        <div class="pie">
+          <p class="ayuda">
+            <mat-icon fontSet="material-symbols-outlined">info</mat-icon>
             {{ isAdmin()
               ? 'Los cambios se guardan como catálogo y se reflejan en la vista del Administrador Unidad Ejecutora(UE).'
               : 'Marca como visibles los campos que deben aparecer en los formularios de los técnicos.' }}
-          </div>
-          <div class="flex gap-3">
+          </p>
+          <div class="botones">
             @if (isAdmin()) {
-              <button class="btn-secondary px-6">
-                Descartar
+              <button matButton type="button">Descartar</button>
+              <button matButton="filled" type="button" (click)="toast.success('Configuración guardada')">
+                Guardar
               </button>
-              <button
-                (click)="toast.success('Configuración guardada')"
-                class="btn-primary px-8 bg-foreground text-background hover:bg-foreground/85"
-              >Guardar</button>
             } @else {
-              <button
-                (click)="publicar()"
-                class="btn-primary px-8"
-              >
-                <lucide-angular [img]="SendIcon" class="size-4" />
+              <button matButton="filled" type="button" (click)="publicar()">
+                <mat-icon fontSet="material-symbols-outlined">send</mat-icon>
                 Publicar formulario
               </button>
             }
           </div>
         </div>
-      </div>
-
-      @if (showModal()) {
-        <app-campo-modal
-          [initial]="editing()"
-          (closed)="showModal.set(false)"
-          (saved)="guardarCampo($event)"
-        />
-      }
-
-      @if (editOptionsOf(); as campo) {
-        <app-opciones-modal
-          [campo]="campo"
-          (closed)="editOptionsOf.set(null)"
-          (saved)="guardarOpciones(campo, $event)"
-        />
-      }
+      </mat-card>
     </section>
+  `,
+  styles: `
+    .pagina {
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    @media (min-width: 1024px) { .pagina { padding: 32px; } }
+
+    .cabecera {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      justify-content: space-between;
+    }
+    @media (min-width: 1280px) { .cabecera { flex-direction: row; align-items: flex-start; } }
+    .ruta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      font: var(--mat-sys-label-medium);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .ruta mat-icon { font-size: 16px; width: 16px; height: 16px; }
+    .cabecera h1 {
+      margin: 8px 0 0;
+      font: var(--mat-sys-headline-small);
+      color: var(--mat-sys-on-surface);
+    }
+    .filtros { display: flex; flex-wrap: wrap; gap: 16px; }
+    .filtro { width: 260px; }
+
+    .panel { padding: 0; overflow: hidden; }
+    .division { display: flex; flex-direction: column; }
+    @media (min-width: 1024px) { .division { flex-direction: row; } }
+
+    .estructura {
+      padding: 24px;
+      background: var(--mat-sys-surface-container-lowest);
+    }
+    @media (min-width: 1024px) {
+      .estructura {
+        width: 58%;
+        border-right: 1px solid var(--mat-sys-outline-variant);
+      }
+    }
+    .barra {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .barra h2 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      font: var(--mat-sys-title-medium);
+      color: var(--mat-sys-on-surface);
+    }
+
+    mat-expansion-panel { background: var(--mat-sys-surface); }
+    mat-panel-title { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+    mat-panel-title mat-icon { font-size: 20px; width: 20px; height: 20px; color: var(--mat-sys-primary); }
+
+    .campos { display: flex; flex-direction: column; gap: 8px; }
+    .fila-campo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: var(--mat-sys-corner-medium);
+      background: var(--mat-sys-surface);
+    }
+    .fila-campo.destacada {
+      border-color: color-mix(in srgb, var(--mat-sys-primary) 35%, transparent);
+      background: var(--mat-sys-primary-container);
+    }
+    .fila-campo.inactiva { opacity: 0.6; }
+    .asa { color: var(--mat-sys-outline); cursor: grab; }
+    .datos { flex: 1 1 auto; min-width: 0; }
+    .nombre {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font: var(--mat-sys-body-medium);
+      font-weight: 600;
+      color: var(--mat-sys-on-surface);
+    }
+    .nombre .tachado { text-decoration: line-through; color: var(--mat-sys-on-surface-variant); }
+    .etiquetas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+    .acciones { display: flex; align-items: center; gap: 4px; }
+    mat-slide-toggle { --mat-slide-toggle-label-text-size: 11px; white-space: nowrap; }
+
+    .personalizados { margin-top: 24px; }
+    .titulo-personalizados {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid color-mix(in srgb, var(--mat-sys-primary) 30%, transparent);
+      color: var(--mat-sys-primary);
+    }
+    .titulo-personalizados h3 { margin: 0; font: var(--mat-sys-title-small); }
+    .titulo-personalizados .conteo { margin-left: auto; font: var(--mat-sys-label-medium); }
+    .vacio {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 24px;
+      border: 1px dashed color-mix(in srgb, var(--mat-sys-primary) 35%, transparent);
+      border-radius: var(--mat-sys-corner-medium);
+      text-align: center;
+    }
+    .vacio p { margin: 0; font: var(--mat-sys-body-small); color: var(--mat-sys-on-surface-variant); }
+
+    .previa {
+      flex: 1 1 auto;
+      padding: 24px;
+      background: var(--mat-sys-surface-container);
+    }
+
+    .pie {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 24px;
+      border-top: 1px solid var(--mat-sys-outline-variant);
+      background: var(--mat-sys-surface-container-low);
+    }
+    .ayuda {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      max-width: 70ch;
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .ayuda mat-icon { font-size: 18px; width: 18px; height: 18px; }
+    .botones { display: flex; gap: 8px; }
   `,
 })
 export class CamposComponent {
@@ -459,38 +459,19 @@ export class CamposComponent {
   readonly camposService = inject(CamposService);
   readonly toast = inject(ToastService);
   private readonly auth = inject(AuthService);
-
-  readonly ChevronRightIcon = ChevronRight;
-  readonly ChevronDownIcon = ChevronDown;
-  readonly PlusIcon = Plus;
-  readonly PencilIcon = Pencil;
-  readonly Trash2Icon = Trash2;
-  readonly GripVerticalIcon = GripVertical;
-  readonly SparklesIcon = Sparkles;
-  readonly MonitorIcon = Monitor;
-  readonly SmartphoneIcon = Smartphone;
-  readonly EyeIcon = Eye;
-  readonly EyeOffIcon = EyeOff;
-  readonly LockIcon = Lock;
-  readonly Settings2Icon = Settings2;
-  readonly SendIcon = Send;
-  readonly InfoIcon = Info;
+  private readonly dialog = inject(MatDialog);
 
   readonly areas = AREAS;
   readonly formularios = FORMULARIOS;
 
-  // ADMINISTRADOR = super-admin con edición total; ADMIN_UE = solo lectura/visibilidad por área.
+  // ADMINISTRADOR = super-admin con edición total; ADMIN_UE = solo visibilidad por área.
   readonly isAdmin = computed(() => this.auth.isAdministrador());
   readonly area = computed(
     () => AREAS.find((a) => a.code === this.areaService.currentArea()) ?? AREAS[0],
   );
 
   readonly formulario = signal<FormularioKey>('capacitacion');
-  readonly showModal = signal(false);
-  readonly editing = signal<CampoPersonalizado | null>(null);
-  readonly editOptionsOf = signal<CampoPersonalizado | null>(null);
   readonly baseInactive = signal<Record<string, boolean>>({});
-  readonly previewDevice = signal<'desktop' | 'mobile'>('mobile');
   readonly collapsed = signal<Record<string, boolean>>({});
 
   readonly formLabel = computed(
@@ -545,7 +526,7 @@ export class CamposComponent {
   });
 
   constructor() {
-    // Al cambiar de formulario: solo la primera sección expandida (igual que el original).
+    // Al cambiar de formulario: solo la primera sección queda expandida.
     effect(() => {
       const form = this.formulario();
       const next: Record<string, boolean> = {};
@@ -560,8 +541,8 @@ export class CamposComponent {
     return `${this.formulario()}:${b.nombre}`;
   }
 
-  sectionIcon(s: string): LucideIconData {
-    return SECTION_ICONS[s] ?? FileText;
+  iconoSeccion(seccion: string): string {
+    return ICONOS_SECCION[seccion] ?? 'description';
   }
 
   tipoLabel(t: CampoTipo): string {
@@ -572,20 +553,25 @@ export class CamposComponent {
     return TIPOS_CAMPO.find((x) => x.value === t)!.chip;
   }
 
-  isCollapsed(seccion: string): boolean {
+  tieneOpciones(c: CampoPersonalizado): boolean {
+    return TIPOS_CON_OPCIONES.includes(c.tipo);
+  }
+
+  estaColapsada(seccion: string): boolean {
     return this.collapsed()[`${this.formulario()}:${seccion}`] ?? false;
   }
 
-  toggleSeccion(seccion: string): void {
+  setColapso(seccion: string, colapsada: boolean): void {
     const key = `${this.formulario()}:${seccion}`;
-    this.collapsed.update((p) => ({ ...p, [key]: !p[key] }));
+    if (this.collapsed()[key] === colapsada) return;
+    this.collapsed.update((p) => ({ ...p, [key]: colapsada }));
   }
 
-  isBaseInactive(b: CampoBase): boolean {
+  esBaseInactivo(b: CampoBase): boolean {
     return !!this.baseInactive()[this.keyOf(b)];
   }
 
-  toggleBase(b: CampoBase): void {
+  alternarBase(b: CampoBase): void {
     const key = this.keyOf(b);
     this.baseInactive.update((p) => ({ ...p, [key]: !p[key] }));
   }
@@ -602,17 +588,42 @@ export class CamposComponent {
     this.camposService.delete(c.id);
   }
 
-  guardarCampo(data: CampoModalResult): void {
-    const editing = this.editing();
-    if (editing) this.camposService.update(editing.id, data);
-    else this.camposService.add({ ...data, area: this.areaService.currentArea(), formulario: this.formulario() });
-    this.showModal.set(false);
+  /** Alta (`null`) o edición de un campo personalizado. */
+  abrirCampo(campo: CampoPersonalizado | null): void {
+    this.dialog
+      .open<CampoDialogComponent, CampoDialogData, CampoDialogResult>(CampoDialogComponent, {
+        data: { initial: campo },
+        maxWidth: '95vw',
+        autoFocus: 'dialog',
+      })
+      .afterClosed()
+      .subscribe((datos) => {
+        if (!datos) return;
+        if (campo) this.camposService.update(campo.id, datos);
+        else {
+          this.camposService.add({
+            ...datos,
+            area: this.areaService.currentArea(),
+            formulario: this.formulario(),
+          });
+        }
+      });
   }
 
-  guardarOpciones(campo: CampoPersonalizado, opciones: string[]): void {
-    this.camposService.update(campo.id, { opciones });
-    this.editOptionsOf.set(null);
-    this.toast.success('Valores actualizados');
+  /** Edición de los valores de un campo de lista (ADMIN_UE). */
+  abrirOpciones(campo: CampoPersonalizado): void {
+    this.dialog
+      .open<OpcionesDialogComponent, OpcionesDialogData, string[]>(OpcionesDialogComponent, {
+        data: { campo },
+        maxWidth: '95vw',
+        autoFocus: 'dialog',
+      })
+      .afterClosed()
+      .subscribe((opciones) => {
+        if (!opciones) return;
+        this.camposService.update(campo.id, { opciones });
+        this.toast.success('Valores actualizados');
+      });
   }
 
   publicar(): void {

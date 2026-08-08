@@ -1,17 +1,77 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
-import {
-  LucideAngularModule,
-  Save, RotateCcw, GraduationCap, Headset, Users, Clock, Target,
-  AlertTriangle, Info, Lock, CheckCircle2, Sprout,
-} from 'lucide-angular';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatCardModule } from '@angular/material/card';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatChipsModule } from '@angular/material/chips';
+import { ErrorStateMatcher } from '@angular/material/core';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { AreaService } from '../../../core/services/area.service';
 import { ReglasService } from '../../../core/services/reglas.service';
 import { ToastService } from '../../../core/services/toast.service';
-import { AreaConfig, CriterioExito, MetaGeneral, PeriodoMedicion } from '../../../core/models/area-config.model';
+import {
+  AreaConfig,
+  CriterioExito,
+  MetaGeneral,
+  PeriodoMedicion,
+} from '../../../core/models/area-config.model';
 import { getArea } from '../../../core/constants/areas.const';
 
 /** Título de la sección de meta global (modificable a futuro sin tocar el template). */
 const TITULO_META_GENERAL = 'Meta General';
+
+/** Subconjunto de la configuración que edita esta pantalla. El resto de
+ *  `AreaConfig` (campos legacy) se conserva tal cual al guardar. */
+interface ReglasEditables {
+  capacitacionActiva: boolean;
+  asistenciaActiva: boolean;
+  atIndividualActiva: boolean;
+  atGrupalActiva: boolean;
+  capacitacion: { horasMin: number; horasMax: number; participantesMax: number };
+  asistencia: { horasMin: number; horasMax: number; participantesMax: number };
+  metaGeneral: MetaGeneral;
+  metaCapacitaciones: number;
+  metaAT: number;
+  criterioExito: CriterioExito;
+  periodoMedicion: PeriodoMedicion;
+}
+
+/** Un campo numérico vaciado llega como `null`: cuenta como 0. */
+const num = (v: number): number => Number(v) || 0;
+
+/** Proyección explícita — el orden de las claves lo aprovecha `dirty()`. */
+function editablesDe(c: ReglasEditables | AreaConfig): ReglasEditables {
+  return {
+    capacitacionActiva: c.capacitacionActiva,
+    asistenciaActiva: c.asistenciaActiva,
+    atIndividualActiva: c.atIndividualActiva,
+    atGrupalActiva: c.atGrupalActiva,
+    capacitacion: {
+      horasMin: num(c.capacitacion.horasMin),
+      horasMax: num(c.capacitacion.horasMax),
+      participantesMax: num(c.capacitacion.participantesMax),
+    },
+    asistencia: {
+      horasMin: num(c.asistencia.horasMin),
+      horasMax: num(c.asistencia.horasMax),
+      participantesMax: num(c.asistencia.participantesMax),
+    },
+    metaGeneral: {
+      capacitaciones: num(c.metaGeneral.capacitaciones),
+      asistenciasTecnicas: num(c.metaGeneral.asistenciasTecnicas),
+      hectareas: num(c.metaGeneral.hectareas),
+    },
+    metaCapacitaciones: num(c.metaCapacitaciones),
+    metaAT: num(c.metaAT),
+    criterioExito: c.criterioExito,
+    periodoMedicion: c.periodoMedicion,
+  };
+}
 
 function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito): CriterioExito {
   if (!cap && !at) return 'none';
@@ -26,659 +86,731 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
 @Component({
   selector: 'app-reglas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule],
+  imports: [
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatCardModule,
+    MatCheckboxModule,
+    MatChipsModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatSelectModule,
+    MatSlideToggleModule,
+  ],
   template: `
-    <div class="min-h-full bg-muted/30 py-6 lg:py-8 px-4 lg:px-8 animate-page-in">
-      <div class="max-w-6xl mx-auto bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
-
-        <!-- Header -->
-        <header class="px-6 py-4 border-b border-border bg-card flex justify-between items-center gap-3">
-          <div class="min-w-0">
-            <h1 class="text-h1 text-foreground">Configurador de Reglas — {{ area().code }}</h1>
-            <p class="text-xs text-muted-foreground truncate">
-              {{ area().name }}. Define actividades, aforos y criterios de éxito del periodo.
-            </p>
-          </div>
-          <span
-            class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md border"
-            [class]="dirty() ? 'bg-warning-soft text-warning-foreground border-warning/30' : 'bg-brand/10 text-brand border-brand/20'"
-          >{{ dirty() ? 'Borrador' : 'Publicado' }}</span>
-        </header>
-
-        <!-- Main form -->
-        <div class="grid grid-cols-1 lg:grid-cols-12">
-          <div class="lg:col-span-10 lg:col-start-2 p-6 space-y-9">
-
-            <!-- 1. Actividades -->
-            <section class="space-y-3">
-              <div class="flex items-center gap-2">
-                <span class="flex items-center justify-center size-5 rounded-full bg-brand text-brand-foreground text-[10px] font-bold">1</span>
-                <h3 class="text-sm font-semibold text-foreground">Selección de actividades</h3>
-              </div>
-              <p class="text-xs text-muted-foreground -mt-1.5 pl-7">Elige qué actividades ejecuta esta área.</p>
-              <div class="pt-1">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    (click)="setCapActiva(!draft().capacitacionActiva)"
-                    class="text-left rounded-lg border p-3 transition-all"
-                    [class]="draft().capacitacionActiva ? 'border-brand bg-brand/5' : 'border-border bg-background hover:bg-muted/40'"
-                  >
-                    <div class="flex items-start gap-3">
-                      <span
-                        class="size-8 rounded-md grid place-items-center shrink-0"
-                        [class]="draft().capacitacionActiva ? 'bg-brand/15 text-brand' : 'bg-muted text-muted-foreground'"
-                      ><lucide-angular [img]="GraduationCapIcon" class="size-4" /></span>
-                      <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between gap-2">
-                          <p class="text-sm font-semibold text-foreground">Capacitaciones grupales</p>
-                          <span
-                            role="switch"
-                            [attr.aria-checked]="draft().capacitacionActiva"
-                            (click)="$event.stopPropagation(); setCapActiva(!draft().capacitacionActiva)"
-                            class="relative w-9 h-5 rounded-full transition-colors shrink-0 cursor-pointer"
-                            [class]="draft().capacitacionActiva ? 'bg-brand' : 'bg-input'"
-                          >
-                            <span class="absolute top-0.5 left-0.5 size-4 bg-background rounded-full shadow transition-transform"
-                              [class.translate-x-4]="draft().capacitacionActiva"></span>
-                          </span>
-                        </div>
-                        <p class="text-[11px] text-muted-foreground mt-0.5">Eventos formativos con varios participantes.</p>
-                      </div>
-                    </div>
-                  </button>
-                  <div
-                    role="button"
-                    tabindex="0"
-                    [attr.aria-pressed]="draft().asistenciaActiva"
-                    (click)="setAtActiva(!draft().asistenciaActiva)"
-                    (keydown.enter)="setAtActiva(!draft().asistenciaActiva)"
-                    class="text-left rounded-lg border p-3 transition-all cursor-pointer"
-                    [class]="draft().asistenciaActiva ? 'border-brand bg-brand/5' : 'border-border bg-background hover:bg-muted/40'"
-                  >
-                    <div class="flex items-start gap-3">
-                      <span
-                        class="size-8 rounded-md grid place-items-center shrink-0"
-                        [class]="draft().asistenciaActiva ? 'bg-brand/15 text-brand' : 'bg-muted text-muted-foreground'"
-                      ><lucide-angular [img]="HeadsetIcon" class="size-4" /></span>
-                      <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between gap-2">
-                          <p class="text-sm font-semibold text-foreground">Asistencia técnica</p>
-                          <span
-                            role="switch"
-                            [attr.aria-checked]="draft().asistenciaActiva"
-                            (click)="$event.stopPropagation(); setAtActiva(!draft().asistenciaActiva)"
-                            class="relative w-9 h-5 rounded-full transition-colors shrink-0 cursor-pointer"
-                            [class]="draft().asistenciaActiva ? 'bg-brand' : 'bg-input'"
-                          >
-                            <span class="absolute top-0.5 left-0.5 size-4 bg-background rounded-full shadow transition-transform"
-                              [class.translate-x-4]="draft().asistenciaActiva"></span>
-                          </span>
-                        </div>
-                        <p class="text-[11px] text-muted-foreground mt-0.5">Intervenciones individuales o grupales en campo.</p>
-
-                        <!-- Subtipos de AT (misma lógica; reubicados dentro de la tarjeta) -->
-                        <div
-                          class="mt-2.5 pt-2.5 border-t border-border/60 flex flex-wrap gap-4 transition-opacity"
-                          [class]="draft().asistenciaActiva ? 'opacity-100' : 'opacity-40 pointer-events-none'"
-                          (click)="$event.stopPropagation()"
-                          (keydown.enter)="$event.stopPropagation()"
-                        >
-                          <label class="flex items-center gap-2 cursor-pointer text-xs text-foreground/80 select-none">
-                            <input
-                              type="checkbox"
-                              class="size-3.5 accent-brand cursor-pointer"
-                              [checked]="draft().atIndividualActiva"
-                              (change)="update({ atIndividualActiva: $any($event.target).checked })"
-                            />
-                            AT Individual
-                          </label>
-                          <label class="flex items-center gap-2 cursor-pointer text-xs text-foreground/80 select-none">
-                            <input
-                              type="checkbox"
-                              class="size-3.5 accent-brand cursor-pointer"
-                              [checked]="draft().atGrupalActiva"
-                              (change)="update({ atGrupalActiva: $any($event.target).checked })"
-                            />
-                            AT Grupal
-                          </label>
-                          @if (draft().asistenciaActiva && !draft().atIndividualActiva && !draft().atGrupalActiva) {
-                            <span class="text-[11px] text-destructive">Elige al menos un subtipo de AT.</span>
-                          }
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <!-- 2. Aforos & duración -->
-            <section class="space-y-3">
-              <div class="flex items-center gap-2">
-                <span class="flex items-center justify-center size-5 rounded-full bg-brand text-brand-foreground text-[10px] font-bold">2</span>
-                <h3 class="text-sm font-semibold text-foreground">Aforos y duración permitida de la Capacitación y/o Asistencia técnica</h3>
-              </div>
-              <p class="text-xs text-muted-foreground -mt-1.5 pl-7">Rangos válidos para el registro de eventos.</p>
-              <div class="pt-1">
-                @if (!capOn() && !atOn()) {
-                  <p class="text-xs text-muted-foreground italic">Activa al menos una actividad para configurar sus aforos.</p>
-                }
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                  @if (capOn()) {
-                    <div class="rounded-lg border bg-background p-4 space-y-3" [class]="capInvalid() ? 'border-destructive/40' : 'border-border'">
-                      <div class="flex items-center gap-2">
-                        <span class="size-7 rounded-md grid place-items-center bg-brand/10 text-brand shrink-0">
-                          <lucide-angular [img]="GraduationCapIcon" class="size-4" />
-                        </span>
-                        <div class="min-w-0">
-                          <p class="text-sm font-semibold text-foreground">Capacitaciones grupales</p>
-                        </div>
-                      </div>
-                      <div class="grid grid-cols-2 gap-3">
-                        <div>
-                          <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                            <lucide-angular [img]="ClockIcon" class="size-3" /> Horas mínimas
-                          </label>
-                          <input type="number" min="1" [value]="draft().capacitacion.horasMin"
-                            (input)="updateCap('horasMin', $event)"
-                            class="w-full h-9 bg-background border border-input rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand" />
-                        </div>
-                        <div>
-                          <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                            <lucide-angular [img]="ClockIcon" class="size-3" /> Horas máximas
-                          </label>
-                          <input type="number" [min]="draft().capacitacion.horasMin" [value]="draft().capacitacion.horasMax"
-                            (input)="updateCap('horasMax', $event)"
-                            class="w-full h-9 bg-background border rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand"
-                            [class]="draft().capacitacion.horasMax < draft().capacitacion.horasMin ? 'border-destructive' : 'border-input'" />
-                        </div>
-                        <div>
-                          <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                            <lucide-angular [img]="UsersIcon" class="size-3" /> Aforo mínimo
-                          </label>
-                          <div class="relative">
-                            <input disabled value="1" readonly
-                              class="w-full h-9 bg-muted/60 border border-input rounded-md px-3 text-sm text-muted-foreground tabular-nums cursor-not-allowed" />
-                            <lucide-angular [img]="LockIcon" class="size-3 text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2" />
-                          </div>
-                        </div>
-                        <div>
-                          <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                            <lucide-angular [img]="UsersIcon" class="size-3" /> Aforo máximo
-                          </label>
-                          <input type="number" min="1" [value]="draft().capacitacion.participantesMax"
-                            (input)="updateCap('participantesMax', $event)"
-                            class="w-full h-9 bg-background border border-input rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand" />
-                        </div>
-                      </div>
-                    </div>
-                  }
-                  @if (atOn()) {
-                    <div class="rounded-lg border bg-background p-4 space-y-3" [class]="atInvalid() ? 'border-destructive/40' : 'border-border'">
-                      <div class="flex items-center gap-2">
-                        <span class="size-7 rounded-md grid place-items-center bg-brand/10 text-brand shrink-0">
-                          <lucide-angular [img]="HeadsetIcon" class="size-4" />
-                        </span>
-                        <div class="min-w-0">
-                          <p class="text-sm font-semibold text-foreground">Asistencia técnica</p>
-                          <p class="text-[11px] text-muted-foreground">
-                            {{ soloAtIndividual()
-                              ? 'AT Individual · sin aforo grupal.'
-                              : 'Aforo y duración únicos para AT (aplica a Individual y Grupal).' }}
-                          </p>
-                        </div>
-                      </div>
-                      <div class="grid grid-cols-2 gap-3">
-                        <div>
-                          <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                            <lucide-angular [img]="ClockIcon" class="size-3" /> Horas mínimas
-                          </label>
-                          <input type="number" min="1" [value]="draft().asistencia.horasMin"
-                            (input)="updateAt('horasMin', $event)"
-                            class="w-full h-9 bg-background border border-input rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand" />
-                        </div>
-                        <div>
-                          <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                            <lucide-angular [img]="ClockIcon" class="size-3" /> Horas máximas
-                          </label>
-                          <input type="number" [min]="draft().asistencia.horasMin" [value]="draft().asistencia.horasMax"
-                            (input)="updateAt('horasMax', $event)"
-                            class="w-full h-9 bg-background border rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand"
-                            [class]="draft().asistencia.horasMax < draft().asistencia.horasMin ? 'border-destructive' : 'border-input'" />
-                        </div>
-                        @if (!soloAtIndividual()) {
-                          <div>
-                            <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                              <lucide-angular [img]="UsersIcon" class="size-3" /> Aforo mínimo
-                            </label>
-                            <div class="relative">
-                              <input disabled value="1" readonly
-                                class="w-full h-9 bg-muted/60 border border-input rounded-md px-3 text-sm text-muted-foreground tabular-nums cursor-not-allowed" />
-                              <lucide-angular [img]="LockIcon" class="size-3 text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2" />
-                            </div>
-                          </div>
-                          <div>
-                            <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                              <lucide-angular [img]="UsersIcon" class="size-3" /> Aforo máximo
-                            </label>
-                            <input type="number" min="1" [value]="draft().asistencia.participantesMax"
-                              (input)="updateAt('participantesMax', $event)"
-                              class="w-full h-9 bg-background border border-input rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand" />
-                          </div>
-                        }
-                      </div>
-                    </div>
-                  }
-                </div>
-              </div>
-            </section>
-
-            <!-- 3. Meta General -->
-            <section class="space-y-3">
-              <div class="flex items-center gap-2">
-                <span class="flex items-center justify-center size-5 rounded-full bg-brand text-brand-foreground text-[10px] font-bold">3</span>
-                <h3 class="text-sm font-semibold text-foreground">{{ tituloMetaGeneral }}</h3>
-              </div>
-              <p class="text-xs text-muted-foreground -mt-1.5 pl-7">Meta global que deberá cumplir un participante durante el periodo.</p>
-              <div class="pt-1">
-                <div class="rounded-lg border border-border bg-background p-4 space-y-3">
-                  <div class="flex items-center gap-2">
-                    <span class="size-7 rounded-md grid place-items-center bg-brand/10 text-brand shrink-0">
-                      <lucide-angular [img]="TargetIcon" class="size-4" />
-                    </span>
-                    <p class="text-sm font-semibold text-foreground">Criterio: {{ tituloMetaGeneral }}</p>
-                  </div>
-                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label for="meta-general-cap" class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                        <lucide-angular [img]="GraduationCapIcon" class="size-3" /> Cantidad de Capacitaciones
-                      </label>
-                      <input id="meta-general-cap" type="number" min="0" [value]="draft().metaGeneral.capacitaciones"
-                        (input)="updateMetaGeneral('capacitaciones', $event)"
-                        class="w-full h-9 bg-background border border-input rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand" />
-                    </div>
-                    <div>
-                      <label for="meta-general-at" class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                        <lucide-angular [img]="HeadsetIcon" class="size-3" /> Cantidad de Asistencia Técnica
-                      </label>
-                      <input id="meta-general-at" type="number" min="0" [value]="draft().metaGeneral.asistenciasTecnicas"
-                        (input)="updateMetaGeneral('asistenciasTecnicas', $event)"
-                        class="w-full h-9 bg-background border border-input rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand" />
-                    </div>
-                    <div>
-                      <label for="meta-general-ha" class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                        <lucide-angular [img]="SproutIcon" class="size-3" /> Cantidad de Hectáreas
-                      </label>
-                      <input id="meta-general-ha" type="number" min="0" [value]="draft().metaGeneral.hectareas"
-                        (input)="updateMetaGeneral('hectareas', $event)"
-                        class="w-full h-9 bg-background border border-input rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <!-- 4. Criterio de éxito -->
-            <section class="space-y-3">
-              <div class="flex items-center gap-2">
-                <span class="flex items-center justify-center size-5 rounded-full bg-brand text-brand-foreground text-[10px] font-bold">4</span>
-                <h3 class="text-sm font-semibold text-foreground">Criterio de éxito por periodo del participante</h3>
-              </div>
-              <p class="text-xs text-muted-foreground -mt-1.5 pl-7">Fórmula bajo la cual un participante completa el periodo.</p>
-              <div class="pt-1">
-                @if (ambosOff()) {
-                  <div class="rounded-lg bg-destructive/10 border border-destructive/20 p-4 flex items-start gap-3">
-                    <lucide-angular [img]="AlertTriangleIcon" class="size-4 text-destructive shrink-0 mt-0.5" />
-                    <div class="text-xs">
-                      <p class="font-semibold text-destructive">El área no computará progreso.</p>
-                      <p class="text-destructive/80 mt-0.5">Activa al menos una actividad para definir el criterio de éxito.</p>
-                    </div>
-                  </div>
-                } @else if (capOn() && atOn()) {
-                  <div class="space-y-3">
-                    <div class="p-1 bg-muted rounded-lg flex">
-                      <button
-                        type="button"
-                        (click)="update({ criterioExito: 'combinada_paralela' })"
-                        class="flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                        [class]="draft().criterioExito !== 'combinada_cruzada' ? 'bg-card shadow-sm text-brand border border-border' : 'text-muted-foreground hover:text-foreground'"
-                      >Independiente / paralela</button>
-                      <button
-                        type="button"
-                        (click)="update({ criterioExito: 'combinada_cruzada' })"
-                        class="flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                        [class]="draft().criterioExito === 'combinada_cruzada' ? 'bg-card shadow-sm text-brand border border-border' : 'text-muted-foreground hover:text-foreground'"
-                      >Configuración cruzada</button>
-                    </div>
-                    <div class="rounded-lg bg-brand/5 border border-brand/15 p-4">
-                      @if (draft().criterioExito !== 'combinada_cruzada') {
-                        <div class="space-y-4">
-                          <p class="text-xs text-muted-foreground leading-relaxed">
-                            Configura metas separadas para capacitaciones y AT. El participante puede alcanzar los estados
-                            <span class="font-semibold text-foreground">Capacitado</span>,
-                            <span class="font-semibold text-foreground">Asistido</span> o
-                            <span class="font-semibold text-foreground">Capacitado y Asistido</span> según cuál meta cumpla.
-                          </p>
-                          <div class="grid grid-cols-2 gap-4">
-                            <div>
-                              <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                                <lucide-angular [img]="TargetIcon" class="size-3" /> Meta capacitaciones
-                              </label>
-                              <input type="number" min="1" [value]="draft().metaCapacitaciones"
-                                (input)="updateMeta('metaCapacitaciones', $event)"
-                                class="w-full h-9 bg-background border rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand"
-                                [class]="metaCapInvalid() ? 'border-destructive' : 'border-input'" />
-                              <p class="text-[10px] text-muted-foreground mt-1">≥ N sesiones por periodo.</p>
-                            </div>
-                            <div>
-                              <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                                <lucide-angular [img]="TargetIcon" class="size-3" /> Meta asistencias técnicas
-                              </label>
-                              <input type="number" min="1" [value]="draft().metaAT"
-                                (input)="updateMeta('metaAT', $event)"
-                                class="w-full h-9 bg-background border rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand"
-                                [class]="metaAtInvalid() ? 'border-destructive' : 'border-input'" />
-                              <p class="text-[10px] text-muted-foreground mt-1">≥ N atenciones por periodo.</p>
-                            </div>
-                          </div>
-                          <div class="grid grid-cols-3 gap-2">
-                            <div class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold bg-card border border-brand/30 text-brand">
-                              <lucide-angular [img]="CheckCircle2Icon" class="size-3" /><span class="truncate">Capacitado</span>
-                            </div>
-                            <div class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold bg-card border border-brand/30 text-brand">
-                              <lucide-angular [img]="CheckCircle2Icon" class="size-3" /><span class="truncate">Asistido</span>
-                            </div>
-                            <div class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold bg-brand text-brand-foreground">
-                              <lucide-angular [img]="CheckCircle2Icon" class="size-3" /><span class="truncate">Capacitado y Asistido</span>
-                            </div>
-                          </div>
-                        </div>
-                      } @else {
-                        <div class="space-y-4">
-                          <p class="text-xs text-muted-foreground leading-relaxed">
-                            Fórmula cruzada: el participante debe cumplir
-                            <span class="font-semibold text-foreground">ambas metas</span> en el mismo periodo. Resulta en un
-                            estatus único <span class="font-semibold text-brand">"Atendido"</span>.
-                          </p>
-                          <div class="grid grid-cols-2 gap-4">
-                            <div>
-                              <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                                <lucide-angular [img]="TargetIcon" class="size-3" /> Capacitaciones ≥
-                              </label>
-                              <input type="number" min="1" [value]="draft().metaCapacitaciones"
-                                (input)="updateMeta('metaCapacitaciones', $event)"
-                                class="w-full h-9 bg-background border rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand"
-                                [class]="metaCapInvalid() ? 'border-destructive' : 'border-input'" />
-                              <p class="text-[10px] text-muted-foreground mt-1">Mínimo requerido.</p>
-                            </div>
-                            <div>
-                              <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                                <lucide-angular [img]="TargetIcon" class="size-3" /> Asistencias técnicas ≥
-                              </label>
-                              <input type="number" min="1" [value]="draft().metaAT"
-                                (input)="updateMeta('metaAT', $event)"
-                                class="w-full h-9 bg-background border rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand"
-                                [class]="metaAtInvalid() ? 'border-destructive' : 'border-input'" />
-                              <p class="text-[10px] text-muted-foreground mt-1">Mínimo requerido.</p>
-                            </div>
-                          </div>
-                          <div class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold bg-brand text-brand-foreground">
-                            <lucide-angular [img]="CheckCircle2Icon" class="size-3" />
-                            <span class="truncate">Cumple ambas → "Atendido"</span>
-                          </div>
-                        </div>
-                      }
-                    </div>
-                  </div>
-                } @else {
-                  <!-- Solo Cap o solo AT -->
-                  <div class="rounded-lg bg-brand/5 border border-brand/20 p-4 space-y-3">
-                    <p class="text-xs text-foreground/80 leading-relaxed">
-                      @if (capOn()) {
-                        Sólo capacitaciones activas. Define la meta para considerar al participante
-                        <span class="font-semibold text-brand">"Capacitado"</span>.
-                      } @else {
-                        Sólo asistencia técnica activa. Define la meta para considerar al participante
-                        <span class="font-semibold text-brand">"Asistido"</span>.
-                      }
-                    </p>
-                    @if (capOn()) {
-                      <div>
-                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                          <lucide-angular [img]="TargetIcon" class="size-3" /> Meta de capacitaciones (por periodo)
-                        </label>
-                        <input type="number" min="1" [value]="draft().metaCapacitaciones"
-                          (input)="updateMeta('metaCapacitaciones', $event)"
-                          class="w-full h-9 bg-background border rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand"
-                          [class]="metaCapInvalid() ? 'border-destructive' : 'border-input'" />
-                        <p class="text-[10px] text-muted-foreground mt-1">Cantidad mínima para cumplir el criterio.</p>
-                      </div>
-                    } @else {
-                      <div>
-                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                          <lucide-angular [img]="TargetIcon" class="size-3" /> Meta de asistencias técnicas (por periodo)
-                        </label>
-                        <input type="number" min="1" [value]="draft().metaAT"
-                          (input)="updateMeta('metaAT', $event)"
-                          class="w-full h-9 bg-background border rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand"
-                          [class]="metaAtInvalid() ? 'border-destructive' : 'border-input'" />
-                        <p class="text-[10px] text-muted-foreground mt-1">Cantidad mínima para cumplir el criterio.</p>
-                      </div>
-                    }
-                  </div>
-                }
-              </div>
-            </section>
-
-            <!-- 5. Periodo y cierre -->
-            <section class="space-y-3">
-              <div class="flex items-center gap-2">
-                <span class="flex items-center justify-center size-5 rounded-full bg-brand text-brand-foreground text-[10px] font-bold">5</span>
-                <h3 class="text-sm font-semibold text-foreground">Periodo de medición y cierre</h3>
-              </div>
-              <p class="text-xs text-muted-foreground -mt-1.5 pl-7">Frecuencia de evaluación y política de reinicio.</p>
-              <div class="pt-1">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-1.5">
-                      Periodo de medición
-                    </label>
-                    <select
-                      class="w-full h-9 bg-background border border-input rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
-                      [value]="draft().periodoMedicion"
-                      (change)="update({ periodoMedicion: $any($event.target).value })"
-                    >
-                      <option value="mensual">Mensual</option>
-                      <option value="trimestral">Trimestral</option>
-                      <option value="semestral">Semestral</option>
-                      <option value="anual">Anual</option>
-                    </select>
-                  </div>
-                  <div class="rounded-lg bg-brand/5 border border-brand/15 p-3 text-[11px] text-foreground/80 flex items-start gap-2">
-                    <lucide-angular [img]="InfoIcon" class="size-4 text-brand shrink-0 mt-0.5" />
-                    <div class="space-y-1 leading-snug">
-                      <p><span class="font-semibold">Contabilización independiente por área.</span></p>
-                      <p><span class="font-semibold">Cierre de periodo:</span> al finalizar se archiva el estado alcanzado y los contadores se reinician a 0.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </div>
+    <section class="pagina" [formGroup]="form">
+      <header class="cabecera">
+        <div>
+          <h1>Configurador de Reglas — {{ area().code }}</h1>
+          <p>{{ area().name }}. Define actividades, aforos y criterios de éxito del periodo.</p>
         </div>
+        <mat-chip disableRipple [class]="dirty() ? 'c-enviado' : 'c-aprobado'">
+          {{ dirty() ? 'Borrador' : 'Publicado' }}
+        </mat-chip>
+      </header>
 
-        <!-- Sticky footer -->
-        <div class="px-6 py-3 bg-card border-t border-border flex justify-between items-center sticky bottom-0 z-20">
-          <div class="text-[11px] text-muted-foreground flex items-center gap-1.5">
-            @if (dirty()) {
-              <span class="size-1.5 rounded-full bg-warning"></span> Cambios sin guardar
-            } @else {
-              <lucide-angular [img]="CheckCircle2Icon" class="size-3.5 text-brand" /> Sin cambios pendientes
+      <mat-card appearance="outlined" class="panel">
+        <!-- 1. Actividades -->
+        <section class="paso">
+          <div class="titulo-paso">
+            <span class="numero">1</span>
+            <h2>Selección de actividades</h2>
+          </div>
+          <p class="ayuda">Elige qué actividades ejecuta esta área.</p>
+
+          <div class="rejilla-2">
+            <mat-card appearance="outlined" class="tarjeta" [class.activa]="valor().capacitacionActiva">
+              <div class="encabezado-tarjeta">
+                <span class="icono"><mat-icon fontSet="material-symbols-outlined">school</mat-icon></span>
+                <div class="texto">
+                  <p class="nombre">Capacitaciones grupales</p>
+                  <p class="detalle">Eventos formativos con varios participantes.</p>
+                </div>
+                <mat-slide-toggle formControlName="capacitacionActiva" aria-label="Capacitaciones grupales" />
+              </div>
+            </mat-card>
+
+            <mat-card appearance="outlined" class="tarjeta" [class.activa]="valor().asistenciaActiva">
+              <div class="encabezado-tarjeta">
+                <span class="icono"><mat-icon fontSet="material-symbols-outlined">support_agent</mat-icon></span>
+                <div class="texto">
+                  <p class="nombre">Asistencia técnica</p>
+                  <p class="detalle">Intervenciones individuales o grupales en campo.</p>
+                </div>
+                <mat-slide-toggle formControlName="asistenciaActiva" aria-label="Asistencia técnica" />
+              </div>
+
+              <div class="subtipos" [class.inhabilitada]="!valor().asistenciaActiva">
+                <mat-checkbox formControlName="atIndividualActiva">AT Individual</mat-checkbox>
+                <mat-checkbox formControlName="atGrupalActiva">AT Grupal</mat-checkbox>
+                @if (sinSubtipos()) {
+                  <span class="error">Elige al menos un subtipo de AT.</span>
+                }
+              </div>
+            </mat-card>
+          </div>
+        </section>
+
+        <!-- 2. Aforos y duración -->
+        <section class="paso">
+          <div class="titulo-paso">
+            <span class="numero">2</span>
+            <h2>Aforos y duración permitida de la Capacitación y/o Asistencia técnica</h2>
+          </div>
+          <p class="ayuda">Rangos válidos para el registro de eventos.</p>
+
+          @if (ambosOff()) {
+            <p class="vacio">Activa al menos una actividad para configurar sus aforos.</p>
+          }
+
+          <div class="rejilla-2">
+            @if (capOn()) {
+              <mat-card appearance="outlined" class="tarjeta" formGroupName="capacitacion">
+                <div class="encabezado-tarjeta">
+                  <span class="icono"><mat-icon fontSet="material-symbols-outlined">school</mat-icon></span>
+                  <div class="texto"><p class="nombre">Capacitaciones grupales</p></div>
+                </div>
+                <div class="rejilla-campos">
+                  <mat-form-field class="campo">
+                    <mat-label>Horas mínimas</mat-label>
+                    <input matInput type="number" min="1" formControlName="horasMin" />
+                  </mat-form-field>
+                  <mat-form-field class="campo">
+                    <mat-label>Horas máximas</mat-label>
+                    <input
+                      matInput
+                      type="number"
+                      formControlName="horasMax"
+                      [errorStateMatcher]="matcherDe('capHorasMax')"
+                    />
+                    <mat-error>{{ errores()['capHorasMax'] }}</mat-error>
+                  </mat-form-field>
+                  <mat-form-field class="campo">
+                    <mat-label>Aforo mínimo</mat-label>
+                    <!-- Fijo en 1: el control va deshabilitado, no solo atenuado. -->
+                    <input matInput disabled value="1" />
+                    <mat-icon matSuffix fontSet="material-symbols-outlined">lock</mat-icon>
+                  </mat-form-field>
+                  <mat-form-field class="campo">
+                    <mat-label>Aforo máximo</mat-label>
+                    <input
+                      matInput
+                      type="number"
+                      min="1"
+                      formControlName="participantesMax"
+                      [errorStateMatcher]="matcherDe('capAforoMax')"
+                    />
+                    <mat-error>{{ errores()['capAforoMax'] }}</mat-error>
+                  </mat-form-field>
+                </div>
+              </mat-card>
+            }
+
+            @if (atOn()) {
+              <mat-card appearance="outlined" class="tarjeta" formGroupName="asistencia">
+                <div class="encabezado-tarjeta">
+                  <span class="icono"><mat-icon fontSet="material-symbols-outlined">support_agent</mat-icon></span>
+                  <div class="texto">
+                    <p class="nombre">Asistencia técnica</p>
+                    <p class="detalle">
+                      {{ soloAtIndividual()
+                        ? 'AT Individual · sin aforo grupal.'
+                        : 'Aforo y duración únicos para AT (aplica a Individual y Grupal).' }}
+                    </p>
+                  </div>
+                </div>
+                <div class="rejilla-campos">
+                  <mat-form-field class="campo">
+                    <mat-label>Horas mínimas</mat-label>
+                    <input matInput type="number" min="1" formControlName="horasMin" />
+                  </mat-form-field>
+                  <mat-form-field class="campo">
+                    <mat-label>Horas máximas</mat-label>
+                    <input
+                      matInput
+                      type="number"
+                      formControlName="horasMax"
+                      [errorStateMatcher]="matcherDe('atHorasMax')"
+                    />
+                    <mat-error>{{ errores()['atHorasMax'] }}</mat-error>
+                  </mat-form-field>
+                  @if (!soloAtIndividual()) {
+                    <mat-form-field class="campo">
+                      <mat-label>Aforo mínimo</mat-label>
+                      <input matInput disabled value="1" />
+                      <mat-icon matSuffix fontSet="material-symbols-outlined">lock</mat-icon>
+                    </mat-form-field>
+                    <mat-form-field class="campo">
+                      <mat-label>Aforo máximo</mat-label>
+                      <input
+                        matInput
+                        type="number"
+                        min="1"
+                        formControlName="participantesMax"
+                        [errorStateMatcher]="matcherDe('atAforoMax')"
+                      />
+                      <mat-error>{{ errores()['atAforoMax'] }}</mat-error>
+                    </mat-form-field>
+                  }
+                </div>
+              </mat-card>
             }
           </div>
-          <div class="flex gap-2">
-            <button
-              (click)="descartar()"
-              [disabled]="!dirty()"
-              class="btn-secondary"
-            >
-              <lucide-angular [img]="RotateCcwIcon" class="size-4" /> Cancelar
+        </section>
+
+        <!-- 3. Meta General -->
+        <section class="paso">
+          <div class="titulo-paso">
+            <span class="numero">3</span>
+            <h2>{{ tituloMetaGeneral }}</h2>
+          </div>
+          <p class="ayuda">Meta global que deberá cumplir un participante durante el periodo.</p>
+
+          <mat-card appearance="outlined" class="tarjeta" formGroupName="metaGeneral">
+            <div class="encabezado-tarjeta">
+              <span class="icono"><mat-icon fontSet="material-symbols-outlined">target</mat-icon></span>
+              <div class="texto"><p class="nombre">Criterio: {{ tituloMetaGeneral }}</p></div>
+            </div>
+            <div class="rejilla-campos tres">
+              <mat-form-field class="campo">
+                <mat-label>Cantidad de Capacitaciones</mat-label>
+                <input matInput type="number" min="0" formControlName="capacitaciones" />
+              </mat-form-field>
+              <mat-form-field class="campo">
+                <mat-label>Cantidad de Asistencia Técnica</mat-label>
+                <input matInput type="number" min="0" formControlName="asistenciasTecnicas" />
+              </mat-form-field>
+              <mat-form-field class="campo">
+                <mat-label>Cantidad de Hectáreas</mat-label>
+                <input matInput type="number" min="0" formControlName="hectareas" />
+              </mat-form-field>
+            </div>
+          </mat-card>
+        </section>
+
+        <!-- 4. Criterio de éxito -->
+        <section class="paso">
+          <div class="titulo-paso">
+            <span class="numero">4</span>
+            <h2>Criterio de éxito por periodo del participante</h2>
+          </div>
+          <p class="ayuda">Fórmula bajo la cual un participante completa el periodo.</p>
+
+          @if (ambosOff()) {
+            <mat-card appearance="outlined" class="tarjeta alerta">
+              <div class="encabezado-tarjeta">
+                <span class="icono error"><mat-icon fontSet="material-symbols-outlined">warning</mat-icon></span>
+                <div class="texto">
+                  <p class="nombre">El área no computará progreso.</p>
+                  <p class="detalle">Activa al menos una actividad para definir el criterio de éxito.</p>
+                </div>
+              </div>
+            </mat-card>
+          } @else if (capOn() && atOn()) {
+            <div class="combinada">
+              <mat-button-toggle-group
+                [value]="modoCombinado()"
+                (valueChange)="setModoCombinado($event)"
+                hideSingleSelectionIndicator
+                aria-label="Forma de combinar las metas"
+              >
+                <mat-button-toggle value="paralela">Independiente / paralela</mat-button-toggle>
+                <mat-button-toggle value="cruzada">Configuración cruzada</mat-button-toggle>
+              </mat-button-toggle-group>
+
+              <mat-card appearance="outlined" class="tarjeta">
+                @if (modoCombinado() === 'paralela') {
+                  <p class="detalle">
+                    Configura metas separadas para capacitaciones y AT. El participante puede alcanzar los
+                    estados <strong>Capacitado</strong>, <strong>Asistido</strong> o
+                    <strong>Capacitado y Asistido</strong> según cuál meta cumpla.
+                  </p>
+                } @else {
+                  <p class="detalle">
+                    Fórmula cruzada: el participante debe cumplir <strong>ambas metas</strong> en el mismo
+                    periodo. Resulta en un estatus único <strong>“Atendido”</strong>.
+                  </p>
+                }
+
+                <div class="rejilla-campos">
+                  <mat-form-field class="campo">
+                    <mat-label>{{ modoCombinado() === 'paralela' ? 'Meta capacitaciones' : 'Capacitaciones ≥' }}</mat-label>
+                    <input
+                      matInput
+                      type="number"
+                      min="1"
+                      formControlName="metaCapacitaciones"
+                      [errorStateMatcher]="matcherDe('metaCapacitaciones')"
+                    />
+                    @if (errores()['metaCapacitaciones']) {
+                      <mat-error>{{ errores()['metaCapacitaciones'] }}</mat-error>
+                    } @else {
+                      <mat-hint>≥ N sesiones por periodo.</mat-hint>
+                    }
+                  </mat-form-field>
+                  <mat-form-field class="campo">
+                    <mat-label>{{ modoCombinado() === 'paralela' ? 'Meta asistencias técnicas' : 'Asistencias técnicas ≥' }}</mat-label>
+                    <input
+                      matInput
+                      type="number"
+                      min="1"
+                      formControlName="metaAT"
+                      [errorStateMatcher]="matcherDe('metaAT')"
+                    />
+                    @if (errores()['metaAT']) {
+                      <mat-error>{{ errores()['metaAT'] }}</mat-error>
+                    } @else {
+                      <mat-hint>≥ N atenciones por periodo.</mat-hint>
+                    }
+                  </mat-form-field>
+                </div>
+
+                <div class="resultados">
+                  @if (modoCombinado() === 'paralela') {
+                    <mat-chip disableRipple class="c-validado">Capacitado</mat-chip>
+                    <mat-chip disableRipple class="c-validado">Asistido</mat-chip>
+                    <mat-chip disableRipple class="c-marca">Capacitado y Asistido</mat-chip>
+                  } @else {
+                    <mat-chip disableRipple class="c-marca">Cumple ambas → “Atendido”</mat-chip>
+                  }
+                </div>
+              </mat-card>
+            </div>
+          } @else {
+            <mat-card appearance="outlined" class="tarjeta">
+              <p class="detalle">
+                @if (capOn()) {
+                  Sólo capacitaciones activas. Define la meta para considerar al participante
+                  <strong>“Capacitado”</strong>.
+                } @else {
+                  Sólo asistencia técnica activa. Define la meta para considerar al participante
+                  <strong>“Asistido”</strong>.
+                }
+              </p>
+              @if (capOn()) {
+                <mat-form-field class="campo">
+                  <mat-label>Meta de capacitaciones (por periodo)</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    min="1"
+                    formControlName="metaCapacitaciones"
+                    [errorStateMatcher]="matcherDe('metaCapacitaciones')"
+                  />
+                  @if (errores()['metaCapacitaciones']) {
+                    <mat-error>{{ errores()['metaCapacitaciones'] }}</mat-error>
+                  } @else {
+                    <mat-hint>Cantidad mínima para cumplir el criterio.</mat-hint>
+                  }
+                </mat-form-field>
+              } @else {
+                <mat-form-field class="campo">
+                  <mat-label>Meta de asistencias técnicas (por periodo)</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    min="1"
+                    formControlName="metaAT"
+                    [errorStateMatcher]="matcherDe('metaAT')"
+                  />
+                  @if (errores()['metaAT']) {
+                    <mat-error>{{ errores()['metaAT'] }}</mat-error>
+                  } @else {
+                    <mat-hint>Cantidad mínima para cumplir el criterio.</mat-hint>
+                  }
+                </mat-form-field>
+              }
+            </mat-card>
+          }
+        </section>
+
+        <!-- 5. Periodo y cierre -->
+        <section class="paso">
+          <div class="titulo-paso">
+            <span class="numero">5</span>
+            <h2>Periodo de medición y cierre</h2>
+          </div>
+          <p class="ayuda">Frecuencia de evaluación y política de reinicio.</p>
+
+          <div class="rejilla-2">
+            <mat-form-field class="campo">
+              <mat-label>Periodo de medición</mat-label>
+              <mat-select formControlName="periodoMedicion">
+                <mat-option value="mensual">Mensual</mat-option>
+                <mat-option value="trimestral">Trimestral</mat-option>
+                <mat-option value="semestral">Semestral</mat-option>
+                <mat-option value="anual">Anual</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-card appearance="outlined" class="tarjeta nota">
+              <div class="encabezado-tarjeta">
+                <span class="icono"><mat-icon fontSet="material-symbols-outlined">info</mat-icon></span>
+                <div class="texto">
+                  <p class="detalle"><strong>Contabilización independiente por área.</strong></p>
+                  <p class="detalle">
+                    <strong>Cierre de periodo:</strong> al finalizar se archiva el estado alcanzado y los
+                    contadores se reinician a 0.
+                  </p>
+                </div>
+              </div>
+            </mat-card>
+          </div>
+        </section>
+
+        <!-- Pie fijo -->
+        <div class="pie">
+          <span class="estado">
+            <mat-icon fontSet="material-symbols-outlined">{{ dirty() ? 'edit' : 'check_circle' }}</mat-icon>
+            {{ dirty() ? 'Cambios sin guardar' : 'Sin cambios pendientes' }}
+          </span>
+          <div class="botones">
+            <button matButton type="button" [disabled]="!dirty()" (click)="descartar()">
+              <mat-icon fontSet="material-symbols-outlined">restart_alt</mat-icon>
+              Cancelar
             </button>
-            <button
-              (click)="guardar()"
-              [disabled]="!canSave()"
-              class="btn-primary px-5"
-            >
-              <lucide-angular [img]="SaveIcon" class="size-4" /> Guardar cambios
+            <button matButton="filled" type="button" [disabled]="!canSave()" (click)="guardar()">
+              <mat-icon fontSet="material-symbols-outlined">save</mat-icon>
+              Guardar cambios
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </mat-card>
+    </section>
+  `,
+  styles: `
+    .pagina {
+      padding: 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    @media (min-width: 1024px) { .pagina { padding: 32px; } }
+
+    .cabecera {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .cabecera h1 {
+      margin: 0;
+      font: var(--mat-sys-headline-small);
+      color: var(--mat-sys-on-surface);
+    }
+    .cabecera p {
+      margin: 4px 0 0;
+      max-width: 70ch;
+      font: var(--mat-sys-body-medium);
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    .panel { padding: 0; overflow: hidden; }
+
+    .paso { padding: 24px; border-bottom: 1px solid var(--mat-sys-outline-variant); }
+    .titulo-paso { display: flex; align-items: center; gap: 8px; }
+    .numero {
+      flex: none;
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--mat-sys-corner-full);
+      background: var(--mat-sys-primary);
+      color: var(--mat-sys-on-primary);
+      font: var(--mat-sys-label-small);
+      font-weight: 700;
+    }
+    .titulo-paso h2 {
+      margin: 0;
+      font: var(--mat-sys-title-small);
+      color: var(--mat-sys-on-surface);
+    }
+    .ayuda {
+      margin: 4px 0 16px 30px;
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .vacio {
+      margin: 0 0 16px;
+      font: var(--mat-sys-body-small);
+      font-style: italic;
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    .rejilla-2 {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+    @media (min-width: 768px) { .rejilla-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+    .tarjeta { padding: 16px; }
+    .tarjeta.activa { border-color: var(--mat-sys-primary); }
+    .tarjeta.alerta { border-color: var(--mat-sys-error); }
+    .encabezado-tarjeta { display: flex; align-items: flex-start; gap: 12px; }
+    .icono {
+      flex: none;
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--mat-sys-corner-small);
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
+    }
+    .icono.error {
+      background: var(--mat-sys-error-container);
+      color: var(--mat-sys-on-error-container);
+    }
+    .icono mat-icon { font-size: 20px; width: 20px; height: 20px; }
+    .texto { flex: 1 1 auto; min-width: 0; }
+    .nombre {
+      margin: 0;
+      font: var(--mat-sys-body-medium);
+      font-weight: 600;
+      color: var(--mat-sys-on-surface);
+    }
+    .detalle {
+      margin: 4px 0 0;
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    .subtipos {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px 16px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--mat-sys-outline-variant);
+      transition: opacity 120ms;
+    }
+    .subtipos.inhabilitada { opacity: 0.5; }
+    .error { font: var(--mat-sys-body-small); color: var(--mat-sys-error); }
+
+    .rejilla-campos {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px 16px;
+      margin-top: 16px;
+    }
+    .rejilla-campos.tres { grid-template-columns: minmax(0, 1fr); }
+    @media (min-width: 768px) {
+      .rejilla-campos.tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    .campo { width: 100%; }
+    /* Un campo suelto en la tarjeta necesita aire: la etiqueta flotante de
+       Material se dibuja sobre el borde y pisaría el párrafo anterior. */
+    .tarjeta > .campo { margin-top: 16px; }
+    input[type='number'] { font-variant-numeric: tabular-nums; }
+
+    .combinada { display: flex; flex-direction: column; gap: 16px; }
+    .resultados { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .tarjeta.nota { background: var(--mat-sys-surface-container-low); }
+
+    .pie {
+      position: sticky;
+      bottom: 0;
+      z-index: 2;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 24px;
+      background: var(--mat-sys-surface-container-low);
+      border-top: 1px solid var(--mat-sys-outline-variant);
+    }
+    .estado {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .estado mat-icon { font-size: 18px; width: 18px; height: 18px; }
+    .botones { display: flex; gap: 8px; }
   `,
 })
 export class ReglasComponent {
   private readonly areaService = inject(AreaService);
   private readonly reglasService = inject(ReglasService);
   private readonly toast = inject(ToastService);
-
-  readonly SaveIcon = Save;
-  readonly RotateCcwIcon = RotateCcw;
-  readonly GraduationCapIcon = GraduationCap;
-  readonly HeadsetIcon = Headset;
-  readonly UsersIcon = Users;
-  readonly ClockIcon = Clock;
-  readonly TargetIcon = Target;
-  readonly AlertTriangleIcon = AlertTriangle;
-  readonly InfoIcon = Info;
-  readonly LockIcon = Lock;
-  readonly CheckCircle2Icon = CheckCircle2;
-  readonly SproutIcon = Sprout;
+  private readonly fb = inject(FormBuilder);
 
   readonly tituloMetaGeneral = TITULO_META_GENERAL;
 
   readonly area = computed(() => getArea(this.areaService.currentArea()));
   readonly saved = computed(() => this.reglasService.configs()[this.areaService.currentArea()]);
 
-  readonly draft = signal<AreaConfig>(structuredClone(
-    this.reglasService.configs()[this.areaService.currentArea()],
-  ));
+  readonly form = this.fb.nonNullable.group({
+    capacitacionActiva: true,
+    asistenciaActiva: true,
+    atIndividualActiva: true,
+    atGrupalActiva: true,
+    capacitacion: this.fb.nonNullable.group({ horasMin: 1, horasMax: 1, participantesMax: 1 }),
+    asistencia: this.fb.nonNullable.group({ horasMin: 1, horasMax: 1, participantesMax: 1 }),
+    metaGeneral: this.fb.nonNullable.group({
+      capacitaciones: 0,
+      asistenciasTecnicas: 0,
+      hectareas: 0,
+    }),
+    metaCapacitaciones: 1,
+    metaAT: 1,
+    criterioExito: 'combinada_paralela' as CriterioExito,
+    periodoMedicion: 'anual' as PeriodoMedicion,
+  });
 
-  private prev = { cap: this.draft().capacitacionActiva, at: this.draft().asistenciaActiva };
+  /** Los cambios del formulario no son señales: este contador los propaga. */
+  private readonly cambios = signal(0);
+
+  readonly valor = computed<ReglasEditables>(() => {
+    this.cambios();
+    return editablesDe(this.form.getRawValue());
+  });
+
+  private prev = { cap: true, at: true };
 
   constructor() {
-    // Recarga el borrador al cambiar de área o al guardar.
+    // Recarga el formulario al cambiar de área o al guardar. Sin `emitEvent`
+    // para que la cascada de subtipos no reinterprete los datos cargados.
     effect(() => {
       const s = this.saved();
-      this.draft.set(structuredClone(s));
+      this.form.reset(editablesDe(s), { emitEvent: false });
       this.prev = { cap: s.capacitacionActiva, at: s.asistenciaActiva };
+      this.cambios.update((c) => c + 1);
     });
 
-    // Ajuste automático del criterio de éxito según actividades activas.
+    this.form.valueChanges.subscribe(() => this.cambios.update((c) => c + 1));
+
+    // Activar/desactivar AT arrastra sus subtipos: al apagarla se limpian y al
+    // encenderla debe quedar al menos uno marcado.
+    this.form.controls.asistenciaActiva.valueChanges.subscribe((activa) => {
+      const { atIndividualActiva, atGrupalActiva } = this.form.getRawValue();
+      if (!activa) {
+        this.form.patchValue({ atIndividualActiva: false, atGrupalActiva: false });
+      } else if (!atIndividualActiva && !atGrupalActiva) {
+        this.form.patchValue({ atIndividualActiva: true, atGrupalActiva: true });
+      }
+    });
+
+    // Ajuste automático del criterio de éxito según las actividades activas.
     effect(() => {
-      const d = this.draft();
-      const cap = d.capacitacionActiva;
-      const at = d.asistenciaActiva;
-      const valid = computeValidCriterio(cap, at, d.criterioExito);
-      if (valid !== d.criterioExito) {
+      const v = this.valor();
+      const cap = v.capacitacionActiva;
+      const at = v.asistenciaActiva;
+      const valido = computeValidCriterio(cap, at, v.criterioExito);
+      if (valido !== v.criterioExito) {
         if (this.prev.cap !== cap || this.prev.at !== at) {
-          if (valid === 'none') this.toast.warning('El área no computará progreso: sin actividades activas.');
+          if (valido === 'none') this.toast.warning('El área no computará progreso: sin actividades activas.');
           else this.toast.info('Criterio de éxito ajustado automáticamente a las actividades activas.');
         }
-        this.draft.update((x) => ({ ...x, criterioExito: valid }));
+        this.form.controls.criterioExito.setValue(valido);
       }
       this.prev = { cap, at };
     });
   }
 
-  update(patch: Partial<AreaConfig>): void {
-    this.draft.update((d) => ({ ...d, ...patch }));
-  }
-
-  updateCap(key: 'horasMin' | 'horasMax' | 'participantesMax', e: Event): void {
-    const v = Number((e.target as HTMLInputElement).value) || 0;
-    this.draft.update((d) => ({ ...d, capacitacion: { ...d.capacitacion, [key]: v } }));
-  }
-
-  updateAt(key: 'horasMin' | 'horasMax' | 'participantesMax', e: Event): void {
-    const v = Number((e.target as HTMLInputElement).value) || 0;
-    this.draft.update((d) => ({ ...d, asistencia: { ...d.asistencia, [key]: v } }));
-  }
-
-  updateMeta(key: 'metaCapacitaciones' | 'metaAT', e: Event): void {
-    const v = Number((e.target as HTMLInputElement).value) || 0;
-    this.update({ [key]: v } as Partial<AreaConfig>);
-  }
-
-  updateMetaGeneral(key: keyof MetaGeneral, e: Event): void {
-    const v = Math.max(0, Number((e.target as HTMLInputElement).value) || 0);
-    this.draft.update((d) => ({ ...d, metaGeneral: { ...d.metaGeneral, [key]: v } }));
-  }
-
-  setCapActiva(v: boolean): void {
-    this.update({ capacitacionActiva: v });
-  }
-
-  setAtActiva(v: boolean): void {
-    const d = this.draft();
-    if (!v) {
-      this.update({ asistenciaActiva: false, atIndividualActiva: false, atGrupalActiva: false });
-    } else {
-      this.update({
-        asistenciaActiva: true,
-        atIndividualActiva: d.atIndividualActiva || !d.atGrupalActiva,
-        atGrupalActiva: d.atGrupalActiva || !d.atIndividualActiva,
-      });
-    }
-  }
-
   /* ===== Flags derivados ===== */
-  readonly capOn = computed(() => this.draft().capacitacionActiva);
-  readonly atOn = computed(
-    () => this.draft().asistenciaActiva && (this.draft().atIndividualActiva || this.draft().atGrupalActiva),
-  );
+  readonly capOn = computed(() => this.valor().capacitacionActiva);
+  readonly atOn = computed(() => {
+    const v = this.valor();
+    return v.asistenciaActiva && (v.atIndividualActiva || v.atGrupalActiva);
+  });
   readonly soloAtIndividual = computed(
-    () => this.atOn() && this.draft().atIndividualActiva && !this.draft().atGrupalActiva,
+    () => this.atOn() && this.valor().atIndividualActiva && !this.valor().atGrupalActiva,
   );
   readonly ambosOff = computed(() => !this.capOn() && !this.atOn());
-
-  /* ===== Validaciones ===== */
-  readonly capInvalid = computed(() => {
-    const d = this.draft();
-    return this.capOn() && (d.capacitacion.horasMax < d.capacitacion.horasMin || d.capacitacion.participantesMax < 1);
+  readonly sinSubtipos = computed(() => {
+    const v = this.valor();
+    return v.asistenciaActiva && !v.atIndividualActiva && !v.atGrupalActiva;
   });
-  readonly atInvalid = computed(() => {
-    const d = this.draft();
-    return this.atOn() && (
-      d.asistencia.horasMax < d.asistencia.horasMin ||
-      (!this.soloAtIndividual() && d.asistencia.participantesMax < 1)
+
+  /** Pestaña activa del criterio combinado. */
+  readonly modoCombinado = computed(() =>
+    this.valor().criterioExito === 'combinada_cruzada' ? 'cruzada' : 'paralela',
+  );
+
+  setModoCombinado(modo: 'paralela' | 'cruzada'): void {
+    this.form.controls.criterioExito.setValue(
+      modo === 'cruzada' ? 'combinada_cruzada' : 'combinada_paralela',
     );
-  });
-  private readonly needsCap = computed(() =>
-    ['solo_cap', 'combinada_paralela', 'combinada_cruzada'].includes(this.draft().criterioExito),
-  );
-  private readonly needsAt = computed(() =>
-    ['solo_at', 'combinada_paralela', 'combinada_cruzada'].includes(this.draft().criterioExito),
-  );
-  readonly metaCapInvalid = computed(
-    () => this.needsCap() && (!this.draft().metaCapacitaciones || this.draft().metaCapacitaciones < 1),
-  );
-  readonly metaAtInvalid = computed(
-    () => this.needsAt() && (!this.draft().metaAT || this.draft().metaAT < 1),
-  );
+  }
 
-  readonly dirty = computed(() => JSON.stringify(this.draft()) !== JSON.stringify(this.saved()));
+  /**
+   * La validación es propia (mensajes por campo en `errores`), así que el estado
+   * de error de cada campo lo decide ese mapa y no los validadores del control.
+   */
+  readonly errores = computed<Record<string, string>>(() => {
+    const v = this.valor();
+    const e: Record<string, string> = {};
+    if (this.capOn()) {
+      if (v.capacitacion.horasMax < v.capacitacion.horasMin) {
+        e['capHorasMax'] = 'Debe ser mayor o igual a las horas mínimas.';
+      }
+      if (v.capacitacion.participantesMax < 1) {
+        e['capAforoMax'] = 'El aforo máximo debe ser al menos 1.';
+      }
+    }
+    if (this.atOn()) {
+      if (v.asistencia.horasMax < v.asistencia.horasMin) {
+        e['atHorasMax'] = 'Debe ser mayor o igual a las horas mínimas.';
+      }
+      if (!this.soloAtIndividual() && v.asistencia.participantesMax < 1) {
+        e['atAforoMax'] = 'El aforo máximo debe ser al menos 1.';
+      }
+    }
+    if (['solo_cap', 'combinada_paralela', 'combinada_cruzada'].includes(v.criterioExito) && v.metaCapacitaciones < 1) {
+      e['metaCapacitaciones'] = 'Indique al menos 1 capacitación.';
+    }
+    if (['solo_at', 'combinada_paralela', 'combinada_cruzada'].includes(v.criterioExito) && v.metaAT < 1) {
+      e['metaAT'] = 'Indique al menos 1 asistencia técnica.';
+    }
+    return e;
+  });
+
+  private readonly matchers = new Map<string, ErrorStateMatcher>();
+
+  matcherDe(campo: string): ErrorStateMatcher {
+    let matcher = this.matchers.get(campo);
+    if (!matcher) {
+      matcher = { isErrorState: () => !!this.errores()[campo] };
+      this.matchers.set(campo, matcher);
+    }
+    return matcher;
+  }
+
+  readonly dirty = computed(
+    () => JSON.stringify(this.valor()) !== JSON.stringify(editablesDe(this.saved())),
+  );
   readonly canSave = computed(
-    () => this.dirty() && !this.capInvalid() && !this.atInvalid() && !this.metaCapInvalid() && !this.metaAtInvalid(),
+    () => this.dirty() && Object.keys(this.errores()).length === 0 && !this.sinSubtipos(),
   );
 
   descartar(): void {
-    this.draft.set(structuredClone(this.saved()));
+    this.form.reset(editablesDe(this.saved()), { emitEvent: false });
+    this.cambios.update((c) => c + 1);
   }
 
   guardar(): void {
-    this.reglasService.setConfig(this.areaService.currentArea(), this.draft());
+    const v = this.valor();
+    const base = this.saved();
+    // Los campos legacy de `AreaConfig` no se editan aquí: se conservan.
+    this.reglasService.setConfig(this.areaService.currentArea(), {
+      ...base,
+      ...v,
+      capacitacion: { ...base.capacitacion, ...v.capacitacion },
+      asistencia: { ...base.asistencia, ...v.asistencia },
+      metaGeneral: { ...v.metaGeneral },
+    });
     this.toast.success('Reglas del área guardadas.');
   }
 }

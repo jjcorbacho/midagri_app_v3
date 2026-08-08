@@ -1,48 +1,75 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatRadioModule } from '@angular/material/radio';
+import { MatSelectModule } from '@angular/material/select';
 import { CampoTipo } from '../../../core/models/campo.model';
 
-/** Campo individual de la vista previa del formulario (deshabilitado). */
+/**
+ * Un campo de la vista previa del formulario. Solo muestra cómo se verá el
+ * control: todos van deshabilitados porque aquí no se captura información.
+ */
 @Component({
   selector: 'app-campo-preview',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [MatCheckboxModule, MatFormFieldModule, MatInputModule, MatRadioModule, MatSelectModule],
   template: `
-    <div class="space-y-1">
-      <label class="text-[11px] font-bold text-muted-foreground uppercase">{{ nombre() }}</label>
-      @switch (tipo()) {
-        @case ('textarea') {
-          <textarea disabled rows="2" class="w-full bg-surface-2 border border-border rounded px-3 py-1.5 text-xs"></textarea>
-        }
-        @case ('select') {
-          <select disabled class="w-full bg-surface-2 border border-border rounded px-3 py-1.5 text-xs">
-            <option>— seleccionar —</option>
-            @for (o of opts(); track o) {
-              <option>{{ o }}</option>
-            }
-          </select>
-        }
-        @case ('radio') {
-          <div class="flex gap-3 flex-wrap">
-            @for (o of opts(); track o) {
-              <label class="text-xs flex items-center gap-1">
-                <input type="radio" disabled /> {{ o }}
-              </label>
-            }
-          </div>
-        }
-        @case ('checkbox') {
-          <div class="flex gap-3 flex-wrap">
-            @for (o of opts(); track o) {
-              <label class="text-xs flex items-center gap-1">
-                <input type="checkbox" disabled /> {{ o }}
-              </label>
-            }
-          </div>
-        }
-        @default {
-          <input [type]="tipo()" disabled class="w-full bg-surface-2 border border-border rounded px-3 py-1.5 text-xs" />
-        }
+    @switch (tipo()) {
+      @case ('textarea') {
+        <mat-form-field subscriptSizing="dynamic" class="campo">
+          <mat-label>{{ nombre() }}</mat-label>
+          <textarea matInput disabled rows="2"></textarea>
+        </mat-form-field>
       }
-    </div>
+      @case ('select') {
+        <mat-form-field subscriptSizing="dynamic" class="campo">
+          <mat-label>{{ nombre() }}</mat-label>
+          <mat-select disabled placeholder="— seleccionar —">
+            @for (o of opts(); track o) {
+              <mat-option [value]="o">{{ o }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
+      @case ('radio') {
+        <div class="grupo">
+          <span class="etiqueta">{{ nombre() }}</span>
+          <mat-radio-group>
+            @for (o of opts(); track o) {
+              <mat-radio-button disabled [value]="o">{{ o }}</mat-radio-button>
+            }
+          </mat-radio-group>
+        </div>
+      }
+      @case ('checkbox') {
+        <div class="grupo">
+          <span class="etiqueta">{{ nombre() }}</span>
+          <div class="casillas">
+            @for (o of opts(); track o) {
+              <mat-checkbox disabled>{{ o }}</mat-checkbox>
+            }
+          </div>
+        </div>
+      }
+      @default {
+        <mat-form-field subscriptSizing="dynamic" class="campo">
+          <mat-label>{{ nombre() }}</mat-label>
+          <input matInput disabled [type]="tipo()" />
+        </mat-form-field>
+      }
+    }
+  `,
+  styles: `
+    :host { display: block; }
+    .campo { width: 100%; }
+    .grupo { display: flex; flex-direction: column; gap: 4px; padding: 4px 0; }
+    .etiqueta {
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    mat-radio-group,
+    .casillas { display: flex; flex-wrap: wrap; gap: 4px 12px; }
   `,
 })
 export class CampoPreviewComponent {
