@@ -113,6 +113,54 @@ mat-icon.material-symbols-outlined,
    se declaran como tokens propios: son los únicos colores fuera de
    la paleta del tema y conservan el significado de los badges.
    ------------------------------------------------------------ */
+/* ------------------------------------------------------------
+   Convenciones de las grillas de datos (mat-table): cabecera,
+   estado vacío e iconos de acción por fila. Las comparten todas
+   las vistas de listado, así que se declaran una sola vez.
+   ------------------------------------------------------------ */
+th.mat-mdc-header-cell {
+  font: var(--mat-sys-label-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.fila-vacia td { padding: 0; }
+.sin-datos {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 40px 16px;
+  color: var(--mat-sys-on-surface-variant);
+  text-align: center;
+
+  mat-icon { font-size: 32px; width: 32px; height: 32px; opacity: 0.5; }
+  p { margin: 0; font: var(--mat-sys-body-small); }
+  .titulo-vacio { font: var(--mat-sys-body-medium); color: var(--mat-sys-on-surface); }
+}
+
+/* Un tono por significado de la acción; el icono va en un matIconButton. Se
+   ancla al `.mat-mdc-icon-button` porque los estilos del componente se
+   inyectan después de esta hoja y ganarían por orden en la cascada. */
+.mat-mdc-icon-button.accion {
+  width: 36px;
+  height: 36px;
+  padding: 8px;
+
+  mat-icon { font-size: 18px; width: 18px; height: 18px; }
+  &.atenuada { opacity: 0.5; }
+
+  &.a-neutro { background: var(--mat-sys-surface-container-highest); color: var(--mat-sys-on-surface-variant); }
+  &.a-marca { background: var(--mat-sys-primary-container); color: var(--mat-sys-on-primary-container); }
+  &.a-alerta { background: var(--estado-subsanado-fondo); color: var(--estado-subsanado); }
+  &.a-info { background: var(--estado-validado-fondo); color: var(--estado-validado); }
+  &.a-error { background: var(--mat-sys-error-container); color: var(--mat-sys-on-error-container); }
+  &.a-exito { background: var(--estado-aprobado-fondo); color: var(--estado-aprobado); }
+  /* Acción destacada (subir sustento): color primario del tema activo. */
+  &.a-primario { background: var(--mat-sys-primary); color: var(--mat-sys-on-primary); }
+}
+
 /* Chips de dato con los tonos de estado: los comparten `estado-badge`, la
    grilla de usuarios y las tablas del formulario, así que se declaran una vez
    aquí. Los tokens son los `--mat-chip-*` de Material 3 (los `--mdc-chip-*`

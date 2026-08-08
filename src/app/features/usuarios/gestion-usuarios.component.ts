@@ -316,12 +316,6 @@ const ACCIONES: AccionFila[] = [
 
     .tabla-contenedor { overflow: auto; max-height: 60vh; }
     table { width: 100%; }
-    th.mat-mdc-header-cell {
-      font: var(--mat-sys-label-medium);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      white-space: nowrap;
-    }
     td.mat-mdc-cell { font: var(--mat-sys-body-medium); }
 
     /* Anchos por columna (mat-table genera .mat-column-<id>). */
@@ -341,14 +335,6 @@ const ACCIONES: AccionFila[] = [
     .mat-column-ubigeo { width: 6rem; }
 
     .acciones-fila { display: flex; align-items: center; justify-content: center; gap: 2px; }
-    .accion { --mdc-icon-button-icon-size: 18px; width: 36px; height: 36px; padding: 8px; }
-    .accion mat-icon { font-size: 18px; width: 18px; height: 18px; }
-    .a-neutro { background: var(--mat-sys-surface-container-highest); color: var(--mat-sys-on-surface-variant); }
-    .a-marca  { background: var(--mat-sys-primary-container); color: var(--mat-sys-on-primary-container); }
-    .a-alerta { background: var(--estado-subsanado-fondo); color: var(--estado-subsanado); }
-    .a-info   { background: var(--estado-validado-fondo); color: var(--estado-validado); }
-    .a-error  { background: var(--mat-sys-error-container); color: var(--mat-sys-on-error-container); }
-    .a-exito  { background: var(--estado-aprobado-fondo); color: var(--estado-aprobado); }
 
     .empleado { font-weight: 600; }
     .tenue { color: var(--mat-sys-on-surface-variant); }
@@ -363,20 +349,6 @@ const ACCIONES: AccionFila[] = [
     }
     .meses { font: var(--mat-sys-body-small); }
     .periodos { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
-
-    .fila-vacia td { padding: 0; }
-    .sin-datos {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      padding: 40px 16px;
-      color: var(--mat-sys-on-surface-variant);
-      text-align: center;
-    }
-    .sin-datos mat-icon { font-size: 32px; width: 32px; height: 32px; opacity: 0.5; }
-    .sin-datos p { margin: 0; font: var(--mat-sys-body-small); }
-    .titulo-vacio { font: var(--mat-sys-body-medium) !important; color: var(--mat-sys-on-surface); }
   `,
 })
 export class GestionUsuariosComponent {

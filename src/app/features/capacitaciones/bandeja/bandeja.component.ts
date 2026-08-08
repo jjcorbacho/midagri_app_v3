@@ -1,11 +1,17 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import {
-  LucideAngularModule,
-  Plus, Search, BookOpen, ClipboardCheck, Wrench, Users, UserPlus, Pencil,
-  Trash2, Download, AlertTriangle, MapPin, UploadCloud, ChevronDown, ChevronUp,
-  FileEdit, SendHorizonal, AlertOctagon, BadgeCheck, FileText, FileSpreadsheet, FileCheck,
-} from 'lucide-angular';
+import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatCardModule } from '@angular/material/card';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatPaginatorIntl, MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatSelectModule } from '@angular/material/select';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { AreaService } from '../../../core/services/area.service';
 import { CursosService } from '../../../core/services/cursos.service';
 import { ParticipantesService } from '../../../core/services/participantes.service';
@@ -15,10 +21,11 @@ import { Curso, ESTADOS, EstadoCurso, canDeleteCurso } from '../../../core/model
 import { Participante } from '../../../core/models/participante.model';
 import { EstadoBadgeComponent } from '../../../shared/components/estado-badge/estado-badge.component';
 import { KpiCardComponent } from '../../../shared/components/kpi-card/kpi-card.component';
-import { ModalComponent } from '../../../shared/components/modal/modal.component';
-import { SustentoModalComponent } from '../sustento-modal/sustento-modal.component';
+import { SustentoData, SustentoDialogComponent } from '../sustento-modal/sustento-dialog.component';
+import { ObservacionesData, ObservacionesDialogComponent } from './observaciones-dialog.component';
 import { exportarTablaExcel } from '../../../shared/utils/excel.util';
 import { parseFechaCurso } from '../../../shared/utils/fecha.util';
+import { paginatorIntlEs } from '../../../shared/utils/paginator-intl.es';
 import { UBIGEO, getProvincias, getDistritos } from '../../../core/constants/catalogos.const';
 import { DateRangePickerComponent, RangoFechas } from '../../../shared/components/date-range-picker/date-range-picker.component';
 
@@ -37,46 +44,55 @@ const CAMPOS_BUSQUEDA: { k: CampoBusqueda; label: string }[] = [
 ];
 type EstadoFiltro = 'TODOS' | EstadoCurso;
 
-const ICON_TONES: Record<string, string> = {
-  teal: 'bg-brand-soft text-brand hover:bg-brand hover:text-brand-foreground',
-  blue: 'bg-state-validado-soft text-state-validado-foreground hover:bg-state-validado hover:text-primary-foreground',
-  red: 'bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground',
-  amber: 'bg-state-subsanado-soft text-state-subsanado-foreground hover:bg-state-subsanado hover:text-primary-foreground',
-  slate: 'bg-muted text-muted-foreground hover:bg-foreground hover:text-background',
-  /* Descargar: azul informativo, distinto del teal de marca de la misma fila. */
-  indigo: 'bg-info-soft text-info hover:bg-info hover:text-primary-foreground',
-  /* Subir documentos: color primario del tema activo (nunca negro fijo). */
-  dark: 'bg-primary text-primary-foreground hover:bg-primary/85 ring-1 ring-primary/25 shadow-sm',
-};
+/** Acción de fila: icono, ayuda y tono sobre los tokens del tema. */
+interface AccionFila {
+  tipo: 'OBSERVACIONES' | 'PARTICIPANTES' | 'VER_PARTICIPANTES' | 'VER_DATOS' | 'EDITAR' | 'ELIMINAR' | 'SUSTENTO' | 'DESCARGAR';
+  icono: string;
+  etiqueta: string;
+  tono: string;
+}
+
+/** Columnas de datos de la grilla; `detalle` es la fila expandible. */
+const COLUMNAS = ['acciones', 'tema', 'estado', 'fecha', 'horas', 'participantes', 'ubicacion'];
 
 @Component({
   selector: 'app-bandeja',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, EstadoBadgeComponent, KpiCardComponent, ModalComponent, SustentoModalComponent, DateRangePickerComponent],
+  // Paginador en español dentro del chunk diferido de la vista.
+  providers: [{ provide: MatPaginatorIntl, useFactory: paginatorIntlEs }],
+  imports: [
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatCardModule,
+    MatChipsModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatPaginatorModule,
+    MatSelectModule,
+    MatTableModule,
+    MatTooltipModule,
+    EstadoBadgeComponent,
+    KpiCardComponent,
+    DateRangePickerComponent,
+  ],
   template: `
-    <section class="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6 animate-page-in">
-      <!-- KPIs -->
-      <div class="space-y-3">
-        <div class="flex justify-start">
-          <div role="tablist" aria-label="Vista de indicadores" class="inline-flex p-1 bg-muted/70 rounded-xl ring-1 ring-border/60">
-            @for (opt of kpiOptions; track opt.k) {
-              <button
-                role="tab"
-                [attr.aria-selected]="kpiView() === opt.k"
-                (click)="kpiView.set(opt.k)"
-                class="px-4 h-8 rounded-lg text-xs font-semibold transition-all duration-200"
-                [class]="kpiView() === opt.k ? 'bg-card text-brand shadow-sm ring-1 ring-border' : 'text-muted-foreground hover:text-foreground'"
-              >{{ opt.label }}</button>
-            }
-          </div>
-        </div>
-        <!-- 4 tarjetas en la vista general; 5 en "Estados y Progreso" (incluye Subsanados). -->
-        <div
-          class="grid gap-4 transition-all duration-300 animate-in fade-in-0"
-          [class]="kpiView() === 'general'
-            ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
-            : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'"
+    <section class="pagina">
+      <!-- INDICADORES -->
+      <div class="kpis-bloque">
+        <mat-button-toggle-group
+          [value]="kpiView()"
+          (valueChange)="kpiView.set($event)"
+          hideSingleSelectionIndicator
+          aria-label="Vista de indicadores"
         >
+          @for (opt of kpiOptions; track opt.k) {
+            <mat-button-toggle [value]="opt.k">{{ opt.label }}</mat-button-toggle>
+          }
+        </mat-button-toggle-group>
+
+        <!-- 4 tarjetas en la vista general; 5 en "Estados y Progreso" (incluye Subsanados). -->
+        <div class="kpis" [class.kpis-estados]="kpiView() === 'estados'">
           @if (kpiView() === 'general') {
             <app-kpi-card label="Eventos Registrados" [value]="counts().registrados" icon="menu_book" tone="blue" />
             <app-kpi-card label="Capacitaciones" [value]="counts().caps" icon="assignment_turned_in" tone="teal" />
@@ -92,351 +108,428 @@ const ICON_TONES: Record<string, string> = {
         </div>
       </div>
 
-      <!-- Main panel -->
-      <div class="bg-card rounded-xl ring-1 ring-border shadow-sm overflow-hidden">
-        <div class="p-6 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <mat-card appearance="outlined" class="panel">
+        <div class="encabezado">
           <div>
-            <h2 class="text-h2 text-foreground">
-              Bandeja de Control de {{ areaService.currentArea() }}
-            </h2>
-            <p class="text-sm text-muted-foreground mt-1 max-w-[70ch]">
-              Consulte e ingrese capacitaciones agrarias.
-            </p>
+            <h2>Bandeja de Control de {{ areaService.currentArea() }}</h2>
+            <p>Consulte e ingrese capacitaciones agrarias.</p>
           </div>
-          <div class="flex flex-wrap gap-2">
-            <button (click)="nuevo('capacitacion')" class="btn-primary">
-              <lucide-angular [img]="PlusIcon" class="size-4" /> Registrar Capacitación
+          <div class="acciones-alta">
+            <button matButton="filled" (click)="nuevo('capacitacion')">
+              <mat-icon fontSet="material-symbols-outlined">add</mat-icon>
+              Registrar Capacitación
             </button>
-            <button (click)="nuevo('asistencia')" class="btn-primary">
-              <lucide-angular [img]="PlusIcon" class="size-4" /> Registrar Asis. Técnica
+            <button matButton="filled" (click)="nuevo('asistencia')">
+              <mat-icon fontSet="material-symbols-outlined">add</mat-icon>
+              Registrar Asis. Técnica
             </button>
           </div>
         </div>
 
         <!-- Filtros (organización según la referencia filtros.xlsx) -->
-        <div class="p-4 bg-secondary/40 border-b border-border space-y-3">
-          <!-- Fila 1: indicadores por tipo + buscador por campo + exportación -->
-          <div class="flex flex-col lg:flex-row gap-3 lg:items-center">
-            <div class="inline-flex p-1 bg-card ring-1 ring-border rounded-lg self-start shrink-0" role="tablist" aria-label="Filtrar por tipo">
+        <div class="filtros">
+          <!-- Fila 1: tipo + buscador por campo + exportación -->
+          <div class="fila-busqueda">
+            <mat-button-toggle-group
+              [value]="tab()"
+              (valueChange)="setTab($event)"
+              hideSingleSelectionIndicator
+              aria-label="Filtrar por tipo"
+            >
               @for (t of tabs; track t.k) {
-                <button
-                  role="tab"
-                  [attr.aria-selected]="tab() === t.k"
-                  (click)="setTab(t.k)"
-                  class="h-8 px-3 rounded-md text-xs font-bold transition-colors flex items-center gap-1.5"
-                  [class]="tab() === t.k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'"
-                >
+                <mat-button-toggle [value]="t.k">
                   {{ t.label }}
-                  <span
-                    class="px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums"
-                    [class]="tab() === t.k ? 'bg-primary-foreground/25' : 'bg-secondary ring-1 ring-border'"
-                  >{{ conteoTipos()[t.k] }}</span>
+                  <span class="conteo">{{ conteoTipos()[t.k] }}</span>
+                </mat-button-toggle>
+              }
+            </mat-button-toggle-group>
+
+            <mat-form-field subscriptSizing="dynamic" class="campo-busqueda">
+              <mat-label>Buscar por</mat-label>
+              <mat-select
+                [value]="campoBusqueda()"
+                (valueChange)="setCampoBusqueda($event)"
+                aria-label="Campo de búsqueda"
+              >
+                @for (c of camposBusqueda; track c.k) {
+                  <mat-option [value]="c.k">{{ c.label }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field subscriptSizing="dynamic" class="termino">
+              <mat-label>Búsqueda</mat-label>
+              <mat-icon matPrefix fontSet="material-symbols-outlined">search</mat-icon>
+              <input
+                matInput
+                type="text"
+                [value]="q()"
+                (input)="setQ($any($event.target).value)"
+                [placeholder]="'Buscar por ' + etiquetaCampoBusqueda() + '…'"
+                [attr.aria-label]="'Buscar por ' + etiquetaCampoBusqueda()"
+              />
+              @if (q()) {
+                <button matIconButton matSuffix type="button" (click)="setQ('')" aria-label="Limpiar búsqueda">
+                  <mat-icon fontSet="material-symbols-outlined">close</mat-icon>
                 </button>
               }
-            </div>
+            </mat-form-field>
 
-            <select
-              [value]="campoBusqueda()"
-              (change)="setCampoBusqueda($event)"
-              aria-label="Campo de búsqueda"
-              class="px-3 py-2 bg-card ring-1 ring-border rounded-lg text-sm font-medium shrink-0"
-            >
-              @for (c of camposBusqueda; track c.k) {
-                <option [value]="c.k">Buscar por: {{ c.label }}</option>
-              }
-            </select>
-
-            <div class="relative flex-1 min-w-[200px]">
-              <lucide-angular [img]="SearchIcon" class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <input
-                [value]="q()"
-                (input)="setQ($event)"
-                type="text"
-                [placeholder]="'Buscar por ' + etiquetaCampoBusqueda() + '…'"
-                class="w-full pl-10 pr-4 py-2 bg-card ring-1 ring-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring"
-              />
-            </div>
-
-            <!-- Exportación junto al buscador -->
             <button
-              (click)="exportarExcel()"
-              title="Exportar Excel"
+              matIconButton
+              class="excel"
+              matTooltip="Exportar Excel"
               aria-label="Exportar la tabla a Excel"
-              class="p-2 rounded-lg transition-all bg-success text-success-foreground hover:bg-success/85 shadow-sm shrink-0"
+              (click)="exportarExcel()"
             >
-              <lucide-angular [img]="FileSpreadsheetIcon" class="size-4" />
+              <mat-icon fontSet="material-symbols-outlined">table_view</mat-icon>
             </button>
           </div>
 
-          <!-- Fila 2: filtros uniformes y alineados -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
-            <div>
-              <label for="filtro-estado" class="block text-[11px] font-medium text-muted-foreground mb-1">Estado</label>
-              <select
-                id="filtro-estado"
-                [value]="estado()"
-                (change)="setEstado($event)"
-                class="w-full px-3 py-2 bg-card ring-1 ring-border rounded-lg text-sm font-medium"
-              >
-                <option value="TODOS">Todos</option>
+          <!-- Fila 2: estado, cascada territorial y rango de fechas -->
+          <div class="fila-filtros">
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>Estado</mat-label>
+              <mat-select id="filtro-estado" [value]="estado()" (valueChange)="setEstado($event)">
+                <mat-option value="TODOS">Todos</mat-option>
                 @for (e of estados; track e) {
-                  <option [value]="e">{{ e }}</option>
+                  <mat-option [value]="e">{{ e }}</mat-option>
                 }
-              </select>
-            </div>
-            <div>
-              <label for="filtro-region" class="block text-[11px] font-medium text-muted-foreground mb-1">Región</label>
-              <select
-                id="filtro-region"
-                [value]="fRegion()"
-                (change)="setFiltroRegion($event)"
-                class="w-full px-3 py-2 bg-card ring-1 ring-border rounded-lg text-sm font-medium"
-              >
-                <option value="">Todas</option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>Región</mat-label>
+              <mat-select id="filtro-region" [value]="fRegion()" (valueChange)="setFiltroRegion($event)">
+                <mat-option value="">Todas</mat-option>
                 @for (r of regionesFiltro; track r) {
-                  <option [value]="r">{{ r }}</option>
+                  <mat-option [value]="r">{{ r }}</mat-option>
                 }
-              </select>
-            </div>
-            <div>
-              <label for="filtro-provincia" class="block text-[11px] font-medium text-muted-foreground mb-1">Provincia</label>
-              <select
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>Provincia</mat-label>
+              <mat-select
                 id="filtro-provincia"
                 [value]="fProvincia()"
-                (change)="setFiltroProvincia($event)"
                 [disabled]="!fRegion()"
-                class="w-full px-3 py-2 bg-card ring-1 ring-border rounded-lg text-sm font-medium disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
+                (valueChange)="setFiltroProvincia($event)"
               >
-                <option value="">Todas</option>
+                <mat-option value="">Todas</mat-option>
                 @for (pr of provinciasFiltro(); track pr) {
-                  <option [value]="pr">{{ pr }}</option>
+                  <mat-option [value]="pr">{{ pr }}</mat-option>
                 }
-              </select>
-            </div>
-            <div>
-              <label for="filtro-distrito" class="block text-[11px] font-medium text-muted-foreground mb-1">Distrito</label>
-              <select
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>Distrito</mat-label>
+              <mat-select
                 id="filtro-distrito"
                 [value]="fDistrito()"
-                (change)="setFiltroDistrito($event)"
                 [disabled]="!fProvincia()"
-                class="w-full px-3 py-2 bg-card ring-1 ring-border rounded-lg text-sm font-medium disabled:bg-muted/40 disabled:text-muted-foreground disabled:cursor-not-allowed"
+                (valueChange)="setFiltroDistrito($event)"
               >
-                <option value="">Todos</option>
+                <mat-option value="">Todos</mat-option>
                 @for (d of distritosFiltro(); track d) {
-                  <option [value]="d">{{ d }}</option>
+                  <mat-option [value]="d">{{ d }}</mat-option>
                 }
-              </select>
-            </div>
-            <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Rango de fechas</label>
-              <app-date-range-picker [desde]="fDesde()" [hasta]="fHasta()" (rangoChange)="setRangoFechas($event)" />
-            </div>
+              </mat-select>
+            </mat-form-field>
+
+            <app-date-range-picker [desde]="fDesde()" [hasta]="fHasta()" (rangoChange)="setRangoFechas($event)" />
           </div>
         </div>
 
-        <!-- Tabla -->
-        <div class="overflow-auto max-h-[60vh]">
-          <table class="w-full text-left min-w-[1100px]">
-            <thead class="bg-secondary sticky top-0 z-10 shadow-sm">
-              <tr class="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
-                <th class="px-4 py-3 text-center">Acciones</th>
-                <th class="px-4 py-3">Tipo / Tema</th>
-                <th class="px-4 py-3">Estado</th>
-                <th class="px-4 py-3">Fecha</th>
-                <th class="px-4 py-3 text-center">Horas</th>
-                <th class="px-4 py-3 text-center">Participantes</th>
-                <th class="px-4 py-3">Ubicación</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-border">
-              @for (c of pageRows(); track c.id) {
-                <tr class="hover:bg-secondary/40 transition-colors">
-                  <td class="px-4 py-4">
-                    <div class="flex items-center justify-center gap-1 flex-wrap">
-                      @if (tieneObs(c)) {
-                        <button [title]="'Ver observaciones'" aria-label="Ver observaciones" (click)="verObservaciones(c)"
-                          class="p-2 rounded-lg transition-all" [class]="tone('amber')">
-                          <lucide-angular [img]="AlertTriangleIcon" class="size-4" />
-                        </button>
-                      }
-                      @if (editable(c)) {
-                        <button title="Registrar participantes" aria-label="Registrar participantes" (click)="irPaso(c, 2)"
-                          class="p-2 rounded-lg transition-all" [class]="tone('teal')">
-                          <lucide-angular [img]="UserPlusIcon" class="size-4" />
-                        </button>
-                      }
-                      @if (bloqueado(c)) {
-                        <button title="Ver participantes" aria-label="Ver participantes" (click)="irPaso(c, 2)"
-                          class="p-2 rounded-lg transition-all" [class]="tone('indigo')">
-                          <lucide-angular [img]="UsersIcon" class="size-4" />
-                        </button>
-                        <button title="Ver datos" aria-label="Ver datos" (click)="irPaso(c, 1)"
-                          class="p-2 rounded-lg transition-all" [class]="tone('blue')">
-                          <lucide-angular [img]="FileTextIcon" class="size-4" />
-                        </button>
-                      }
-                      @if (editable(c)) {
-                        <button title="Editar" aria-label="Editar" (click)="irPaso(c, 1)"
-                          class="p-2 rounded-lg transition-all" [class]="tone('slate')">
-                          <lucide-angular [img]="PencilIcon" class="size-4" />
-                        </button>
-                        <button
-                          [title]="deleteBlocked(c) ? 'No es posible eliminar: tiene participantes registrados' : 'Eliminar'"
-                          aria-label="Eliminar"
-                          (click)="intentarEliminar(c)"
-                          class="p-2 rounded-lg transition-all"
-                          [class]="tone('red') + (deleteBlocked(c) ? ' opacity-50' : '')"
-                        >
-                          <lucide-angular [img]="Trash2Icon" class="size-4" />
-                        </button>
-                        <button
-                          [title]="c.estado === 'Observado' ? 'Reemplazar sustento y reenviar' : 'Adjuntar sustento'"
-                          aria-label="Adjuntar sustento"
-                          (click)="abrirSustento(c)"
-                          class="p-2 rounded-lg transition-all" [class]="tone('dark')">
-                          <lucide-angular [img]="UploadCloudIcon" class="size-4" />
-                        </button>
-                      }
-                      @if (bloqueado(c) && c.fotoSustento) {
-                        <button title="Descargar sustento" aria-label="Descargar sustento" (click)="descargaSimulada()"
-                          class="p-2 rounded-lg transition-all" [class]="tone('indigo')">
-                          <lucide-angular [img]="DownloadIcon" class="size-4" />
-                        </button>
-                      }
-                    </div>
-                  </td>
-
-                  <td class="px-4 py-4">
-                    <div class="mb-1">
-                      <span
-                        class="text-[9px] px-1.5 py-0.5 font-bold uppercase rounded-sm"
-                        [class]="c.tipo === 'capacitacion' ? 'bg-state-validado-soft text-state-validado-foreground' : 'bg-success-soft text-success'"
-                      >{{ c.tipo === 'capacitacion' ? 'Capacitación' : 'Asist. Técnica' }}</span>
-                      <span class="ml-2 text-[10px] font-mono text-muted-foreground">{{ c.codigo }}</span>
-                    </div>
-                    <p class="text-sm font-semibold text-foreground leading-tight max-w-sm">{{ c.nombreTema }}</p>
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap"><app-estado-badge [estado]="c.estado" /></td>
-                  <td class="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground font-medium">{{ c.fecha }}</td>
-                  <td class="px-4 py-4 text-center text-sm font-bold text-foreground/80 tabular-nums">{{ c.horas }} h</td>
-                  <td class="px-4 py-4 text-center">
+        <!-- GRILLA -->
+        <div class="tabla-contenedor">
+          <table mat-table [dataSource]="pageRows()" multiTemplateDataRows>
+            <ng-container matColumnDef="acciones">
+              <th mat-header-cell *matHeaderCellDef>Acciones</th>
+              <td mat-cell *matCellDef="let c">
+                <div class="acciones-fila">
+                  @for (a of accionesDe(c); track a.tipo) {
                     <button
-                      type="button"
-                      (click)="toggleExpand(c.id)"
-                      [disabled]="(c.participantes ?? 0) === 0"
-                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ring-1 text-xs font-bold tabular-nums transition-colors"
-                      [class]="participantesBtnCls(c)"
-                      [attr.aria-expanded]="isExpanded(c)"
-                      [attr.aria-label]="showCount(c) + ' participante(s)'"
+                      matIconButton
+                      class="accion"
+                      [class]="a.tono"
+                      [class.atenuada]="a.tipo === 'ELIMINAR' && deleteBlocked(c)"
+                      [matTooltip]="etiquetaAccion(a, c)"
+                      [attr.aria-label]="a.etiqueta"
+                      (click)="accion(a.tipo, c)"
                     >
-                      <lucide-angular [img]="UsersIcon" class="size-3.5" />
-                      <span>{{ showCount(c) }}{{ queryActive() && matchesDe(c.id).length > 0 ? ' / ' + (c.participantes ?? 0) : '' }}</span>
-                      @if ((c.participantes ?? 0) > 0) {
-                        <lucide-angular [img]="isExpanded(c) ? ChevronUpIcon : ChevronDownIcon" class="size-3.5" />
-                      }
+                      <mat-icon fontSet="material-symbols-outlined">{{ a.icono }}</mat-icon>
                     </button>
-                  </td>
-                  <td class="px-4 py-4">
-                    <div class="flex items-start text-xs text-muted-foreground">
-                      <lucide-angular [img]="MapPinIcon" class="size-3 mr-1 mt-0.5 text-muted-foreground/70 shrink-0" />
-                      <span>{{ c.region }} / {{ c.provincia }} / {{ c.distrito }}</span>
-                    </div>
-                  </td>
-                </tr>
+                  }
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="tema">
+              <th mat-header-cell *matHeaderCellDef>Tipo / Tema</th>
+              <td mat-cell *matCellDef="let c">
+                <div class="linea-tipo">
+                  <mat-chip disableRipple [class]="c.tipo === 'capacitacion' ? 'c-validado' : 'c-aprobado'">
+                    {{ c.tipo === 'capacitacion' ? 'Capacitación' : 'Asist. Técnica' }}
+                  </mat-chip>
+                  <span class="codigo">{{ c.codigo }}</span>
+                </div>
+                <p class="tema">{{ c.nombreTema }}</p>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="estado">
+              <th mat-header-cell *matHeaderCellDef>Estado</th>
+              <td mat-cell *matCellDef="let c"><app-estado-badge [estado]="c.estado" /></td>
+            </ng-container>
+
+            <ng-container matColumnDef="fecha">
+              <th mat-header-cell *matHeaderCellDef>Fecha</th>
+              <td mat-cell *matCellDef="let c" class="tenue">{{ c.fecha }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="horas">
+              <th mat-header-cell *matHeaderCellDef>Horas</th>
+              <td mat-cell *matCellDef="let c" class="numerico">{{ c.horas }} h</td>
+            </ng-container>
+
+            <ng-container matColumnDef="participantes">
+              <th mat-header-cell *matHeaderCellDef>Participantes</th>
+              <td mat-cell *matCellDef="let c">
+                <button
+                  matButton="outlined"
+                  type="button"
+                  class="participantes"
+                  [class.activo]="isExpanded(c)"
+                  [disabled]="(c.participantes ?? 0) === 0"
+                  [attr.aria-expanded]="isExpanded(c)"
+                  [attr.aria-label]="showCount(c) + ' participante(s)'"
+                  (click)="toggleExpand(c.id)"
+                >
+                  <mat-icon fontSet="material-symbols-outlined">groups</mat-icon>
+                  {{ showCount(c) }}{{ queryActive() && matchesDe(c.id).length > 0 ? ' / ' + (c.participantes ?? 0) : '' }}
+                  @if ((c.participantes ?? 0) > 0) {
+                    <mat-icon fontSet="material-symbols-outlined" iconPositionEnd>
+                      {{ isExpanded(c) ? 'expand_less' : 'expand_more' }}
+                    </mat-icon>
+                  }
+                </button>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="ubicacion">
+              <th mat-header-cell *matHeaderCellDef>Ubicación</th>
+              <td mat-cell *matCellDef="let c">
+                <span class="ubicacion">
+                  <mat-icon fontSet="material-symbols-outlined">location_on</mat-icon>
+                  {{ c.region }} / {{ c.provincia }} / {{ c.distrito }}
+                </span>
+              </td>
+            </ng-container>
+
+            <!-- Fila expandible con los participantes del registro. La fila existe
+                 siempre y colapsa a cero cuando no está desplegada. -->
+            <ng-container matColumnDef="detalle">
+              <td mat-cell *matCellDef="let c" [attr.colspan]="columnas.length" class="celda-detalle">
                 @if (isExpanded(c) && (c.participantes ?? 0) > 0) {
-                  <tr class="bg-secondary/20">
-                    <td colspan="7" class="px-0 py-0">
-                      <div class="thin-scroll max-h-[120px] overflow-y-auto">
-                        @if (subRows(c).length === 0) {
-                          <div class="px-6 py-3 text-xs italic text-muted-foreground">
-                            Sin coincidencias en los participantes de este registro.
-                          </div>
-                        } @else {
-                          <ul class="divide-y divide-border/60">
-                            @for (p of subRows(c); track p.id) {
-                              <li
-                                class="flex items-center gap-3 px-6 py-2 text-xs"
-                                [class]="esMatch(c, p) ? 'bg-warning-soft border-l-4 border-l-warning' : 'border-l-4 border-l-transparent'"
-                              >
-                                <span class="hidden md:inline text-muted-foreground/60 font-mono select-none">└─</span>
-                                <span class="font-mono tabular-nums text-foreground/80 w-24 shrink-0">{{ p.dni }}</span>
-                                <span class="font-semibold text-foreground truncate flex-1">
-                                  {{ p.nombres }} {{ p.apellidos }}
-                                </span>
-                                <span
-                                  class="ml-auto px-1.5 py-0.5 rounded-sm text-[9px] font-bold uppercase shrink-0"
-                                  [class]="p.tipoParticipante === 'PRODUCTOR' ? 'bg-success-soft text-success' : 'bg-muted text-foreground'"
-                                >{{ p.tipoParticipante }}</span>
-                              </li>
-                            }
-                          </ul>
+                  <div class="detalle">
+                    @if (subRows(c).length === 0) {
+                      <p class="sin-coincidencias">Sin coincidencias en los participantes de este registro.</p>
+                    } @else {
+                      <ul>
+                        @for (p of subRows(c); track p.id) {
+                          <li [class.resaltado]="esMatch(c, p)">
+                            <span class="dni">{{ p.dni }}</span>
+                            <span class="nombre">{{ p.nombres }} {{ p.apellidos }}</span>
+                            <mat-chip
+                              disableRipple
+                              [class]="p.tipoParticipante === 'PRODUCTOR' ? 'c-aprobado' : 'c-registrado'"
+                            >{{ p.tipoParticipante }}</mat-chip>
+                          </li>
                         }
-                      </div>
-                    </td>
-                  </tr>
+                      </ul>
+                    }
+                  </div>
                 }
-              }
-              @if (pageRows().length === 0) {
-                <tr>
-                  <td colspan="7">
-                    <div class="empty-state">
-                      <lucide-angular [img]="SearchIcon" class="size-8 text-muted-foreground/40" />
-                      <p class="text-sm font-medium text-foreground">Sin resultados</p>
-                      <p class="text-xs">No hay registros que coincidan con los filtros aplicados.</p>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="columnas; sticky: true"></tr>
+            <tr mat-row *matRowDef="let c; columns: columnas" class="fila-datos"></tr>
+            <tr mat-row *matRowDef="let c; columns: ['detalle']" class="fila-detalle"></tr>
+            <tr class="fila-vacia" *matNoDataRow>
+              <td [attr.colspan]="columnas.length">
+                <div class="sin-datos">
+                  <mat-icon fontSet="material-symbols-outlined">search_off</mat-icon>
+                  <p class="titulo-vacio">Sin resultados</p>
+                  <p>No hay registros que coincidan con los filtros aplicados.</p>
+                </div>
+              </td>
+            </tr>
           </table>
         </div>
 
-        <!-- Paginación -->
-        <div class="p-4 border-t border-border bg-card flex flex-col md:flex-row justify-between items-center gap-3">
-          <div class="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>Mostrar</span>
-            <select
-              [value]="pageSize()"
-              (change)="setPageSize($event)"
-              class="px-2 py-1 ring-1 ring-border rounded text-xs font-medium bg-card"
-            >
-              @for (n of pageSizes; track n) {
-                <option [value]="n">{{ n }}</option>
-              }
-            </select>
-            <span>registros · {{ filtered().length }} totales</span>
-          </div>
-          <div class="flex gap-1 items-center">
-            <button
-              (click)="prevPage()"
-              [disabled]="safePage() === 1"
-              class="px-3 py-1 ring-1 ring-border rounded-md text-[11px] font-bold text-foreground/80 hover:bg-secondary transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
-            >Anterior</button>
-            <span class="px-3 py-1 bg-brand-soft ring-1 ring-brand/25 rounded text-[11px] font-bold text-brand">
-              {{ safePage() }} / {{ totalPages() }}
-            </span>
-            <button
-              (click)="nextPage()"
-              [disabled]="safePage() === totalPages()"
-              class="px-3 py-1 ring-1 ring-border rounded-md text-[11px] font-bold text-foreground/80 hover:bg-secondary transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
-            >Siguiente</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Modal observaciones -->
-      @if (obsModal(); as texto) {
-        <app-modal title="Observaciones" (closed)="obsModal.set(null)">
-          <p class="text-sm text-foreground whitespace-pre-wrap">{{ texto }}</p>
-        </app-modal>
-      }
-
-      <!-- Modal sustento -->
-      @if (sustentoCurso(); as curso) {
-        <app-sustento-modal [curso]="curso" (closed)="sustentoCurso.set(null)" />
-      }
+        <mat-paginator
+          [length]="filtered().length"
+          [pageSize]="pageSize()"
+          [pageIndex]="pageIndex()"
+          [pageSizeOptions]="pageSizes"
+          showFirstLastButtons
+          aria-label="Paginación de la bandeja"
+          (page)="onPagina($event)"
+        />
+      </mat-card>
     </section>
+  `,
+  styles: `
+    .pagina {
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    @media (min-width: 1024px) { .pagina { padding: 32px; } }
+
+    .kpis-bloque { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+    .kpis {
+      display: grid;
+      width: 100%;
+      gap: 16px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 768px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (min-width: 1024px) {
+      .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .kpis.kpis-estados { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (min-width: 1280px) {
+      .kpis.kpis-estados { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    }
+
+    .panel { padding: 0; overflow: hidden; }
+    .encabezado {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      justify-content: space-between;
+      padding: 24px;
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+    }
+    @media (min-width: 768px) { .encabezado { flex-direction: row; align-items: center; } }
+    .encabezado h2 { margin: 0; font: var(--mat-sys-title-large); }
+    .encabezado p {
+      margin: 4px 0 0;
+      max-width: 70ch;
+      font: var(--mat-sys-body-medium);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .acciones-alta { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .filtros {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      background: var(--mat-sys-surface-container-low);
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+    }
+    .fila-busqueda { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+    .campo-busqueda { width: 180px; }
+    .termino { flex: 1 1 240px; }
+    .conteo {
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: var(--mat-sys-corner-full);
+      background: var(--mat-sys-surface-container-highest);
+      font: var(--mat-sys-label-small);
+      font-variant-numeric: tabular-nums;
+    }
+    .excel {
+      background: var(--estado-aprobado);
+      color: var(--mat-sys-on-primary);
+    }
+    .fila-filtros {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+    @media (min-width: 640px) { .fila-filtros { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (min-width: 1280px) { .fila-filtros { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+    mat-form-field { width: 100%; }
+
+    .tabla-contenedor { overflow: auto; max-height: 60vh; }
+    table { width: 100%; min-width: 1100px; }
+    .mat-column-acciones { width: 1px; white-space: nowrap; }
+    .mat-column-estado, .mat-column-fecha { white-space: nowrap; }
+    .mat-column-horas, .mat-column-participantes { text-align: center; }
+
+    .acciones-fila { display: flex; align-items: center; justify-content: center; gap: 2px; }
+
+    .linea-tipo { display: flex; align-items: center; gap: 8px; }
+    .codigo {
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .tema {
+      margin: 4px 0 0;
+      max-width: 24rem;
+      font: var(--mat-sys-body-medium);
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .tenue { color: var(--mat-sys-on-surface-variant); }
+    .numerico { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .ubicacion {
+      display: inline-flex;
+      align-items: flex-start;
+      gap: 4px;
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .ubicacion mat-icon { font-size: 14px; width: 14px; height: 14px; }
+
+    .participantes {
+      --mat-button-outlined-container-shape: var(--mat-sys-corner-medium);
+      height: 32px;
+      font-variant-numeric: tabular-nums;
+    }
+    .participantes.activo {
+      --mat-button-outlined-label-text-color: var(--mat-sys-on-primary-container);
+      background: var(--mat-sys-primary-container);
+    }
+    .participantes mat-icon { font-size: 16px; width: 16px; height: 16px; }
+
+    .celda-detalle { padding: 0; }
+    tr.fila-detalle { height: auto; }
+    .detalle { max-height: 160px; overflow-y: auto; background: var(--mat-sys-surface-container-low); }
+    .detalle ul { margin: 0; padding: 0; list-style: none; }
+    .detalle li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 24px;
+      border-left: 4px solid transparent;
+      font: var(--mat-sys-body-small);
+    }
+    .detalle li + li { border-top: 1px solid var(--mat-sys-outline-variant); }
+    .detalle li.resaltado {
+      background: var(--estado-subsanado-fondo);
+      border-left-color: var(--estado-subsanado);
+    }
+    .detalle .dni { width: 6rem; font-variant-numeric: tabular-nums; color: var(--mat-sys-on-surface-variant); }
+    .detalle .nombre { flex: 1; font-weight: 600; }
+    .sin-coincidencias {
+      margin: 0;
+      padding: 12px 24px;
+      font: var(--mat-sys-body-small);
+      font-style: italic;
+      color: var(--mat-sys-on-surface-variant);
+    }
   `,
 })
 export class BandejaComponent {
@@ -446,16 +539,9 @@ export class BandejaComponent {
   private readonly participantesService = inject(ParticipantesService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
 
-  // Iconos
-  readonly PlusIcon = Plus; readonly SearchIcon = Search; readonly BookOpenIcon = BookOpen;
-  readonly ClipboardCheckIcon = ClipboardCheck; readonly WrenchIcon = Wrench; readonly UsersIcon = Users;
-  readonly UserPlusIcon = UserPlus; readonly PencilIcon = Pencil; readonly Trash2Icon = Trash2;
-  readonly DownloadIcon = Download; readonly AlertTriangleIcon = AlertTriangle; readonly MapPinIcon = MapPin;
-  readonly UploadCloudIcon = UploadCloud; readonly ChevronDownIcon = ChevronDown; readonly ChevronUpIcon = ChevronUp;
-  readonly FileEditIcon = FileEdit; readonly SendHorizonalIcon = SendHorizonal; readonly AlertOctagonIcon = AlertOctagon;
-  readonly BadgeCheckIcon = BadgeCheck; readonly FileTextIcon = FileText;
-  readonly FileSpreadsheetIcon = FileSpreadsheet; readonly FileCheckIcon = FileCheck;
+  readonly columnas = COLUMNAS;
 
   readonly tabs: { k: Tab; label: string }[] = [
     { k: 'todos', label: 'Todos' },
@@ -494,9 +580,7 @@ export class BandejaComponent {
       : [],
   );
   readonly pageSize = signal(10);
-  readonly page = signal(1);
-  readonly obsModal = signal<string | null>(null);
-  readonly sustentoCurso = signal<Curso | null>(null);
+  readonly pageIndex = signal(0);
   readonly expanded = signal<Set<string>>(new Set());
 
   readonly counts = computed(() => {
@@ -575,11 +659,10 @@ export class BandejaComponent {
   });
 
   readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize())));
-  readonly safePage = computed(() => Math.min(this.page(), this.totalPages()));
   readonly pageRows = computed(() => {
-    const p = this.safePage();
+    const p = Math.min(this.pageIndex(), this.totalPages() - 1);
     const size = this.pageSize();
-    return this.filtered().slice((p - 1) * size, p * size);
+    return this.filtered().slice(p * size, (p + 1) * size);
   });
 
   /** Participantes del curso que coinciden con la búsqueda por el campo elegido. */
@@ -645,54 +728,110 @@ export class BandejaComponent {
     return (c.participantes ?? 0) > 0 || c.estado !== 'Registrado';
   }
 
-  participantesBtnCls(c: Curso): string {
-    const total = c.participantes ?? 0;
-    if (total === 0) return 'ring-border text-muted-foreground/60 cursor-not-allowed';
-    return this.isExpanded(c)
-      ? 'bg-brand text-brand-foreground ring-brand'
-      : 'bg-brand-soft text-brand ring-brand/30 hover:bg-brand hover:text-brand-foreground';
+  /** Acciones disponibles para el registro según su estado. */
+  accionesDe(c: Curso): AccionFila[] {
+    const acciones: AccionFila[] = [];
+    if (this.tieneObs(c)) {
+      acciones.push({ tipo: 'OBSERVACIONES', icono: 'warning', etiqueta: 'Ver observaciones', tono: 'a-alerta' });
+    }
+    if (this.editable(c)) {
+      acciones.push({ tipo: 'PARTICIPANTES', icono: 'person_add', etiqueta: 'Registrar participantes', tono: 'a-marca' });
+    }
+    if (this.bloqueado(c)) {
+      acciones.push(
+        { tipo: 'VER_PARTICIPANTES', icono: 'groups', etiqueta: 'Ver participantes', tono: 'a-info' },
+        { tipo: 'VER_DATOS', icono: 'description', etiqueta: 'Ver datos', tono: 'a-info' },
+      );
+    }
+    if (this.editable(c)) {
+      acciones.push(
+        { tipo: 'EDITAR', icono: 'edit', etiqueta: 'Editar', tono: 'a-neutro' },
+        { tipo: 'ELIMINAR', icono: 'delete', etiqueta: 'Eliminar', tono: 'a-error' },
+        { tipo: 'SUSTENTO', icono: 'cloud_upload', etiqueta: 'Adjuntar sustento', tono: 'a-primario' },
+      );
+    }
+    if (this.bloqueado(c) && c.fotoSustento) {
+      acciones.push({ tipo: 'DESCARGAR', icono: 'download', etiqueta: 'Descargar sustento', tono: 'a-info' });
+    }
+    return acciones;
   }
 
-  tone(t: string): string {
-    return ICON_TONES[t] ?? '';
+  /** Ayuda contextual: eliminar y sustento cambian de texto según el registro. */
+  etiquetaAccion(a: AccionFila, c: Curso): string {
+    if (a.tipo === 'ELIMINAR' && this.deleteBlocked(c)) {
+      return 'No es posible eliminar: tiene participantes registrados';
+    }
+    if (a.tipo === 'SUSTENTO' && c.estado === 'Observado') return 'Reemplazar sustento y reenviar';
+    return a.etiqueta;
   }
 
-  setTab(t: Tab): void { this.tab.set(t); this.page.set(1); }
-  setQ(e: Event): void { this.q.set((e.target as HTMLInputElement).value); this.page.set(1); }
-  setFiltroRegion(e: Event): void {
-    this.fRegion.set((e.target as HTMLSelectElement).value);
+  accion(tipo: AccionFila['tipo'], c: Curso): void {
+    switch (tipo) {
+      case 'OBSERVACIONES':
+        this.verObservaciones(c);
+        break;
+      case 'PARTICIPANTES':
+      case 'VER_PARTICIPANTES':
+        this.irPaso(c, 2);
+        break;
+      case 'VER_DATOS':
+      case 'EDITAR':
+        this.irPaso(c, 1);
+        break;
+      case 'ELIMINAR':
+        this.intentarEliminar(c);
+        break;
+      case 'SUSTENTO':
+        this.abrirSustento(c);
+        break;
+      case 'DESCARGAR':
+        this.descargaSimulada();
+        break;
+    }
+  }
+
+  setTab(t: Tab): void { this.tab.set(t); this.pageIndex.set(0); }
+  setQ(texto: string): void { this.q.set(texto); this.pageIndex.set(0); }
+
+  setFiltroRegion(region: string): void {
+    this.fRegion.set(region);
     this.fProvincia.set('');
     this.fDistrito.set('');
-    this.page.set(1);
+    this.pageIndex.set(0);
   }
 
-  setFiltroProvincia(e: Event): void {
-    this.fProvincia.set((e.target as HTMLSelectElement).value);
+  setFiltroProvincia(provincia: string): void {
+    this.fProvincia.set(provincia);
     this.fDistrito.set('');
-    this.page.set(1);
+    this.pageIndex.set(0);
   }
 
-  setFiltroDistrito(e: Event): void {
-    this.fDistrito.set((e.target as HTMLSelectElement).value);
-    this.page.set(1);
+  setFiltroDistrito(distrito: string): void {
+    this.fDistrito.set(distrito);
+    this.pageIndex.set(0);
   }
 
   /** La tabla se recalcula automáticamente al cambiar el rango (signals). */
   setRangoFechas(r: RangoFechas): void {
     this.fDesde.set(r.desde);
     this.fHasta.set(r.hasta);
-    this.page.set(1);
+    this.pageIndex.set(0);
   }
 
-  setCampoBusqueda(e: Event): void {
-    this.campoBusqueda.set((e.target as HTMLSelectElement).value as CampoBusqueda);
-    this.page.set(1);
+  setCampoBusqueda(campo: CampoBusqueda): void {
+    this.campoBusqueda.set(campo);
+    this.pageIndex.set(0);
   }
 
-  setEstado(e: Event): void { this.estado.set((e.target as HTMLSelectElement).value as EstadoFiltro); this.page.set(1); }
-  setPageSize(e: Event): void { this.pageSize.set(Number((e.target as HTMLSelectElement).value)); this.page.set(1); }
-  prevPage(): void { this.page.update((p) => Math.max(1, p - 1)); }
-  nextPage(): void { this.page.update((p) => Math.min(this.totalPages(), p + 1)); }
+  setEstado(estado: EstadoFiltro): void {
+    this.estado.set(estado);
+    this.pageIndex.set(0);
+  }
+
+  onPagina(e: PageEvent): void {
+    this.pageIndex.set(e.pageIndex);
+    this.pageSize.set(e.pageSize);
+  }
 
   nuevo(tipo: 'capacitacion' | 'asistencia'): void {
     this.router.navigate(['/capacitaciones-n1/nuevo'], { queryParams: { tipo } });
@@ -703,10 +842,13 @@ export class BandejaComponent {
   }
 
   verObservaciones(c: Curso): void {
-    const texto = (c.observacionesHistorial ?? [])
-      .map((o) => `[${o.fecha}] ${o.descripcion}`)
-      .join('\n\n');
-    this.obsModal.set(texto);
+    this.dialog.open<ObservacionesDialogComponent, ObservacionesData>(ObservacionesDialogComponent, {
+      data: { codigo: c.codigo, observaciones: c.observacionesHistorial ?? [] },
+      width: '560px',
+      maxWidth: '95vw',
+      autoFocus: 'dialog',
+      restoreFocus: true,
+    });
   }
 
   abrirSustento(c: Curso): void {
@@ -717,7 +859,16 @@ export class BandejaComponent {
       );
       return;
     }
-    this.sustentoCurso.set(c);
+    const ref = this.dialog.open<SustentoDialogComponent, SustentoData, boolean>(SustentoDialogComponent, {
+      data: { curso: c },
+      width: '900px',
+      maxWidth: '95vw',
+      autoFocus: 'first-tabbable',
+      restoreFocus: true,
+    });
+    ref.afterClosed().subscribe((enviado) => {
+      if (enviado) this.toast.success('Registro enviado a revisión', `Expediente ${c.codigo} con sustento adjunto.`);
+    });
   }
 
   intentarEliminar(c: Curso): void {
