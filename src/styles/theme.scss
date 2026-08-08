@@ -115,12 +115,6 @@ mat-icon.material-symbols-outlined,
 .toast-info    { @include tono-toast(var(--mat-sys-secondary-container), var(--mat-sys-on-secondary-container)); }
 
 /* ------------------------------------------------------------
-   Estados de negocio del flujo N1. Material no tiene una noción
-   equivalente (Registrado, Enviado-Subsanado, Observado…), así que
-   se declaran como tokens propios: son los únicos colores fuera de
-   la paleta del tema y conservan el significado de los badges.
-   ------------------------------------------------------------ */
-/* ------------------------------------------------------------
    Convenciones de las grillas de datos (mat-table): cabecera,
    estado vacío e iconos de acción por fila. Las comparten todas
    las vistas de listado, así que se declaran una sola vez.
@@ -168,6 +162,12 @@ th.mat-mdc-header-cell {
   &.a-primario { background: var(--mat-sys-primary); color: var(--mat-sys-on-primary); }
 }
 
+/* Exportar a Excel: mismo botón en todas las grillas. */
+.mat-mdc-icon-button.excel {
+  background: var(--estado-aprobado);
+  color: var(--mat-sys-on-primary);
+}
+
 /* Chips de dato con los tonos de estado: los comparten `estado-badge`, la
    grilla de usuarios y las tablas del formulario, así que se declaran una vez
    aquí. Los tokens son los `--mat-chip-*` de Material 3 (los `--mdc-chip-*`
@@ -190,6 +190,12 @@ th.mat-mdc-header-cell {
   &.c-validado { @include chip-dato(var(--estado-validado-fondo), var(--estado-validado)); }
 }
 
+/* ------------------------------------------------------------
+   Estados de negocio del flujo N1. Material no tiene una noción
+   equivalente (Registrado, Enviado-Subsanado, Observado…), así que
+   se declaran como tokens propios: son los únicos colores fuera de
+   la paleta del tema y conservan el significado de los badges.
+   ------------------------------------------------------------ */
 :root {
   --estado-registrado: #5b6470;      --estado-registrado-fondo: #eef0f2;
   --estado-enviado: #8a6d00;         --estado-enviado-fondo: #fdf4d6;

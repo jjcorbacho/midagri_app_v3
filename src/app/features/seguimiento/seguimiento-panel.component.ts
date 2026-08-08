@@ -1,10 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import {
-  LucideAngularModule,
-  Search, AlertTriangle, Download, CheckCircle2, MessageSquareWarning,
-  MapPin, ClipboardList, Users, ChevronDown, ChevronUp, X, FileText, FileSpreadsheet,
-} from 'lucide-angular';
+import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatCardModule } from '@angular/material/card';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { AreaService } from '../../core/services/area.service';
 import { CursosService } from '../../core/services/cursos.service';
 import { ModalService } from '../../core/services/modal.service';
@@ -12,326 +18,406 @@ import { ParticipantesService } from '../../core/services/participantes.service'
 import { Curso, EstadoCurso } from '../../core/models/curso.model';
 import { Participante } from '../../core/models/participante.model';
 import { EstadoBadgeComponent } from '../../shared/components/estado-badge/estado-badge.component';
-import { ModalComponent } from '../../shared/components/modal/modal.component';
+import {
+  ObservacionesData,
+  ObservacionesDialogComponent,
+} from '../../shared/components/observaciones-dialog/observaciones-dialog.component';
+import {
+  ObservarData,
+  ObservarDialogComponent,
+  ObservarResultado,
+} from './observar-dialog.component';
 import { exportarTablaExcel } from '../../shared/utils/excel.util';
-import { isoToDDMMYYYY, todayDDMMYYYY, todayISO } from '../../shared/utils/fecha.util';
+import { isoToDDMMYYYY, todayDDMMYYYY } from '../../shared/utils/fecha.util';
 
 const ACCIONABLES_DZ: EstadoCurso[] = ['Enviado', 'Enviado-Subsanado'];
 const ACCIONABLES_UE: EstadoCurso[] = ['Enviado', 'Enviado-Subsanado', 'Validado'];
 
-const ICON_TONES: Record<string, string> = {
-  blue: 'bg-state-validado-soft text-state-validado-foreground hover:bg-state-validado hover:text-primary-foreground',
-  amber: 'bg-state-subsanado-soft text-state-subsanado-foreground hover:bg-state-subsanado hover:text-primary-foreground',
-  indigo: 'bg-brand-soft text-brand hover:bg-brand hover:text-brand-foreground',
-};
+/** Acción de fila: icono, ayuda y tono del tema. */
+interface AccionFila {
+  tipo: 'VER_DATOS' | 'VER_PARTICIPANTES' | 'OBSERVACIONES' | 'DESCARGAR';
+  icono: string;
+  etiqueta: string;
+  tono: string;
+}
+
+/** Columnas de datos; `detalle` es la fila expandible de participantes. */
+const COLUMNAS = ['seleccion', 'acciones', 'tema', 'estado', 'fecha', 'horas', 'participantes', 'ubicacion'];
 
 /** Bandeja de revisión/aprobación con selección múltiple y observaciones. */
 @Component({
   selector: 'app-seguimiento-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, EstadoBadgeComponent, ModalComponent],
+  imports: [
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatCardModule,
+    MatCheckboxModule,
+    MatChipsModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatTableModule,
+    MatTooltipModule,
+    EstadoBadgeComponent,
+  ],
   template: `
-    <section class="p-4 md:p-8 max-w-[1400px] mx-auto space-y-6 pb-32 animate-page-in">
-      <!-- Header -->
-      <header class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <section class="pagina">
+      <header class="cabecera">
         <div>
-          <div class="flex items-center gap-2 mb-1">
-            <lucide-angular [img]="ClipboardListIcon" class="size-5 text-brand" />
-            <h1 class="text-h1">{{ title() }}</h1>
-            <span class="px-2.5 py-1 bg-secondary text-muted-foreground font-semibold text-[11px] rounded-md ml-1 tracking-widest">
-              {{ rolLabel() || rol() }}
-            </span>
+          <div class="titulo">
+            <mat-icon fontSet="material-symbols-outlined">assignment</mat-icon>
+            <h1>{{ title() }}</h1>
+            <mat-chip disableRipple class="perfil">{{ rolLabel() || rol() }}</mat-chip>
           </div>
-          <p class="text-sm text-muted-foreground max-w-[80ch]">{{ subtitle() }}</p>
+          <p class="subtitulo">{{ subtitle() }}</p>
         </div>
-        <div class="flex gap-2">
-          <button
-            (click)="confirmarValidacionSeleccion()"
-            [disabled]="sel().size === 0"
-            class="btn-primary"
-          >
-            <lucide-angular [img]="CheckCircle2Icon" class="size-4" />
+        <div class="acciones-masivas">
+          <button matButton="filled" [disabled]="sel().size === 0" (click)="confirmarValidacionSeleccion()">
+            <mat-icon fontSet="material-symbols-outlined">check_circle</mat-icon>
             {{ labelAprobar() }} seleccionados ({{ sel().size }})
           </button>
-          <button
-            (click)="observarOpen.set(true)"
-            [disabled]="sel().size === 0"
-            class="btn-danger"
-          >
-            <lucide-angular [img]="MessageSquareWarningIcon" class="size-4" />
+          <button matButton="filled" class="observar" [disabled]="sel().size === 0" (click)="abrirObservar()">
+            <mat-icon fontSet="material-symbols-outlined">feedback</mat-icon>
             Observar
           </button>
         </div>
       </header>
 
-      <!-- Panel grilla -->
-      <div class="bg-card rounded-xl ring-1 ring-border shadow-sm overflow-hidden">
+      <mat-card appearance="outlined" class="panel">
         <!-- Filtros -->
-        <div class="p-4 bg-secondary/40 border-b border-border flex flex-col md:flex-row gap-3 flex-wrap items-stretch md:items-center">
-          <div class="flex flex-wrap gap-2">
-            <button
-              (click)="tab.set('TODOS')"
-              class="px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors"
-              [class]="tab() === 'TODOS' ? 'bg-brand text-brand-foreground border-brand' : 'bg-card text-muted-foreground border-border hover:text-foreground'"
-            >Todos ({{ counts()['TODOS'] }})</button>
-            @for (e of estadosEntrada(); track e) {
-              <button
-                (click)="tab.set(e)"
-                class="px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors"
-                [class]="tab() === e ? 'bg-brand text-brand-foreground border-brand' : 'bg-card text-muted-foreground border-border hover:text-foreground'"
-              >{{ e }} ({{ counts()[e] ?? 0 }})</button>
-            }
-          </div>
-
-          <div class="flex items-center gap-1 ring-1 ring-border rounded-lg p-0.5 bg-card">
-            @for (t of tiposFiltro; track t.k) {
-              <button
-                (click)="tipoFiltro.set(t.k)"
-                class="px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors"
-                [class]="tipoFiltro() === t.k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'"
-              >{{ t.label }}</button>
-            }
-          </div>
-
-          <div class="relative flex-1 min-w-[220px]">
-            <lucide-angular [img]="SearchIcon" class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <input
-              [value]="q()"
-              (input)="q.set($any($event.target).value)"
-              type="text"
-              placeholder="Buscar por código, tema o extensionista…"
-              class="w-full pl-10 pr-9 py-2 bg-card ring-1 ring-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring"
-            />
-            @if (q()) {
-              <button
-                (click)="q.set('')"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label="Limpiar búsqueda"
-              >
-                <lucide-angular [img]="XIcon" class="size-4" />
-              </button>
-            }
-          </div>
-
-          <!-- Exportación junto al buscador (misma identidad que la Bandeja N1) -->
-          <button
-            (click)="exportarExcel()"
-            title="Exportar Excel"
-            aria-label="Exportar la tabla a Excel"
-            class="p-2 rounded-lg transition-all bg-success text-success-foreground hover:bg-success/85 shadow-sm shrink-0"
+        <div class="filtros">
+          <mat-chip-listbox
+            [value]="tab()"
+            (change)="tab.set($event.value ?? 'TODOS')"
+            hideSingleSelectionIndicator
+            aria-label="Filtrar por estado"
           >
-            <lucide-angular [img]="FileSpreadsheetIcon" class="size-4" />
-          </button>
+            <mat-chip-option value="TODOS">Todos ({{ counts()['TODOS'] }})</mat-chip-option>
+            @for (e of estadosEntrada(); track e) {
+              <mat-chip-option [value]="e">{{ e }} ({{ counts()[e] ?? 0 }})</mat-chip-option>
+            }
+          </mat-chip-listbox>
 
-          @if (selectables().length > 0) {
-            <label class="flex items-center gap-2 text-xs font-medium text-muted-foreground cursor-pointer select-none">
+          <div class="fila-busqueda">
+            <mat-button-toggle-group
+              [value]="tipoFiltro()"
+              (valueChange)="tipoFiltro.set($event)"
+              hideSingleSelectionIndicator
+              aria-label="Filtrar por tipo"
+            >
+              @for (t of tiposFiltro; track t.k) {
+                <mat-button-toggle [value]="t.k">{{ t.label }}</mat-button-toggle>
+              }
+            </mat-button-toggle-group>
+
+            <mat-form-field subscriptSizing="dynamic" class="buscador">
+              <mat-label>Buscar</mat-label>
+              <mat-icon matPrefix fontSet="material-symbols-outlined">search</mat-icon>
               <input
-                type="checkbox"
-                [checked]="sel().size === selectables().length && selectables().length > 0"
-                (change)="toggleAll()"
-                class="size-4 accent-primary rounded"
+                matInput
+                type="text"
+                [value]="q()"
+                placeholder="Buscar por código, tema o extensionista…"
+                aria-label="Buscar registros"
+                (input)="q.set($any($event.target).value)"
               />
-              Seleccionar accionables ({{ selectables().length }})
-            </label>
-          }
+              @if (q()) {
+                <button matIconButton matSuffix type="button" (click)="q.set('')" aria-label="Limpiar búsqueda">
+                  <mat-icon fontSet="material-symbols-outlined">close</mat-icon>
+                </button>
+              }
+            </mat-form-field>
+
+            <button
+              matIconButton
+              class="excel"
+              matTooltip="Exportar Excel"
+              aria-label="Exportar la tabla a Excel"
+              (click)="exportarExcel()"
+            >
+              <mat-icon fontSet="material-symbols-outlined">table_view</mat-icon>
+            </button>
+
+            @if (selectables().length > 0) {
+              <mat-checkbox
+                [checked]="todosSeleccionados()"
+                [indeterminate]="algunosSeleccionados()"
+                (change)="toggleAll()"
+              >Seleccionar accionables ({{ selectables().length }})</mat-checkbox>
+            }
+          </div>
         </div>
 
-        <!-- Tabla -->
-        <div class="overflow-auto max-h-[60vh]">
-          <table class="w-full text-left min-w-[1100px]">
-            <thead class="bg-secondary sticky top-0 z-10 shadow-sm">
-              <tr class="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
-                <th class="px-4 py-3 w-10"></th>
-                <th class="px-4 py-3 text-center">Acciones</th>
-                <th class="px-4 py-3">Tipo / Tema</th>
-                <th class="px-4 py-3">Estado</th>
-                <th class="px-4 py-3">Fecha</th>
-                <th class="px-4 py-3 text-center">Horas</th>
-                <th class="px-4 py-3 text-center">Participantes</th>
-                <th class="px-4 py-3">Ubicación</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-border">
-              @for (c of filtered(); track c.id) {
-                <tr class="hover:bg-secondary/40 transition-colors">
-                  <td class="px-4 py-4">
-                    <input
-                      type="checkbox"
-                      [checked]="sel().has(c.id)"
-                      [disabled]="!isSelectable(c)"
-                      (change)="toggleSel(c.id)"
-                      [title]="isSelectable(c) ? 'Seleccionar' : 'Estado no accionable'"
-                      class="size-4 accent-primary disabled:opacity-30 disabled:cursor-not-allowed"
-                    />
-                  </td>
-                  <td class="px-4 py-4">
-                    <div class="flex items-center justify-center gap-1 flex-wrap">
-                      <button title="Ver datos" aria-label="Ver datos" (click)="irPaso(c, 1)"
-                        class="p-2 rounded-lg transition-all" [class]="tone('blue')">
-                        <lucide-angular [img]="FileTextIcon" class="size-4" />
-                      </button>
-                      <button title="Ver participantes" aria-label="Ver participantes" (click)="irPaso(c, 2)"
-                        class="p-2 rounded-lg transition-all" [class]="tone('indigo')">
-                        <lucide-angular [img]="UsersIcon" class="size-4" />
-                      </button>
-                      @if ((c.observacionesHistorial?.length ?? 0) > 0) {
-                        <button title="Ver observaciones" aria-label="Ver observaciones" (click)="obsView.set(c)"
-                          class="p-2 rounded-lg transition-all" [class]="tone('amber')">
-                          <lucide-angular [img]="AlertTriangleIcon" class="size-4" />
-                        </button>
-                      }
-                      @if (c.fotoSustento) {
-                        <button title="Descargar sustento" aria-label="Descargar sustento" (click)="descargaSimulada()"
-                          class="p-2 rounded-lg transition-all" [class]="tone('indigo')">
-                          <lucide-angular [img]="DownloadIcon" class="size-4" />
-                        </button>
-                      }
-                    </div>
-                  </td>
-                  <td class="px-4 py-4">
-                    <div class="mb-1">
-                      <span
-                        class="text-[9px] px-1.5 py-0.5 font-bold uppercase rounded-sm"
-                        [class]="c.tipo === 'capacitacion' ? 'bg-state-validado-soft text-state-validado-foreground' : 'bg-success-soft text-success'"
-                      >{{ c.tipo === 'capacitacion' ? 'Capacitación' : 'Asist. Técnica' }}</span>
-                      <span class="ml-2 text-[10px] font-mono text-muted-foreground">{{ c.codigo }}</span>
-                    </div>
-                    <p class="text-sm font-semibold text-foreground leading-tight max-w-sm">{{ c.nombreTema }}</p>
-                    <p class="text-[11px] text-muted-foreground mt-0.5 truncate max-w-sm">{{ c.extensionista }}</p>
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap"><app-estado-badge [estado]="c.estado" /></td>
-                  <td class="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground font-medium">{{ c.fecha }}</td>
-                  <td class="px-4 py-4 text-center text-sm font-bold text-foreground/80 tabular-nums">{{ c.horas }} h</td>
-                  <td class="px-4 py-4 text-center">
+        <!-- Grilla -->
+        <div class="tabla-contenedor">
+          <table mat-table [dataSource]="filtered()" multiTemplateDataRows>
+            <ng-container matColumnDef="seleccion">
+              <th mat-header-cell *matHeaderCellDef></th>
+              <td mat-cell *matCellDef="let c">
+                <mat-checkbox
+                  [checked]="sel().has(c.id)"
+                  [disabled]="!isSelectable(c)"
+                  [matTooltip]="isSelectable(c) ? 'Seleccionar' : 'Estado no accionable'"
+                  (change)="toggleSel(c.id)"
+                />
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="acciones">
+              <th mat-header-cell *matHeaderCellDef>Acciones</th>
+              <td mat-cell *matCellDef="let c">
+                <div class="acciones-fila">
+                  @for (a of accionesDe(c); track a.tipo) {
                     <button
-                      type="button"
-                      (click)="toggleExpand(c.id)"
-                      [disabled]="(c.participantes ?? 0) === 0"
-                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ring-1 text-xs font-bold tabular-nums transition-colors"
-                      [class]="participantesBtnCls(c)"
-                      [attr.aria-expanded]="isExpanded(c)"
-                      [attr.aria-label]="showCount(c) + ' participante(s)'"
+                      matIconButton
+                      class="accion"
+                      [class]="a.tono"
+                      [matTooltip]="a.etiqueta"
+                      [attr.aria-label]="a.etiqueta"
+                      (click)="accion(a.tipo, c)"
                     >
-                      <lucide-angular [img]="UsersIcon" class="size-3.5" />
-                      <span>{{ showCount(c) }}{{ queryActive() && matchesDe(c.id).length > 0 ? ' / ' + (c.participantes ?? 0) : '' }}</span>
-                      @if ((c.participantes ?? 0) > 0) {
-                        <lucide-angular [img]="isExpanded(c) ? ChevronUpIcon : ChevronDownIcon" class="size-3.5" />
-                      }
+                      <mat-icon fontSet="material-symbols-outlined">{{ a.icono }}</mat-icon>
                     </button>
-                  </td>
-                  <td class="px-4 py-4">
-                    <div class="flex items-start text-xs text-muted-foreground">
-                      <lucide-angular [img]="MapPinIcon" class="size-3 mr-1 mt-0.5 text-muted-foreground/70 shrink-0" />
-                      <span>{{ c.region }} / {{ c.provincia }} / {{ c.distrito }}</span>
-                    </div>
-                  </td>
-                </tr>
+                  }
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="tema">
+              <th mat-header-cell *matHeaderCellDef>Tipo / Tema</th>
+              <td mat-cell *matCellDef="let c">
+                <div class="linea-tipo">
+                  <mat-chip disableRipple [class]="c.tipo === 'capacitacion' ? 'c-validado' : 'c-aprobado'">
+                    {{ c.tipo === 'capacitacion' ? 'Capacitación' : 'Asist. Técnica' }}
+                  </mat-chip>
+                  <span class="codigo">{{ c.codigo }}</span>
+                </div>
+                <p class="tema">{{ c.nombreTema }}</p>
+                <p class="extensionista">{{ c.extensionista }}</p>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="estado">
+              <th mat-header-cell *matHeaderCellDef>Estado</th>
+              <td mat-cell *matCellDef="let c"><app-estado-badge [estado]="c.estado" /></td>
+            </ng-container>
+
+            <ng-container matColumnDef="fecha">
+              <th mat-header-cell *matHeaderCellDef>Fecha</th>
+              <td mat-cell *matCellDef="let c" class="tenue">{{ c.fecha }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="horas">
+              <th mat-header-cell *matHeaderCellDef>Horas</th>
+              <td mat-cell *matCellDef="let c" class="numerico">{{ c.horas }} h</td>
+            </ng-container>
+
+            <ng-container matColumnDef="participantes">
+              <th mat-header-cell *matHeaderCellDef>Participantes</th>
+              <td mat-cell *matCellDef="let c">
+                <button
+                  matButton="outlined"
+                  type="button"
+                  class="participantes"
+                  [class.activo]="isExpanded(c)"
+                  [disabled]="(c.participantes ?? 0) === 0"
+                  [attr.aria-expanded]="isExpanded(c)"
+                  [attr.aria-label]="showCount(c) + ' participante(s)'"
+                  (click)="toggleExpand(c.id)"
+                >
+                  <mat-icon fontSet="material-symbols-outlined">groups</mat-icon>
+                  {{ showCount(c) }}{{ queryActive() && matchesDe(c.id).length > 0 ? ' / ' + (c.participantes ?? 0) : '' }}
+                  @if ((c.participantes ?? 0) > 0) {
+                    <mat-icon fontSet="material-symbols-outlined" iconPositionEnd>
+                      {{ isExpanded(c) ? 'expand_less' : 'expand_more' }}
+                    </mat-icon>
+                  }
+                </button>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="ubicacion">
+              <th mat-header-cell *matHeaderCellDef>Ubicación</th>
+              <td mat-cell *matCellDef="let c">
+                <span class="ubicacion">
+                  <mat-icon fontSet="material-symbols-outlined">location_on</mat-icon>
+                  {{ c.region }} / {{ c.provincia }} / {{ c.distrito }}
+                </span>
+              </td>
+            </ng-container>
+
+            <!-- Fila expandible: existe siempre y colapsa a cero altura. -->
+            <ng-container matColumnDef="detalle">
+              <td mat-cell *matCellDef="let c" [attr.colspan]="columnas.length" class="celda-detalle">
                 @if (isExpanded(c) && (c.participantes ?? 0) > 0) {
-                  <tr class="bg-secondary/20">
-                    <td colspan="8" class="px-0 py-0">
-                      <div class="thin-scroll max-h-[156px] overflow-y-auto">
-                        @if (subRows(c).length === 0) {
-                          <div class="px-6 py-3 text-xs italic text-muted-foreground">
-                            Sin coincidencias en los participantes de este registro.
-                          </div>
-                        } @else {
-                          <ul class="divide-y divide-border/60">
-                            @for (p of subRows(c); track p.id) {
-                              <li
-                                class="flex items-center gap-3 px-6 py-2 text-xs"
-                                [class]="esMatch(c, p) ? 'bg-warning-soft border-l-4 border-l-warning' : 'border-l-4 border-l-transparent'"
-                              >
-                                <span class="hidden md:inline text-muted-foreground/60 font-mono select-none">└─</span>
-                                <span class="font-mono tabular-nums text-foreground/80 w-24 shrink-0">{{ p.dni }}</span>
-                                <span class="font-semibold text-foreground truncate flex-1">
-                                  {{ p.nombres }} {{ p.apellidos }}
-                                </span>
-                                <span
-                                  class="ml-auto px-1.5 py-0.5 rounded-sm text-[9px] font-bold uppercase shrink-0"
-                                  [class]="p.tipoParticipante === 'PRODUCTOR' ? 'bg-success-soft text-success' : 'bg-muted text-foreground'"
-                                >{{ p.tipoParticipante }}</span>
-                              </li>
-                            }
-                          </ul>
+                  <div class="detalle">
+                    @if (subRows(c).length === 0) {
+                      <p class="sin-coincidencias">Sin coincidencias en los participantes de este registro.</p>
+                    } @else {
+                      <ul>
+                        @for (p of subRows(c); track p.id) {
+                          <li [class.resaltado]="esMatch(c, p)">
+                            <span class="dni">{{ p.dni }}</span>
+                            <span class="nombre">{{ p.nombres }} {{ p.apellidos }}</span>
+                            <mat-chip
+                              disableRipple
+                              [class]="p.tipoParticipante === 'PRODUCTOR' ? 'c-aprobado' : 'c-registrado'"
+                            >{{ p.tipoParticipante }}</mat-chip>
+                          </li>
                         }
-                      </div>
-                    </td>
-                  </tr>
+                      </ul>
+                    }
+                  </div>
                 }
-              }
-              @if (filtered().length === 0) {
-                <tr>
-                  <td colspan="8">
-                    <div class="empty-state">
-                      <lucide-angular [img]="ClipboardListIcon" class="size-8 text-muted-foreground/40" />
-                      <p class="text-sm font-medium text-foreground">Bandeja vacía</p>
-                      <p class="text-xs">No hay registros en bandeja para los filtros actuales.</p>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="columnas; sticky: true"></tr>
+            <tr mat-row *matRowDef="let c; columns: columnas" class="fila-datos"></tr>
+            <tr mat-row *matRowDef="let c; columns: ['detalle']" class="fila-detalle"></tr>
+            <tr class="fila-vacia" *matNoDataRow>
+              <td [attr.colspan]="columnas.length">
+                <div class="sin-datos">
+                  <mat-icon fontSet="material-symbols-outlined">assignment</mat-icon>
+                  <p class="titulo-vacio">Bandeja vacía</p>
+                  <p>No hay registros en bandeja para los filtros actuales.</p>
+                </div>
+              </td>
+            </tr>
           </table>
         </div>
-      </div>
-
-      <!-- Modal observaciones (historial) -->
-      @if (obsView(); as curso) {
-        <app-modal [title]="'Observaciones — ' + curso.codigo" (closed)="obsView.set(null)">
-          @if ((curso.observacionesHistorial?.length ?? 0) > 0) {
-            <ul class="space-y-3">
-              @for (o of curso.observacionesHistorial; track $index) {
-                <li class="text-sm border-l-2 border-state-observado pl-3">
-                  <p class="text-[11px] text-muted-foreground">{{ o.fecha }} · {{ o.autor ?? '—' }}</p>
-                  <p class="text-foreground">{{ o.descripcion }}</p>
-                </li>
-              }
-            </ul>
-          } @else {
-            <p class="text-sm text-muted-foreground">Sin observaciones.</p>
-          }
-        </app-modal>
-      }
-
-
-      <!-- Modal observar -->
-      @if (observarOpen()) {
-        <app-modal
-          [title]="'Observar ' + sel().size + ' registro(s)'"
-          tipo="warning"
-          mensaje="Indique el motivo de la observación. Los registros seleccionados regresarán al responsable para su subsanación."
-          [mostrarAcciones]="true"
-          (aceptado)="confirmarObservar()"
-          (cancelado)="observarOpen.set(false)"
-          (closed)="observarOpen.set(false)"
-        >
-          <label class="block text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wider">
-            Descripción de la observación
-          </label>
-          <textarea
-            rows="5"
-            [value]="observarTexto()"
-            (input)="observarTexto.set($any($event.target).value)"
-            placeholder="Detalle qué debe corregir el área responsable…"
-            class="w-full bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
-          ></textarea>
-          <label class="block text-xs font-semibold text-muted-foreground mb-1 mt-4 uppercase tracking-wider">
-            Fecha de registro (dd/mm/yyyy)
-          </label>
-          <div class="flex items-center gap-3">
-            <input
-              type="date"
-              [value]="observarFecha()"
-              (input)="observarFecha.set($any($event.target).value)"
-              class="bg-background ring-1 ring-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
-            />
-            <span class="text-xs text-muted-foreground">
-              → {{ fechaObservacionTexto() }}
-            </span>
-          </div>
-        </app-modal>
-      }
+      </mat-card>
     </section>
+  `,
+  styles: `
+    .pagina {
+      padding: 16px;
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    @media (min-width: 768px) { .pagina { padding: 32px; } }
+
+    .cabecera {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      justify-content: space-between;
+    }
+    @media (min-width: 768px) { .cabecera { flex-direction: row; align-items: flex-end; } }
+    .titulo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .titulo mat-icon { color: var(--mat-sys-primary); }
+    .titulo h1 { margin: 0; font: var(--mat-sys-headline-small); }
+    .perfil {
+      --mat-chip-label-text-size: 11px;
+      --mat-chip-container-height: 24px;
+      --mat-chip-outline-width: 0;
+      --mat-chip-elevated-container-color: var(--mat-sys-surface-container-highest);
+      --mat-chip-label-text-color: var(--mat-sys-on-surface-variant);
+      letter-spacing: 0.1em;
+    }
+    .subtitulo {
+      margin: 4px 0 0;
+      max-width: 80ch;
+      font: var(--mat-sys-body-medium);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .acciones-masivas { display: flex; flex-wrap: wrap; gap: 8px; }
+    /* Observar devuelve el registro al responsable: tono de error del tema. */
+    .observar:not([disabled]) {
+      --mat-button-filled-container-color: var(--mat-sys-error);
+      --mat-button-filled-label-text-color: var(--mat-sys-on-error);
+    }
+
+    .panel { padding: 0; overflow: hidden; }
+    .filtros {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      background: var(--mat-sys-surface-container-low);
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+    }
+    .fila-busqueda { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+    .buscador { flex: 1 1 240px; }
+
+    .tabla-contenedor { overflow: auto; max-height: 60vh; }
+    table { width: 100%; min-width: 1100px; }
+    .mat-column-seleccion { width: 40px; }
+    .mat-column-acciones { width: 1px; white-space: nowrap; }
+    .mat-column-estado, .mat-column-fecha { white-space: nowrap; }
+    .mat-column-horas, .mat-column-participantes { text-align: center; }
+
+    .acciones-fila { display: flex; align-items: center; justify-content: center; gap: 2px; }
+    .linea-tipo { display: flex; align-items: center; gap: 8px; }
+    .codigo { font-family: monospace; font-size: 11px; color: var(--mat-sys-on-surface-variant); }
+    .tema {
+      margin: 4px 0 0;
+      max-width: 24rem;
+      font: var(--mat-sys-body-medium);
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .extensionista {
+      margin: 2px 0 0;
+      max-width: 24rem;
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .tenue { color: var(--mat-sys-on-surface-variant); }
+    .numerico { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .ubicacion {
+      display: inline-flex;
+      align-items: flex-start;
+      gap: 4px;
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .ubicacion mat-icon { font-size: 14px; width: 14px; height: 14px; }
+
+    .participantes {
+      --mat-button-outlined-container-shape: var(--mat-sys-corner-medium);
+      height: 32px;
+      font-variant-numeric: tabular-nums;
+    }
+    .participantes.activo {
+      --mat-button-outlined-label-text-color: var(--mat-sys-on-primary-container);
+      background: var(--mat-sys-primary-container);
+    }
+    .participantes mat-icon { font-size: 16px; width: 16px; height: 16px; }
+
+    .celda-detalle { padding: 0; }
+    tr.fila-detalle { height: auto; }
+    .detalle { max-height: 156px; overflow-y: auto; background: var(--mat-sys-surface-container-low); }
+    .detalle ul { margin: 0; padding: 0; list-style: none; }
+    .detalle li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 24px;
+      border-left: 4px solid transparent;
+      font: var(--mat-sys-body-small);
+    }
+    .detalle li + li { border-top: 1px solid var(--mat-sys-outline-variant); }
+    .detalle li.resaltado {
+      background: var(--estado-subsanado-fondo);
+      border-left-color: var(--estado-subsanado);
+    }
+    .detalle .dni { width: 6rem; font-variant-numeric: tabular-nums; color: var(--mat-sys-on-surface-variant); }
+    .detalle .nombre { flex: 1; font-weight: 600; }
+    .sin-coincidencias {
+      margin: 0;
+      padding: 12px 24px;
+      font: var(--mat-sys-body-small);
+      font-style: italic;
+      color: var(--mat-sys-on-surface-variant);
+    }
   `,
 })
 export class SeguimientoPanelComponent {
@@ -340,6 +426,7 @@ export class SeguimientoPanelComponent {
   private readonly modales = inject(ModalService);
   private readonly participantesService = inject(ParticipantesService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
 
   readonly title = input.required<string>();
   readonly subtitle = input.required<string>();
@@ -350,19 +437,7 @@ export class SeguimientoPanelComponent {
   /** Etiqueta visible del perfil (los códigos DZ/UE controlan los estados accionables). */
   readonly rolLabel = input<string>('');
 
-  readonly SearchIcon = Search;
-  readonly AlertTriangleIcon = AlertTriangle;
-  readonly DownloadIcon = Download;
-  readonly CheckCircle2Icon = CheckCircle2;
-  readonly MessageSquareWarningIcon = MessageSquareWarning;
-  readonly MapPinIcon = MapPin;
-  readonly ClipboardListIcon = ClipboardList;
-  readonly UsersIcon = Users;
-  readonly ChevronDownIcon = ChevronDown;
-  readonly ChevronUpIcon = ChevronUp;
-  readonly XIcon = X;
-  readonly FileTextIcon = FileText;
-  readonly FileSpreadsheetIcon = FileSpreadsheet;
+  readonly columnas = COLUMNAS;
 
   readonly tiposFiltro = [
     { k: 'TODOS' as const, label: 'Todos' },
@@ -374,11 +449,7 @@ export class SeguimientoPanelComponent {
   readonly tab = signal<'TODOS' | EstadoCurso>('TODOS');
   readonly tipoFiltro = signal<'TODOS' | 'capacitacion' | 'asistencia'>('TODOS');
   readonly sel = signal<Set<string>>(new Set());
-  readonly obsView = signal<Curso | null>(null);
   readonly expanded = signal<Set<string>>(new Set());
-  readonly observarOpen = signal(false);
-  readonly observarTexto = signal('');
-  readonly observarFecha = signal(todayISO());
 
   private readonly accionables = computed(() =>
     this.rol() === 'ADMIN_UE' ? ACCIONABLES_UE : ACCIONABLES_DZ,
@@ -421,8 +492,12 @@ export class SeguimientoPanelComponent {
     this.filtered().filter((c) => this.accionables().includes(c.estado)),
   );
 
-  readonly fechaObservacionTexto = computed(
-    () => isoToDDMMYYYY(this.observarFecha()) || todayDDMMYYYY(),
+  /** Estado del "Seleccionar accionables": todo, parte (indeterminado) o nada. */
+  readonly todosSeleccionados = computed(
+    () => this.selectables().length > 0 && this.sel().size === this.selectables().length,
+  );
+  readonly algunosSeleccionados = computed(
+    () => this.sel().size > 0 && !this.todosSeleccionados(),
   );
 
   matchesDe(cursoId: string): Participante[] {
@@ -459,16 +534,36 @@ export class SeguimientoPanelComponent {
     return this.accionables().includes(c.estado);
   }
 
-  participantesBtnCls(c: Curso): string {
-    const total = c.participantes ?? 0;
-    if (total === 0) return 'ring-border text-muted-foreground/60 cursor-not-allowed';
-    return this.isExpanded(c)
-      ? 'bg-brand text-brand-foreground ring-brand'
-      : 'bg-brand-soft text-brand ring-brand/30 hover:bg-brand hover:text-brand-foreground';
+  /** Acciones disponibles para el registro (ver datos, participantes, obs., sustento). */
+  accionesDe(c: Curso): AccionFila[] {
+    const acciones: AccionFila[] = [
+      { tipo: 'VER_DATOS', icono: 'description', etiqueta: 'Ver datos', tono: 'a-info' },
+      { tipo: 'VER_PARTICIPANTES', icono: 'groups', etiqueta: 'Ver participantes', tono: 'a-marca' },
+    ];
+    if ((c.observacionesHistorial?.length ?? 0) > 0) {
+      acciones.push({ tipo: 'OBSERVACIONES', icono: 'warning', etiqueta: 'Ver observaciones', tono: 'a-alerta' });
+    }
+    if (c.fotoSustento) {
+      acciones.push({ tipo: 'DESCARGAR', icono: 'download', etiqueta: 'Descargar sustento', tono: 'a-marca' });
+    }
+    return acciones;
   }
 
-  tone(t: string): string {
-    return ICON_TONES[t] ?? '';
+  accion(tipo: AccionFila['tipo'], c: Curso): void {
+    switch (tipo) {
+      case 'VER_DATOS':
+        this.irPaso(c, 1);
+        break;
+      case 'VER_PARTICIPANTES':
+        this.irPaso(c, 2);
+        break;
+      case 'OBSERVACIONES':
+        this.verObservaciones(c);
+        break;
+      case 'DESCARGAR':
+        this.descargaSimulada();
+        break;
+    }
   }
 
   toggleExpand(id: string): void {
@@ -501,6 +596,16 @@ export class SeguimientoPanelComponent {
     this.router.navigate(['/capacitaciones-n1', c.id], { queryParams: { paso } });
   }
 
+  verObservaciones(c: Curso): void {
+    this.dialog.open<ObservacionesDialogComponent, ObservacionesData>(ObservacionesDialogComponent, {
+      data: { codigo: c.codigo, observaciones: c.observacionesHistorial ?? [] },
+      width: '560px',
+      maxWidth: '95vw',
+      autoFocus: 'dialog',
+      restoreFocus: true,
+    });
+  }
+
   /** Confirmación mediante el sistema unificado de modales. */
   confirmarValidacionSeleccion(): void {
     const n = this.sel().size;
@@ -521,18 +626,29 @@ export class SeguimientoPanelComponent {
     this.sel.set(new Set());
   }
 
-  confirmarObservar(): void {
-    if (!this.observarTexto().trim()) {
-      void this.modales.openError('Observación incompleta', 'Ingrese una descripción para la observación.');
-      return;
-    }
-    const fechaTxt = this.fechaObservacionTexto();
-    const texto = `${this.observarTexto().trim()}  ·  Fecha: ${fechaTxt}`;
-    this.sel().forEach((id) => this.cursosService.updateEstado(id, 'Observado', texto));
+  /** Motivo de la observación en diálogo; al aceptar se aplica a la selección. */
+  abrirObservar(): void {
+    if (this.sel().size === 0) return;
+    const ref = this.dialog.open<ObservarDialogComponent, ObservarData, ObservarResultado>(
+      ObservarDialogComponent,
+      {
+        data: { cantidad: this.sel().size },
+        width: '520px',
+        maxWidth: '95vw',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+      },
+    );
+    ref.afterClosed().subscribe((r) => {
+      if (r) this.observarSeleccion(r);
+    });
+  }
+
+  private observarSeleccion({ texto, fecha }: ObservarResultado): void {
+    const fechaTxt = isoToDDMMYYYY(fecha) || todayDDMMYYYY();
+    const descripcion = `${texto}  ·  Fecha: ${fechaTxt}`;
+    this.sel().forEach((id) => this.cursosService.updateEstado(id, 'Observado', descripcion));
     this.sel.set(new Set());
-    this.observarTexto.set('');
-    this.observarFecha.set(todayISO());
-    this.observarOpen.set(false);
   }
 
   /**

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { LucideAngularModule, ClipboardCheck, ShieldCheck } from 'lucide-angular';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../../core/services/auth.service';
 import { EstadoCurso } from '../../core/models/curso.model';
 import { SeguimientoPanelComponent } from './seguimiento-panel.component';
@@ -10,7 +11,8 @@ type ModoSeguimiento = 'revision' | 'aprobacion';
 interface ConfigModo {
   modo: ModoSeguimiento;
   tab: string;
-  icono: typeof ClipboardCheck;
+  /** Ligadura de Material Symbols. */
+  icono: string;
   title: string;
   subtitle: string;
   estadoAprobar: EstadoCurso;
@@ -26,7 +28,7 @@ const CONFIGS: Record<ModoSeguimiento, ConfigModo> = {
   revision: {
     modo: 'revision',
     tab: 'Revisión',
-    icono: ClipboardCheck,
+    icono: 'assignment_turned_in',
     title: 'Seguimiento y revisión',
     subtitle: 'Validar registros enviados u observar con un comentario.',
     estadoAprobar: 'Validado',
@@ -37,7 +39,7 @@ const CONFIGS: Record<ModoSeguimiento, ConfigModo> = {
   aprobacion: {
     modo: 'aprobacion',
     tab: 'Aprobación',
-    icono: ShieldCheck,
+    icono: 'verified_user',
     title: 'Seguimiento y aprobación',
     subtitle: 'Aprobar registros ya validados o devolverlos con observaciones.',
     estadoAprobar: 'Aprobado',
@@ -54,30 +56,28 @@ const CONFIGS: Record<ModoSeguimiento, ConfigModo> = {
  * y la ruta define la pestaña inicial. La lógica completa vive en el panel
  * compartido `app-seguimiento-panel`; aquí solo se selecciona el modo:
  *  - Admin DZ ve Revisión; Jefe de Área y Admin UE ven Aprobación.
- *  - El Administrador General alterna ambos modos con pestañas sin navegar.
+ *  - El Administrador General alterna ambos modos con un conmutador, sin navegar.
  */
 @Component({
   selector: 'app-seguimiento',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, SeguimientoPanelComponent],
+  imports: [MatButtonToggleModule, MatIconModule, SeguimientoPanelComponent],
   template: `
     @if (modosDisponibles().length > 1) {
-      <div class="px-6 lg:px-8 pt-6 max-w-[1400px] mx-auto">
-        <div class="inline-flex p-1 bg-card ring-1 ring-border rounded-lg" role="tablist" aria-label="Modo de seguimiento">
+      <div class="conmutador">
+        <mat-button-toggle-group
+          [value]="modo()"
+          (valueChange)="modo.set($event)"
+          hideSingleSelectionIndicator
+          aria-label="Modo de seguimiento"
+        >
           @for (m of modosDisponibles(); track m.modo) {
-            <button
-              role="tab"
-              [attr.aria-selected]="modoActivo().modo === m.modo"
-              (click)="modo.set(m.modo)"
-              class="h-8 px-3 rounded-md text-xs font-bold transition-colors flex items-center gap-2"
-              [class]="modoActivo().modo === m.modo
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-secondary'"
-            >
-              <lucide-angular [img]="m.icono" class="size-4" /> {{ m.tab }}
-            </button>
+            <mat-button-toggle [value]="m.modo">
+              <mat-icon fontSet="material-symbols-outlined">{{ m.icono }}</mat-icon>
+              {{ m.tab }}
+            </mat-button-toggle>
           }
-        </div>
+        </mat-button-toggle-group>
       </div>
     }
 
@@ -92,6 +92,16 @@ const CONFIGS: Record<ModoSeguimiento, ConfigModo> = {
         [rolLabel]="cfg.rolLabel"
       />
     }
+  `,
+  styles: `
+    .conmutador {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px 16px 0;
+    }
+    @media (min-width: 768px) { .conmutador { padding: 24px 32px 0; } }
+    /* Caja fija: la ligadura no ensancha la opción mientras carga la fuente. */
+    mat-icon { margin-right: 8px; font-size: 20px; width: 20px; height: 20px; overflow: hidden; }
   `,
 })
 export class SeguimientoComponent {

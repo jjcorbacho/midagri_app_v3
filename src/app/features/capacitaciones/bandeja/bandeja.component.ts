@@ -22,7 +22,7 @@ import { Participante } from '../../../core/models/participante.model';
 import { EstadoBadgeComponent } from '../../../shared/components/estado-badge/estado-badge.component';
 import { KpiCardComponent } from '../../../shared/components/kpi-card/kpi-card.component';
 import { SustentoData, SustentoDialogComponent } from '../sustento-modal/sustento-dialog.component';
-import { ObservacionesData, ObservacionesDialogComponent } from './observaciones-dialog.component';
+import { ObservacionesData, ObservacionesDialogComponent } from '../../../shared/components/observaciones-dialog/observaciones-dialog.component';
 import { exportarTablaExcel } from '../../../shared/utils/excel.util';
 import { parseFechaCurso } from '../../../shared/utils/fecha.util';
 import { paginatorIntlEs } from '../../../shared/utils/paginator-intl.es';
@@ -446,10 +446,6 @@ const COLUMNAS = ['acciones', 'tema', 'estado', 'fecha', 'horas', 'participantes
       background: var(--mat-sys-surface-container-highest);
       font: var(--mat-sys-label-small);
       font-variant-numeric: tabular-nums;
-    }
-    .excel {
-      background: var(--estado-aprobado);
-      color: var(--mat-sys-on-primary);
     }
     .fila-filtros {
       display: grid;
