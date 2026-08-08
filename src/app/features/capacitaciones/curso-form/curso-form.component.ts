@@ -3,13 +3,25 @@ import {
   Component,
   OnInit,
   computed,
+  effect,
   inject,
   input,
   output,
   signal,
 } from '@angular/core';
 import { FormBuilder, FormControl, ReactiveFormsModule } from '@angular/forms';
-import { LucideAngularModule, LocateFixed, Info, MapPin, Compass, Sparkles } from 'lucide-angular';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatChipsModule } from '@angular/material/chips';
+import { MAT_DATE_LOCALE, ErrorStateMatcher, provideNativeDateAdapter } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatRadioModule } from '@angular/material/radio';
+import { MatSelectModule } from '@angular/material/select';
 import { AreaService } from '../../../core/services/area.service';
 import { ReglasService } from '../../../core/services/reglas.service';
 import { CamposService } from '../../../core/services/campos.service';
@@ -26,7 +38,7 @@ import {
 } from '../../../core/constants/catalogos.const';
 import { PeruMapComponent } from '../../../shared/components/peru-map/peru-map.component';
 import { ModalService } from '../../../core/services/modal.service';
-import { INPUT_BASE, INPUT_DISABLED, INPUT_REQUIRED } from '../../../shared/utils/input-styles.const';
+import { dateAIso, isoADate } from '../../../shared/utils/fecha.util';
 import { lngLatToUTM } from '../../../shared/utils/utm.util';
 
 /** Estado completo del formulario del Paso 1 (mismo shape que el original). */
@@ -59,351 +71,484 @@ const EMPTY: CursoFormState = {
   custom: {},
 };
 
-/* Estilos de input del design system compartido (sin variantes locales). */
-const INP = INPUT_BASE;
-const INP_DISABLED = INPUT_DISABLED;
-const INP_REQ = INPUT_REQUIRED;
-
 @Component({
   selector: 'app-curso-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, LucideAngularModule, PeruMapComponent],
+  providers: [provideNativeDateAdapter(), { provide: MAT_DATE_LOCALE, useValue: 'es-PE' }],
+  imports: [
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatCardModule,
+    MatCheckboxModule,
+    MatChipsModule,
+    MatDatepickerModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatProgressSpinnerModule,
+    MatRadioModule,
+    MatSelectModule,
+    PeruMapComponent,
+  ],
   template: `
-    <div class="space-y-5">
-      <fieldset [disabled]="readOnly()" class="space-y-5 m-0 p-0 border-0 disabled:opacity-95">
-        <!-- Chips de reglas activas -->
-        <div class="flex flex-wrap gap-2">
-          <span class="text-[11px] px-2.5 py-1 rounded-full bg-card ring-1 ring-border text-muted-foreground">
-            Horas: {{ cfg().horasMin }} – {{ cfg().horasMax }}
-          </span>
-          <span class="text-[11px] px-2.5 py-1 rounded-full bg-card ring-1 ring-border text-muted-foreground">
-            Participantes: {{ cfg().participantesMin }} – {{ cfg().participantesMax }}
-          </span>
+    <div class="formulario" [formGroup]="form">
+      <!-- Reglas activas del área -->
+      <mat-chip-set aria-label="Reglas activas del área">
+        <mat-chip disableRipple>Horas: {{ cfg().horasMin }} – {{ cfg().horasMax }}</mat-chip>
+        <mat-chip disableRipple>
+          Participantes: {{ cfg().participantesMin }} – {{ cfg().participantesMax }}
+        </mat-chip>
+        @if (tipo() === 'asistencia') {
+          <mat-chip disableRipple>Modalidad AT: {{ cfgArea().asistencia.modalidadAT }}</mat-chip>
+        }
+        @if (customs().length > 0) {
+          <mat-chip disableRipple>+{{ customs().length }} campo(s) personalizado(s)</mat-chip>
+        }
+      </mat-chip-set>
+
+      <!-- 1. Datos generales -->
+      <mat-card appearance="outlined" class="bloque">
+        <header class="seccion">
+          <mat-icon fontSet="material-symbols-outlined">auto_awesome</mat-icon>
+          <h3>Datos generales</h3>
+        </header>
+
+        <div class="rejilla dos">
+          <mat-form-field>
+            <mat-label>Código</mat-label>
+            <input matInput readonly [value]="form.controls.codigo.value" />
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Temática</mat-label>
+            <mat-select formControlName="tematica" required [errorStateMatcher]="matcherDe('tematica')">
+              <mat-option value="">— Seleccione —</mat-option>
+              @for (t of tematicas; track t) {
+                <mat-option [value]="t">{{ t }}</mat-option>
+              }
+            </mat-select>
+            <mat-error>{{ errores()['tematica'] }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Tipo</mat-label>
+            <mat-select formControlName="tipoEvento">
+              @for (t of tiposEvento; track t) {
+                <mat-option [value]="t">{{ t }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
           @if (tipo() === 'asistencia') {
-            <span class="text-[11px] px-2.5 py-1 rounded-full bg-card ring-1 ring-border text-muted-foreground">
-              Modalidad AT: {{ cfgArea().asistencia.modalidadAT }}
-            </span>
+            <mat-form-field>
+              <mat-label>Modalidad</mat-label>
+              <mat-select formControlName="modalidadAT" required>
+                @for (m of modalidadesAt(); track m) {
+                  <mat-option [value]="m">{{ m }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
           }
-          @if (customs().length > 0) {
-            <span class="text-[11px] px-2.5 py-1 rounded-full bg-card ring-1 ring-border text-muted-foreground">
-              +{{ customs().length }} campo(s) personalizado(s)
-            </span>
+
+          <mat-form-field>
+            <mat-label>Fecha</mat-label>
+            <input
+              matInput
+              required
+              [matDatepicker]="dpFecha"
+              [disabled]="readOnly()"
+              [value]="fechaDate()"
+              [errorStateMatcher]="matcherDe('fecha')"
+              (dateChange)="setFecha($event.value)"
+            />
+            <mat-datepicker-toggle matIconSuffix [for]="dpFecha" />
+            <mat-datepicker #dpFecha />
+            <mat-error>{{ errores()['fecha'] }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Nro. Horas</mat-label>
+            <input
+              matInput
+              type="number"
+              required
+              [min]="cfg().horasMin"
+              [max]="cfg().horasMax"
+              formControlName="horas"
+              [errorStateMatcher]="matcherDe('horas')"
+            />
+            <mat-error>{{ errores()['horas'] }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field class="ancho-completo">
+            <mat-label>Nombre</mat-label>
+            <input
+              matInput
+              required
+              maxlength="200"
+              formControlName="nombre"
+              [errorStateMatcher]="matcherDe('nombre')"
+            />
+            <mat-error>{{ errores()['nombre'] }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field class="ancho-completo">
+            <mat-label>Extensionista</mat-label>
+            <input
+              matInput
+              required
+              maxlength="120"
+              formControlName="extensionista"
+              [errorStateMatcher]="matcherDe('extensionista')"
+            />
+            <mat-error>{{ errores()['extensionista'] }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field class="ancho-completo">
+            <mat-label>Observaciones</mat-label>
+            <textarea matInput rows="2" maxlength="500" formControlName="observaciones"></textarea>
+          </mat-form-field>
+
+          @if (mostrarVinculo()) {
+            <mat-form-field class="ancho-completo">
+              <mat-label>Capacitación vinculada</mat-label>
+              <mat-select formControlName="capacitacionVinculadaId">
+                <mat-option value="">— Sin vincular —</mat-option>
+                @for (c of capacitacionesVinculables(); track c.id) {
+                  <mat-option [value]="c.id">{{ c.codigo }} · {{ c.nombreTema }}</mat-option>
+                }
+              </mat-select>
+              <mat-hint>Habilitado desde Configuración › Reglas.</mat-hint>
+            </mat-form-field>
           }
         </div>
+      </mat-card>
 
-        <!-- 1. Datos generales -->
-        <section class="bg-card rounded-xl ring-1 ring-border p-5">
-          <div class="flex items-center gap-2 border-b border-border pb-2 mb-4 text-brand">
-            <lucide-angular [img]="SparklesIcon" class="size-4" />
-            <h3 class="text-[11px] font-semibold uppercase tracking-wider">Datos generales</h3>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3" [formGroup]="form">
-            <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Código</label>
-              <input [value]="form.controls.codigo.value" disabled [class]="inpDisabled" />
-            </div>
-            <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Temática *</label>
-              <select formControlName="tematica" [class]="inpReq()">
-                <option value="">— Seleccione —</option>
-                @for (t of tematicas; track t) {
-                  <option [value]="t">{{ t }}</option>
-                }
-              </select>
-              @if (errores()['tematica']) {
-                <p class="text-[11px] text-destructive mt-1">{{ errores()['tematica'] }}</p>
+      <!-- 2. Ubicación (cascada) -->
+      <mat-card appearance="outlined" class="bloque">
+        <header class="seccion">
+          <mat-icon fontSet="material-symbols-outlined">location_on</mat-icon>
+          <h3>Ubicación</h3>
+        </header>
+
+        <div class="rejilla dos">
+          <mat-form-field>
+            <mat-label>Región</mat-label>
+            <mat-select
+              formControlName="region"
+              required
+              [errorStateMatcher]="matcherDe('region')"
+              (valueChange)="onRegionChange()"
+            >
+              <mat-option value="">— Seleccione —</mat-option>
+              @for (r of ubigeo; track r.nombre) {
+                <mat-option [value]="r.nombre">{{ r.nombre }}</mat-option>
               }
-            </div>
-            <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Tipo</label>
-              <select formControlName="tipoEvento" [class]="inp">
-                @for (t of tiposEvento; track t) {
-                  <option [value]="t">{{ t }}</option>
+            </mat-select>
+            <mat-error>{{ errores()['region'] }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Provincia</mat-label>
+            <mat-select
+              formControlName="provincia"
+              required
+              [errorStateMatcher]="matcherDe('provincia')"
+              (valueChange)="onProvinciaChange()"
+            >
+              <mat-option value="">— Seleccione —</mat-option>
+              @for (p of provincias(); track p.nombre) {
+                <mat-option [value]="p.nombre">{{ p.nombre }}</mat-option>
+              }
+            </mat-select>
+            <mat-error>{{ errores()['provincia'] }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Distrito</mat-label>
+            <mat-select
+              formControlName="distrito"
+              required
+              [errorStateMatcher]="matcherDe('distrito')"
+              (valueChange)="onDistritoChange()"
+            >
+              <mat-option value="">— Seleccione —</mat-option>
+              @for (d of distritos(); track d.nombre) {
+                <mat-option [value]="d.nombre">{{ d.nombre }}</mat-option>
+              }
+            </mat-select>
+            <mat-error>{{ errores()['distrito'] }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Centro Poblado</mat-label>
+            <mat-select formControlName="centroPoblado">
+              <mat-option value="">— Seleccione —</mat-option>
+              @for (c of centrosPoblados(); track c) {
+                <mat-option [value]="c">{{ c }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </mat-card>
+
+      <!-- 3. Coordenadas -->
+      <mat-card appearance="outlined" class="bloque">
+        <header class="seccion">
+          <mat-icon fontSet="material-symbols-outlined">explore</mat-icon>
+          <h3>Coordenadas</h3>
+        </header>
+
+        <div class="coordenadas">
+          <!-- Mapa lateral -->
+          <div class="mapa">
+            <p class="subtitulo">Ubicación en el mapa</p>
+            <app-peru-map
+              [region]="regionSeleccionada()"
+              [value]="coordsActuales()"
+              [disabled]="readOnly()"
+              [centro]="centroMapa()"
+              [showLocate]="!readOnly()"
+              (picked)="onMapPick($event)"
+              (locate)="obtenerUbicacion()"
+            />
+            @if (!readOnly()) {
+              <button
+                matButton="outlined"
+                type="button"
+                class="ubicacion"
+                [disabled]="buscandoUbicacion()"
+                (click)="obtenerUbicacion()"
+              >
+                @if (buscandoUbicacion()) {
+                  <mat-spinner diameter="16" />
+                } @else {
+                  <mat-icon fontSet="material-symbols-outlined">my_location</mat-icon>
                 }
-              </select>
-            </div>
-            @if (tipo() === 'asistencia') {
-              <div>
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Modalidad *</label>
-                <select formControlName="modalidadAT" [class]="inpReq()">
-                  @for (m of modalidadesAt(); track m) {
-                    <option [value]="m">{{ m }}</option>
-                  }
-                </select>
-              </div>
+                {{ buscandoUbicacion() ? 'Obteniendo ubicación…' : 'Obtener mi ubicación' }}
+              </button>
             }
+          </div>
+
+          <!-- Campos -->
+          <div class="campos-coordenadas">
             <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Fecha *</label>
-              <input type="date" formControlName="fecha" [class]="inpReq()" />
-              @if (errores()['fecha']) {
-                <p class="text-[11px] text-destructive mt-1">{{ errores()['fecha'] }}</p>
-              }
-            </div>
-            <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Nro. Horas *</label>
-              <input type="number" [min]="cfg().horasMin" [max]="cfg().horasMax" formControlName="horas" [class]="inpReq()" />
-              @if (errores()['horas']) {
-                <p class="text-[11px] text-destructive mt-1">{{ errores()['horas'] }}</p>
-              }
-            </div>
-            <div class="md:col-span-2">
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Nombre *</label>
-              <input formControlName="nombre" maxlength="200" [class]="inpReq()" />
-              @if (errores()['nombre']) {
-                <p class="text-[11px] text-destructive mt-1">{{ errores()['nombre'] }}</p>
-              }
-            </div>
-            <div class="md:col-span-2">
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Extensionista *</label>
-              <input formControlName="extensionista" maxlength="120" [class]="inpReq()" />
-              @if (errores()['extensionista']) {
-                <p class="text-[11px] text-destructive mt-1">{{ errores()['extensionista'] }}</p>
-              }
-            </div>
-            <div class="md:col-span-2">
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Observaciones</label>
-              <textarea rows="2" formControlName="observaciones" maxlength="500" [class]="inp"></textarea>
-            </div>
-            @if (mostrarVinculo()) {
-              <div class="md:col-span-2">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Capacitación vinculada</label>
-                <select formControlName="capacitacionVinculadaId" [class]="inp">
-                  <option value="">— Sin vincular —</option>
-                  @for (c of capacitacionesVinculables(); track c.id) {
-                    <option [value]="c.id">{{ c.codigo }} · {{ c.nombreTema }}</option>
-                  }
-                </select>
-                <p class="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-                  <lucide-angular [img]="InfoIcon" class="size-3" /> Habilitado desde Configuración › Reglas.
-                </p>
+              <p class="subtitulo">Coordenadas geográficas</p>
+              <div class="rejilla tres">
+                <mat-form-field>
+                  <mat-label>Longitud</mat-label>
+                  <input
+                    matInput
+                    placeholder="-72.881"
+                    formControlName="longitud"
+                    [errorStateMatcher]="matcherDe('longitud')"
+                  />
+                  <mat-error>{{ errores()['longitud'] }}</mat-error>
+                </mat-form-field>
+                <mat-form-field>
+                  <mat-label>Latitud</mat-label>
+                  <input
+                    matInput
+                    placeholder="-13.635"
+                    formControlName="latitud"
+                    [errorStateMatcher]="matcherDe('latitud')"
+                  />
+                  <mat-error>{{ errores()['latitud'] }}</mat-error>
+                </mat-form-field>
+                <mat-form-field>
+                  <mat-label>Altitud (msnm)</mat-label>
+                  <input matInput type="number" placeholder="3200" formControlName="altitud" />
+                </mat-form-field>
               </div>
+            </div>
+
+            <div class="bloque-utm">
+              <p class="subtitulo">Coordenadas UTM</p>
+              <div class="rejilla utm">
+                <mat-form-field>
+                  <mat-label>Zona</mat-label>
+                  <input matInput maxlength="4" placeholder="18S" formControlName="utmZona" />
+                </mat-form-field>
+                <mat-form-field>
+                  <mat-label>Coord. Este</mat-label>
+                  <input matInput inputmode="decimal" placeholder="000000.000" formControlName="utmEste" />
+                </mat-form-field>
+                <mat-form-field>
+                  <mat-label>Coord. Norte</mat-label>
+                  <input matInput inputmode="decimal" placeholder="0000000.000" formControlName="utmNorte" />
+                </mat-form-field>
+              </div>
+            </div>
+          </div>
+        </div>
+      </mat-card>
+
+      <!-- Campos personalizados del área -->
+      @if (customs().length > 0) {
+        <mat-card appearance="outlined" class="bloque">
+          <header class="seccion">
+            <mat-icon fontSet="material-symbols-outlined">auto_awesome</mat-icon>
+            <h3>Campos adicionales del área</h3>
+          </header>
+
+          <div class="rejilla dos">
+            @for (c of customs(); track c.id) {
+              @switch (c.tipo) {
+                @case ('textarea') {
+                  <mat-form-field>
+                    <mat-label>{{ c.nombre }}</mat-label>
+                    <textarea
+                      matInput
+                      rows="2"
+                      [required]="!!c.requerido"
+                      [disabled]="readOnly()"
+                      [value]="customValue(c.id)"
+                      [errorStateMatcher]="matcherDe('c_' + c.id)"
+                      (input)="setCustom(c.id, $any($event.target).value)"
+                    ></textarea>
+                    <mat-error>{{ errores()['c_' + c.id] }}</mat-error>
+                  </mat-form-field>
+                }
+                @case ('select') {
+                  <mat-form-field>
+                    <mat-label>{{ c.nombre }}</mat-label>
+                    <mat-select
+                      [required]="!!c.requerido"
+                      [disabled]="readOnly()"
+                      [value]="customValue(c.id)"
+                      [errorStateMatcher]="matcherDe('c_' + c.id)"
+                      (valueChange)="setCustom(c.id, $event)"
+                    >
+                      <mat-option value="">— Seleccione —</mat-option>
+                      @for (o of c.opciones ?? []; track o) {
+                        <mat-option [value]="o">{{ o }}</mat-option>
+                      }
+                    </mat-select>
+                    <mat-error>{{ errores()['c_' + c.id] }}</mat-error>
+                  </mat-form-field>
+                }
+                @case ('checkbox') {
+                  <div class="grupo-opciones">
+                    <span class="etiqueta">{{ c.nombre }}{{ c.requerido ? ' *' : '' }}</span>
+                    <div class="opciones">
+                      @for (o of c.opciones ?? []; track o) {
+                        <mat-checkbox
+                          [checked]="customChecked(c.id, o)"
+                          [disabled]="readOnly()"
+                          (change)="toggleCustomCheckbox(c.id, o, $event.checked)"
+                        >{{ o }}</mat-checkbox>
+                      }
+                    </div>
+                    @if (errores()['c_' + c.id]; as e) {
+                      <p class="error">{{ e }}</p>
+                    }
+                  </div>
+                }
+                @case ('radio') {
+                  <div class="grupo-opciones">
+                    <span class="etiqueta">{{ c.nombre }}{{ c.requerido ? ' *' : '' }}</span>
+                    <mat-radio-group
+                      [value]="customValue(c.id)"
+                      [disabled]="readOnly()"
+                      (change)="setCustom(c.id, $event.value)"
+                      [attr.aria-label]="c.nombre"
+                    >
+                      @for (o of c.opciones ?? []; track o) {
+                        <mat-radio-button [value]="o">{{ o }}</mat-radio-button>
+                      }
+                    </mat-radio-group>
+                    @if (errores()['c_' + c.id]; as e) {
+                      <p class="error">{{ e }}</p>
+                    }
+                  </div>
+                }
+                @default {
+                  <mat-form-field>
+                    <mat-label>{{ c.nombre }}</mat-label>
+                    <input
+                      matInput
+                      [type]="c.tipo"
+                      [required]="!!c.requerido"
+                      [disabled]="readOnly()"
+                      [value]="customValue(c.id)"
+                      [errorStateMatcher]="matcherDe('c_' + c.id)"
+                      (input)="setCustom(c.id, $any($event.target).value)"
+                    />
+                    <mat-error>{{ errores()['c_' + c.id] }}</mat-error>
+                  </mat-form-field>
+                }
+              }
             }
           </div>
-        </section>
+        </mat-card>
+      }
 
-        <!-- 2. Ubicación (cascada) -->
-        <section class="bg-card rounded-xl ring-1 ring-border p-5">
-          <div class="flex items-center gap-2 border-b border-border pb-2 mb-4 text-brand">
-            <lucide-angular [img]="MapPinIcon" class="size-4" />
-            <h3 class="text-[11px] font-semibold uppercase tracking-wider">Ubicación</h3>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3" [formGroup]="form">
-            <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Región *</label>
-              <select formControlName="region" (change)="onRegionChange()" [class]="inpReq()">
-                <option value="">— Seleccione —</option>
-                @for (r of ubigeo; track r.nombre) {
-                  <option [value]="r.nombre">{{ r.nombre }}</option>
-                }
-              </select>
-              @if (errores()['region']) {
-                <p class="text-[11px] text-destructive mt-1">{{ errores()['region'] }}</p>
-              }
-            </div>
-            <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Provincia *</label>
-              <select formControlName="provincia" (change)="onProvinciaChange()" [class]="inpReq()">
-                <option value="">— Seleccione —</option>
-                @for (p of provincias(); track p.nombre) {
-                  <option [value]="p.nombre">{{ p.nombre }}</option>
-                }
-              </select>
-              @if (errores()['provincia']) {
-                <p class="text-[11px] text-destructive mt-1">{{ errores()['provincia'] }}</p>
-              }
-            </div>
-            <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Distrito *</label>
-              <select formControlName="distrito" (change)="onDistritoChange()" [class]="inpReq()">
-                <option value="">— Seleccione —</option>
-                @for (d of distritos(); track d.nombre) {
-                  <option [value]="d.nombre">{{ d.nombre }}</option>
-                }
-              </select>
-              @if (errores()['distrito']) {
-                <p class="text-[11px] text-destructive mt-1">{{ errores()['distrito'] }}</p>
-              }
-            </div>
-            <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Centro Poblado</label>
-              <select formControlName="centroPoblado" [class]="inp">
-                <option value="">— Seleccione —</option>
-                @for (c of centrosPoblados(); track c) {
-                  <option [value]="c">{{ c }}</option>
-                }
-              </select>
-            </div>
-          </div>
-        </section>
-
-        <!-- 3. Coordenadas -->
-        <section class="bg-card rounded-xl ring-1 ring-border p-5">
-          <div class="flex items-center gap-2 border-b border-border pb-2 mb-4 text-brand">
-            <lucide-angular [img]="CompassIcon" class="size-4" />
-            <h3 class="text-[11px] font-semibold uppercase tracking-wider">Coordenadas</h3>
-          </div>
-          <div class="flex flex-col md:flex-row gap-5">
-            <!-- Mapa lateral -->
-            <div class="w-full md:w-64 shrink-0">
-              <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                Ubicación en el mapa
-              </p>
-              <app-peru-map
-                [region]="regionSeleccionada()"
-                [value]="coordsActuales()"
-                [disabled]="readOnly()"
-                [centro]="centroMapa()"
-                [showLocate]="!readOnly()"
-                (picked)="onMapPick($event)"
-                (locate)="obtenerUbicacion()"
-              />
-              @if (!readOnly()) {
-                <button
-                  type="button"
-                  (click)="obtenerUbicacion()"
-                  [disabled]="buscandoUbicacion()"
-                  class="btn-secondary w-full mt-2"
-                >
-                  <lucide-angular [img]="LocateFixedIcon" class="size-4 text-brand" [class.animate-spin]="buscandoUbicacion()" />
-                  {{ buscandoUbicacion() ? 'Obteniendo ubicación…' : 'Obtener mi ubicación' }}
-                </button>
-              }
-            </div>
-
-            <!-- Campos -->
-            <div class="flex-1 space-y-5" [formGroup]="form">
-              <div>
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  Coordenadas geográficas
-                </p>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label class="block text-[11px] font-medium text-muted-foreground mb-1">Longitud</label>
-                    <input formControlName="longitud" placeholder="-72.881" [class]="inp" />
-                    @if (errores()['longitud']) {
-                      <p class="text-[11px] text-destructive mt-1">{{ errores()['longitud'] }}</p>
-                    }
-                  </div>
-                  <div>
-                    <label class="block text-[11px] font-medium text-muted-foreground mb-1">Latitud</label>
-                    <input formControlName="latitud" placeholder="-13.635" [class]="inp" />
-                    @if (errores()['latitud']) {
-                      <p class="text-[11px] text-destructive mt-1">{{ errores()['latitud'] }}</p>
-                    }
-                  </div>
-                  <div>
-                    <label class="block text-[11px] font-medium text-muted-foreground mb-1">Altitud (msnm)</label>
-                    <input type="number" formControlName="altitud" placeholder="3200" [class]="inp" />
-                  </div>
-                </div>
-              </div>
-
-              <div class="pt-4 border-t border-dashed border-border">
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  Coordenadas UTM
-                </p>
-                <div class="grid grid-cols-1 md:grid-cols-[110px_1fr_1fr] gap-3">
-                  <div>
-                    <label class="block text-[11px] font-medium text-muted-foreground mb-1">Zona</label>
-                    <input formControlName="utmZona" placeholder="18S" maxlength="4" [class]="inp" />
-                  </div>
-                  <div>
-                    <label class="block text-[11px] font-medium text-muted-foreground mb-1">Coord. Este</label>
-                    <input formControlName="utmEste" placeholder="000000.000" inputmode="decimal" [class]="inp" />
-                  </div>
-                  <div>
-                    <label class="block text-[11px] font-medium text-muted-foreground mb-1">Coord. Norte</label>
-                    <input formControlName="utmNorte" placeholder="0000000.000" inputmode="decimal" [class]="inp" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Campos personalizados del área -->
-        @if (customs().length > 0) {
-          <section class="bg-card rounded-xl ring-1 ring-border p-5">
-            <div class="flex items-center gap-2 border-b border-border pb-2 mb-4 text-brand">
-              <lucide-angular [img]="SparklesIcon" class="size-4" />
-              <h3 class="text-[11px] font-semibold uppercase tracking-wider">Campos adicionales del área</h3>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              @for (c of customs(); track c.id) {
-                <div>
-                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">
-                    {{ c.nombre }}{{ c.requerido ? ' *' : '' }}
-                  </label>
-                  @switch (c.tipo) {
-                    @case ('textarea') {
-                      <textarea rows="2" [value]="customValue(c.id)" (input)="setCustom(c.id, $any($event.target).value)" [class]="c.requerido ? inpReq() : inp"></textarea>
-                    }
-                    @case ('select') {
-                      <select [value]="customValue(c.id)" (change)="setCustom(c.id, $any($event.target).value)" [class]="c.requerido ? inpReq() : inp">
-                        <option value="">— Seleccione —</option>
-                        @for (o of c.opciones ?? []; track o) {
-                          <option [value]="o">{{ o }}</option>
-                        }
-                      </select>
-                    }
-                    @case ('checkbox') {
-                      <div class="flex gap-3 flex-wrap pt-1">
-                        @for (o of c.opciones ?? []; track o) {
-                          <label class="text-sm flex items-center gap-1">
-                            <input
-                              type="checkbox"
-                              [checked]="customChecked(c.id, o)"
-                              (change)="toggleCustomCheckbox(c.id, o, $any($event.target).checked)"
-                            /> {{ o }}
-                          </label>
-                        }
-                      </div>
-                    }
-                    @case ('radio') {
-                      <div class="flex gap-3 flex-wrap pt-1">
-                        @for (o of c.opciones ?? []; track o) {
-                          <label class="text-sm flex items-center gap-1">
-                            <input
-                              type="radio"
-                              [name]="'c_' + c.id"
-                              [checked]="customValue(c.id) === o"
-                              (change)="setCustom(c.id, o)"
-                            /> {{ o }}
-                          </label>
-                        }
-                      </div>
-                    }
-                    @default {
-                      <input [type]="c.tipo" [value]="customValue(c.id)" (input)="setCustom(c.id, $any($event.target).value)" [class]="c.requerido ? inpReq() : inp" />
-                    }
-                  }
-                  @if (errores()['c_' + c.id]) {
-                    <p class="text-[11px] text-destructive mt-1">{{ errores()['c_' + c.id] }}</p>
-                  }
-                </div>
-              }
-            </div>
-          </section>
-        }
-      </fieldset>
-
-
-
-      <div class="flex justify-end gap-2 pt-2">
-        <button type="button" (click)="cancelled.emit()" class="btn-secondary">
+      <div class="botonera">
+        <button matButton type="button" (click)="cancelled.emit()">
           {{ cancelLabel() ?? (readOnly() ? 'Volver' : 'Cancelar') }}
         </button>
         @if (!readOnly()) {
-          <button
-            type="button"
-            (click)="guardar()"
-            class="btn-primary px-5"
-          >
+          <button matButton="filled" type="button" (click)="guardar()">
             {{ saveLabel() ?? 'Guardar registro' }}
           </button>
         }
       </div>
     </div>
+  `,
+  styles: `
+    .formulario { display: flex; flex-direction: column; gap: 20px; }
+    .bloque { padding: 20px; }
+
+    .seccion {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+      color: var(--mat-sys-primary);
+    }
+    .seccion mat-icon { font-size: 20px; width: 20px; height: 20px; }
+    .seccion h3 {
+      margin: 0;
+      font: var(--mat-sys-label-large);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .subtitulo {
+      margin: 0 0 8px;
+      font: var(--mat-sys-label-medium);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    .rejilla { display: grid; grid-template-columns: 1fr; gap: 0 12px; }
+    @media (min-width: 768px) {
+      .rejilla.dos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .rejilla.tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .rejilla.utm { grid-template-columns: 110px 1fr 1fr; }
+      .ancho-completo { grid-column: span 2; }
+    }
+    mat-form-field { width: 100%; }
+
+    .coordenadas { display: flex; flex-direction: column; gap: 20px; }
+    @media (min-width: 768px) { .coordenadas { flex-direction: row; } }
+    .mapa { width: 100%; flex: 0 0 auto; }
+    @media (min-width: 768px) { .mapa { width: 256px; } }
+    .ubicacion { width: 100%; margin-top: 8px; }
+    .campos-coordenadas { flex: 1; display: flex; flex-direction: column; gap: 16px; }
+    .bloque-utm { padding-top: 16px; border-top: 1px dashed var(--mat-sys-outline-variant); }
+
+    .grupo-opciones { display: flex; flex-direction: column; gap: 4px; padding: 4px 0 16px; }
+    .grupo-opciones .etiqueta {
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .opciones, mat-radio-group { display: flex; flex-wrap: wrap; gap: 16px; }
+    .error { margin: 0; font: var(--mat-sys-body-small); color: var(--mat-sys-error); }
+
+    .botonera { display: flex; justify-content: flex-end; gap: 8px; }
   `,
 })
 export class CursoFormComponent implements OnInit {
@@ -423,16 +568,6 @@ export class CursoFormComponent implements OnInit {
   readonly saved = output<CursoFormState>();
   readonly cancelled = output<void>();
 
-  readonly SparklesIcon = Sparkles;
-  readonly LocateFixedIcon = LocateFixed;
-  readonly MapPinIcon = MapPin;
-  readonly CompassIcon = Compass;
-  readonly InfoIcon = Info;
-
-  readonly inp = INP;
-  /** Obligatorios en ámbar solo en edición; en modo lectura mantienen el estilo neutro. */
-  readonly inpReq = computed(() => (this.readOnly() ? INP : INP_REQ));
-  readonly inpDisabled = INP_DISABLED;
   readonly tematicas = TEMATICAS;
   readonly tiposEvento = TIPOS_EVENTO;
   readonly ubigeo = UBIGEO;
@@ -487,6 +622,14 @@ export class CursoFormComponent implements OnInit {
     archivoRuta: '',
   });
 
+  constructor() {
+    // Registro bloqueado (Enviado, Validado, Aprobado…): todo en solo lectura.
+    effect(() => {
+      if (this.readOnly()) this.form.disable({ emitEvent: false });
+      else this.form.enable({ emitEvent: false });
+    });
+  }
+
   ngOnInit(): void {
     const initial = this.initial();
     const codigoAuto =
@@ -495,6 +638,21 @@ export class CursoFormComponent implements OnInit {
     this.form.patchValue({ ...EMPTY, ...initial, codigo: codigoAuto });
     this.custom.set({ ...(initial?.custom ?? {}) });
     this.form.valueChanges.subscribe(() => this.formTick.update((t) => t + 1));
+  }
+
+  /**
+   * La validación es propia (mensajes por campo en `errores`), así que el estado
+   * de error de cada campo lo decide ese mapa y no los validadores del control.
+   */
+  private readonly matchers = new Map<string, ErrorStateMatcher>();
+
+  matcherDe(campo: string): ErrorStateMatcher {
+    let matcher = this.matchers.get(campo);
+    if (!matcher) {
+      matcher = { isErrorState: () => !!this.errores()[campo] };
+      this.matchers.set(campo, matcher);
+    }
+    return matcher;
   }
 
   /* ===== Cascada Región → Provincia → Distrito → Centro Poblado ===== */
@@ -527,6 +685,15 @@ export class CursoFormComponent implements OnInit {
     }
     return null;
   });
+  /** La fecha del evento vive en ISO; el calendario trabaja con Date. */
+  readonly fechaDate = computed(() => {
+    this.formTick();
+    return isoADate(this.form.controls.fecha.value);
+  });
+
+  setFecha(fecha: Date | null): void {
+    this.form.patchValue({ fecha: dateAIso(fecha) });
+  }
 
   onRegionChange(): void {
     this.form.patchValue({ provincia: '', distrito: '', centroPoblado: '' });

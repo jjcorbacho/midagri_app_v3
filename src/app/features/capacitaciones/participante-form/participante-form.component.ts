@@ -2,19 +2,27 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
   input,
   output,
   signal,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { LucideAngularModule, Search } from 'lucide-angular';
+import { MatButtonModule } from '@angular/material/button';
+import { MAT_DATE_LOCALE, ErrorStateMatcher, provideNativeDateAdapter } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatRadioModule } from '@angular/material/radio';
+import { MatSelectModule } from '@angular/material/select';
 import { Participante, TipoParticipante } from '../../../core/models/participante.model';
 import { ProductoresService } from '../../../core/services/productores.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { ModalService } from '../../../core/services/modal.service';
-import { calcEdad } from '../../../shared/utils/fecha.util';
-import { INPUT_BASE, INPUT_DISABLED, INPUT_REQUIRED } from '../../../shared/utils/input-styles.const';
+import { calcEdad, dateAIso, isoADate } from '../../../shared/utils/fecha.util';
 import {
   ACTIVIDAD_OTRO_PARTICIPANTE,
   CRIANZAS_PARTICIPANTE,
@@ -35,288 +43,393 @@ export interface ParticipanteFormSubmit {
   primActividad: string;
 }
 
-/* Estilos de input del design system compartido (sin variantes locales). */
-const LOCKED_INPUT = INPUT_DISABLED;
-const ACTIVE_INPUT = INPUT_BASE;
-const REQUIRED_INPUT = INPUT_REQUIRED;
+/** Campos que llegan del padrón de productores y no se reescriben a mano. */
+const CAMPOS_DEMOGRAFICOS = [
+  'apellidos',
+  'nombres',
+  'sexo',
+  'fechaNacimiento',
+  'estadoCivil',
+  'ubigeo',
+  'direccion',
+  'restricciones',
+] as const;
 
 @Component({
   selector: 'app-participante-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, LucideAngularModule],
+  providers: [provideNativeDateAdapter(), { provide: MAT_DATE_LOCALE, useValue: 'es-PE' }],
+  imports: [
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatDatepickerModule,
+    MatDividerModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatRadioModule,
+    MatSelectModule,
+  ],
   template: `
-    <div>
-      <form class="p-6 space-y-8" [formGroup]="form" (ngSubmit)="guardar()">
-        <section class="space-y-4">
-          <div class="flex items-center gap-2 border-b border-brand/15 pb-2">
-            <span class="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">1</span>
-            <h3 class="text-brand font-bold uppercase text-sm tracking-wide">Identidad y Demográficos</h3>
-          </div>
+    <form [formGroup]="form" (ngSubmit)="guardar()">
+      <!-- 1. Identidad y demográficos -->
+      <section>
+        <header class="seccion">
+          <span class="numero">1</span>
+          <h3>Identidad y Demográficos</h3>
+        </header>
 
-          @if (mode() === 'nuevo') {
-            <!-- DNI a ancho completo en una única fila (apila en móvil) -->
-            <div class="bg-brand-soft/60 p-4 rounded-lg border border-brand/15 space-y-2">
-              <div class="flex flex-col md:flex-row md:items-end gap-3">
-                <div class="flex-1 min-w-0">
-                  <label class="block text-xs font-semibold text-foreground mb-1">DNI (8 dígitos) <span class="text-destructive">*</span></label>
-                  <input
-                    type="text" inputmode="numeric" maxlength="8" placeholder="Ingrese DNI"
-                    formControlName="dni"
-                    (input)="soloDigitos()"
-                    [class]="(dniLocked() ? lockedInput : requiredCls(false)) + ' font-mono w-full'"
-                  />
-                </div>
-                <button type="button" (click)="buscarDNI()" [disabled]="dniLocked()"
-                  class="btn-primary shrink-0 px-5">
-                  <lucide-angular [img]="SearchIcon" class="size-4" />
-                  Buscar
-                </button>
-                <button type="button" (click)="limpiar()"
-                  class="btn-secondary shrink-0">
-                  Limpiar
-                </button>
-              </div>
-              @if (errors()['dni']) {
-                <p class="text-[11px] text-destructive">{{ errors()['dni'] }}</p>
-              }
-              @if (!busqueda()) {
-                <p class="text-xs font-medium italic text-brand">* Ingrese el DNI para autocompletar.</p>
-              }
+        @if (mode() === 'nuevo') {
+          <!-- DNI a ancho completo en una única fila (apila en móvil) -->
+          <div class="bloque-dni">
+            <div class="fila-dni">
+              <mat-form-field subscriptSizing="dynamic" class="campo-dni">
+                <mat-label>DNI (8 dígitos)</mat-label>
+                <input
+                  matInput
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="8"
+                  required
+                  placeholder="Ingrese DNI"
+                  formControlName="dni"
+                  [errorStateMatcher]="matcherDe('dni')"
+                  (input)="soloDigitos()"
+                />
+                <mat-error>{{ errors()['dni'] }}</mat-error>
+              </mat-form-field>
+              <button matButton="filled" type="button" [disabled]="dniLocked()" (click)="buscarDNI()">
+                <mat-icon fontSet="material-symbols-outlined">search</mat-icon>
+                Buscar
+              </button>
+              <button matButton type="button" (click)="limpiar()">Limpiar</button>
             </div>
-          } @else {
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <label class="block">
-                <span class="block text-xs font-semibold text-foreground mb-1">DNI</span>
-                <input disabled [value]="form.controls.dni.value" [class]="lockedInput" />
-              </label>
-              @if (busqueda() === 'ok') {
-                <div class="md:col-span-2 flex items-end text-xs italic text-success">
-                  ✓ Encontrado en la base de datos de Productores
-                </div>
-              }
-            </div>
-          }
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label class="block">
-              <span class="block text-xs font-semibold text-foreground mb-1">Apellidos <span class="text-destructive">*</span></span>
-              <input formControlName="apellidos" [class]="requiredCls(demoLocked())" />
-              @if (errors()['apellidos']) {
-                <p class="text-[11px] text-destructive mt-1">{{ errors()['apellidos'] }}</p>
-              }
-            </label>
-            <label class="block">
-              <span class="block text-xs font-semibold text-foreground mb-1">Nombres <span class="text-destructive">*</span></span>
-              <input formControlName="nombres" [class]="requiredCls(demoLocked())" />
-              @if (errors()['nombres']) {
-                <p class="text-[11px] text-destructive mt-1">{{ errors()['nombres'] }}</p>
-              }
-            </label>
-          </div>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <label class="block">
-              <span class="block text-xs font-semibold text-foreground mb-1">Sexo</span>
-              <select formControlName="sexo" [class]="inputCls(demoLocked())">
-                <option value="">—</option>
-                <option value="Masculino">Masculino</option>
-                <option value="Femenino">Femenino</option>
-              </select>
-            </label>
-            <label class="block">
-              <span class="block text-xs font-semibold text-foreground mb-1">Edad</span>
-              <input disabled [value]="edad() ? edad() + ' años' : ''" [class]="lockedInput" />
-            </label>
-            <label class="block">
-              <span class="block text-xs font-semibold text-foreground mb-1">Fecha Nacimiento <span class="text-destructive">*</span></span>
-              <input type="date" formControlName="fechaNacimiento" [class]="requiredCls(demoLocked())" />
-              @if (errors()['fecha']) {
-                <p class="text-[11px] text-destructive mt-1">{{ errors()['fecha'] }}</p>
-              }
-            </label>
-            <label class="block">
-              <span class="block text-xs font-semibold text-foreground mb-1">Estado Civil</span>
-              <input formControlName="estadoCivil" [class]="inputCls(demoLocked())" />
-            </label>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label class="block">
-              <span class="block text-xs font-semibold text-foreground mb-1">Ubigeo</span>
-              <input formControlName="ubigeo" [class]="inputCls(demoLocked())" />
-            </label>
-            <label class="block">
-              <span class="block text-xs font-semibold text-foreground mb-1">Dirección</span>
-              <input formControlName="direccion" [class]="inputCls(demoLocked())" />
-            </label>
-          </div>
-          <label class="block">
-            <span class="block text-xs font-semibold text-foreground mb-1">Restricciones</span>
-            <input formControlName="restricciones" [class]="inputCls(demoLocked())" />
-          </label>
-        </section>
-
-        <section class="space-y-4 pt-2">
-          <div class="flex items-center gap-2 border-b border-brand/15 pb-2">
-            <span class="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">2</span>
-            <h3 class="text-brand font-bold uppercase text-sm tracking-wide">Datos técnicos y comerciales</h3>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <label class="block">
-              <span class="block text-xs font-semibold text-foreground mb-1">Tipo Participante</span>
-              <select formControlName="tipo" [class]="inputCls(false)">
-                @for (t of tiposParticipante; track t) {
-                  <option [value]="t">{{ t }}</option>
-                }
-              </select>
-            </label>
-            @if (tipoActual() === 'OTRO') {
-              <label class="block">
-                <span class="block text-xs font-semibold text-foreground mb-1">Actividad Otro Participante</span>
-                <select formControlName="actividadOtro" [class]="inputCls(false)">
-                  <option value="">— Seleccione —</option>
-                  @for (a of actividadesOtro; track a) {
-                    <option [value]="a">{{ a }}</option>
-                  }
-                </select>
-              </label>
-            }
-            @if (tipoActual() === 'PRODUCTOR') {
-              <label class="block">
-                <span class="block text-xs font-semibold text-foreground mb-1">Principal Actividad</span>
-                <select formControlName="primActividad" [class]="inputCls(false)">
-                  <option value="">— Seleccione —</option>
-                  @for (a of principalActividad; track a) {
-                    <option [value]="a">{{ a }}</option>
-                  }
-                </select>
-              </label>
+            @if (!busqueda()) {
+              <p class="ayuda">* Ingrese el DNI para autocompletar.</p>
             }
           </div>
-
-          @if (tipoActual() === 'PRODUCTOR') {
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <label class="block">
-                <span class="block text-xs font-semibold text-foreground mb-1">Nombre cultivo principal</span>
-                <input formControlName="cultivo" placeholder="Ej. Papa nativa" [class]="inputCls(false)" />
-              </label>
-              <label class="block">
-                <span class="block text-xs font-semibold text-foreground mb-1">Principal plantación forestal</span>
-                <input formControlName="plantacion" placeholder="Ej. Pino" [class]="inputCls(false)" />
-              </label>
-              <div class="hidden md:block"></div>
-              <label class="block">
-                <span class="block text-xs font-semibold text-foreground mb-1">Crianza principal</span>
-                <select formControlName="crianzaPrincipal" [class]="inputCls(false)">
-                  <option value="">— Seleccione —</option>
-                  @for (c of crianzas; track c) {
-                    <option [value]="c">{{ c }}</option>
-                  }
-                </select>
-              </label>
-              <label class="block">
-                <span class="block text-xs font-semibold text-foreground mb-1">Crianza secundaria</span>
-                <select formControlName="crianzaSecundaria" [class]="inputCls(false)">
-                  <option value="">— Seleccione —</option>
-                  @for (c of crianzas; track c) {
-                    <option [value]="c">{{ c }}</option>
-                  }
-                </select>
-              </label>
-            </div>
-          }
-        </section>
-
-        <section class="space-y-4 pt-2">
-          <div class="flex items-center gap-2 border-b border-brand/15 pb-2">
-            <span class="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">3</span>
-            <h3 class="text-brand font-bold uppercase text-sm tracking-wide">Organización y participación social</h3>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-            <label class="block">
-              <span class="block text-xs font-semibold text-foreground mb-1">¿Está asociado?</span>
-              <div class="flex gap-4 py-2">
-                <label class="inline-flex items-center text-sm">
-                  <input type="radio" value="SI" formControlName="asociado" class="text-brand focus:ring-ring" />
-                  <span class="ml-2 text-muted-foreground">SI</span>
-                </label>
-                <label class="inline-flex items-center text-sm">
-                  <input type="radio" value="NO" formControlName="asociado" class="text-brand focus:ring-ring" />
-                  <span class="ml-2 text-muted-foreground">NO</span>
-                </label>
-              </div>
-            </label>
-            @if (asociadoActual() === 'SI') {
-              <label class="block">
-                <span class="block text-xs font-semibold text-foreground mb-1">Tipo de Organización</span>
-                <select formControlName="tipoOrg" [class]="inputCls(false)">
-                  <option value="">— Seleccione —</option>
-                  @for (t of tiposOrganizacion; track t) {
-                    <option [value]="t">{{ t }}</option>
-                  }
-                </select>
-                @if (errors()['tipoOrg']) {
-                  <p class="text-[11px] text-destructive mt-1">{{ errors()['tipoOrg'] }}</p>
-                }
-              </label>
-              <label class="block">
-                <span class="block text-xs font-semibold text-foreground mb-1">Nombre de Organización</span>
-                <input formControlName="nombreOrg" maxlength="160" [class]="inputCls(false)" />
-                @if (errors()['nombreOrg']) {
-                  <p class="text-[11px] text-destructive mt-1">{{ errors()['nombreOrg'] }}</p>
-                }
-              </label>
+        } @else {
+          <div class="rejilla tres">
+            <mat-form-field>
+              <mat-label>DNI</mat-label>
+              <input matInput readonly [value]="form.controls.dni.value" />
+            </mat-form-field>
+            @if (busqueda() === 'ok') {
+              <p class="encontrado">✓ Encontrado en la base de datos de Productores</p>
             }
           </div>
-        </section>
-
-        <section class="space-y-4 pt-2">
-          <div class="flex items-center gap-2 border-b border-brand/15 pb-2">
-            <span class="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">4</span>
-            <h3 class="text-brand font-bold uppercase text-sm tracking-wide">Información adicional</h3>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label class="block">
-              <span class="block text-xs font-semibold text-foreground mb-1">Nivel de instrucción</span>
-              <select formControlName="nivelInstr" [class]="inputCls(false)">
-                <option value="">— Seleccione —</option>
-                @for (n of nivelesInstruccion; track n) {
-                  <option [value]="n">{{ n }}</option>
-                }
-              </select>
-            </label>
-            <label class="block">
-              <span class="block text-xs font-semibold text-foreground mb-1">Centro poblado</span>
-              <input formControlName="centroPobl" [class]="inputCls(false)" />
-            </label>
-          </div>
-        </section>
-
-        <!--
-          Cierre del formulario: contenido proyectado por el contenedor (el
-          stepper inyecta aquí la declaración jurada del Paso 2). Queda después
-          del bloque "4. Información adicional" y antes de la botonera.
-        -->
-        <ng-content />
-      </form>
-
-      <div class="bg-surface-2 border-t border-border px-6 py-4 flex justify-end gap-3">
-        <button
-          type="button"
-          (click)="cancelled.emit()"
-          class="btn-ghost px-5"
-        >
-          {{ cancelLabel() ?? (mode() === 'ver' ? 'Volver' : 'Cancelar') }}
-        </button>
-        @if (mode() !== 'ver') {
-          <button
-            type="button"
-            (click)="guardar()"
-            class="btn-primary px-6"
-          >
-            {{ submitLabel() ?? (mode() === 'editar' ? 'Guardar cambios' : 'Registrar participante') }}
-          </button>
         }
-      </div>
+
+        <div class="rejilla dos">
+          <mat-form-field>
+            <mat-label>Apellidos</mat-label>
+            <input matInput required formControlName="apellidos" [errorStateMatcher]="matcherDe('apellidos')" />
+            <mat-error>{{ errors()['apellidos'] }}</mat-error>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Nombres</mat-label>
+            <input matInput required formControlName="nombres" [errorStateMatcher]="matcherDe('nombres')" />
+            <mat-error>{{ errors()['nombres'] }}</mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="rejilla cuatro">
+          <mat-form-field>
+            <mat-label>Sexo</mat-label>
+            <mat-select formControlName="sexo">
+              <mat-option value="">—</mat-option>
+              <mat-option value="Masculino">Masculino</mat-option>
+              <mat-option value="Femenino">Femenino</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Edad</mat-label>
+            <input matInput readonly [value]="edad() ? edad() + ' años' : ''" />
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Fecha Nacimiento</mat-label>
+            <input
+              matInput
+              required
+              [matDatepicker]="dpNac"
+              [disabled]="demoLocked() || mode() === 'ver'"
+              [value]="fechaNacimientoDate()"
+              [errorStateMatcher]="matcherDe('fecha')"
+              (dateChange)="setFechaNacimiento($event.value)"
+            />
+            <mat-datepicker-toggle matIconSuffix [for]="dpNac" />
+            <mat-datepicker #dpNac startView="multi-year" />
+            <mat-error>{{ errors()['fecha'] }}</mat-error>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Estado Civil</mat-label>
+            <input matInput formControlName="estadoCivil" />
+          </mat-form-field>
+        </div>
+
+        <div class="rejilla dos">
+          <mat-form-field>
+            <mat-label>Ubigeo</mat-label>
+            <input matInput formControlName="ubigeo" />
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Dirección</mat-label>
+            <input matInput formControlName="direccion" />
+          </mat-form-field>
+        </div>
+
+        <mat-form-field>
+          <mat-label>Restricciones</mat-label>
+          <input matInput formControlName="restricciones" />
+        </mat-form-field>
+      </section>
+
+      <!-- 2. Datos técnicos y comerciales -->
+      <section>
+        <header class="seccion">
+          <span class="numero">2</span>
+          <h3>Datos técnicos y comerciales</h3>
+        </header>
+
+        <div class="rejilla tres">
+          <mat-form-field>
+            <mat-label>Tipo Participante</mat-label>
+            <mat-select formControlName="tipo">
+              @for (t of tiposParticipante; track t) {
+                <mat-option [value]="t">{{ t }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          @if (tipoActual() === 'OTRO') {
+            <mat-form-field>
+              <mat-label>Actividad Otro Participante</mat-label>
+              <mat-select formControlName="actividadOtro">
+                <mat-option value="">— Seleccione —</mat-option>
+                @for (a of actividadesOtro; track a) {
+                  <mat-option [value]="a">{{ a }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          }
+          @if (tipoActual() === 'PRODUCTOR') {
+            <mat-form-field>
+              <mat-label>Principal Actividad</mat-label>
+              <mat-select formControlName="primActividad">
+                <mat-option value="">— Seleccione —</mat-option>
+                @for (a of principalActividad; track a) {
+                  <mat-option [value]="a">{{ a }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          }
+        </div>
+
+        @if (tipoActual() === 'PRODUCTOR') {
+          <div class="rejilla tres">
+            <mat-form-field>
+              <mat-label>Nombre cultivo principal</mat-label>
+              <input matInput formControlName="cultivo" placeholder="Ej. Papa nativa" />
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>Principal plantación forestal</mat-label>
+              <input matInput formControlName="plantacion" placeholder="Ej. Pino" />
+            </mat-form-field>
+            <span class="hueco"></span>
+            <mat-form-field>
+              <mat-label>Crianza principal</mat-label>
+              <mat-select formControlName="crianzaPrincipal">
+                <mat-option value="">— Seleccione —</mat-option>
+                @for (c of crianzas; track c) {
+                  <mat-option [value]="c">{{ c }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>Crianza secundaria</mat-label>
+              <mat-select formControlName="crianzaSecundaria">
+                <mat-option value="">— Seleccione —</mat-option>
+                @for (c of crianzas; track c) {
+                  <mat-option [value]="c">{{ c }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+        }
+      </section>
+
+      <!-- 3. Organización y participación social -->
+      <section>
+        <header class="seccion">
+          <span class="numero">3</span>
+          <h3>Organización y participación social</h3>
+        </header>
+
+        <div class="rejilla tres">
+          <div class="grupo-radio">
+            <span class="etiqueta">¿Está asociado?</span>
+            <mat-radio-group formControlName="asociado" aria-label="¿Está asociado?">
+              <mat-radio-button value="SI">SI</mat-radio-button>
+              <mat-radio-button value="NO">NO</mat-radio-button>
+            </mat-radio-group>
+          </div>
+          @if (asociadoActual() === 'SI') {
+            <mat-form-field>
+              <mat-label>Tipo de Organización</mat-label>
+              <mat-select formControlName="tipoOrg" [errorStateMatcher]="matcherDe('tipoOrg')">
+                <mat-option value="">— Seleccione —</mat-option>
+                @for (t of tiposOrganizacion; track t) {
+                  <mat-option [value]="t">{{ t }}</mat-option>
+                }
+              </mat-select>
+              <mat-error>{{ errors()['tipoOrg'] }}</mat-error>
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>Nombre de Organización</mat-label>
+              <input
+                matInput
+                maxlength="160"
+                formControlName="nombreOrg"
+                [errorStateMatcher]="matcherDe('nombreOrg')"
+              />
+              <mat-error>{{ errors()['nombreOrg'] }}</mat-error>
+            </mat-form-field>
+          }
+        </div>
+      </section>
+
+      <!-- 4. Información adicional -->
+      <section>
+        <header class="seccion">
+          <span class="numero">4</span>
+          <h3>Información adicional</h3>
+        </header>
+
+        <div class="rejilla dos">
+          <mat-form-field>
+            <mat-label>Nivel de instrucción</mat-label>
+            <mat-select formControlName="nivelInstr">
+              <mat-option value="">— Seleccione —</mat-option>
+              @for (n of nivelesInstruccion; track n) {
+                <mat-option [value]="n">{{ n }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Centro poblado</mat-label>
+            <input matInput formControlName="centroPobl" />
+          </mat-form-field>
+        </div>
+      </section>
+
+      <!--
+        Cierre del formulario: contenido proyectado por el contenedor (el
+        stepper inyecta aquí la declaración jurada del Paso 2). Queda después
+        del bloque "4. Información adicional" y antes de la botonera.
+      -->
+      <ng-content />
+    </form>
+
+    <mat-divider />
+
+    <div class="botonera">
+      <button matButton type="button" (click)="cancelled.emit()">
+        {{ cancelLabel() ?? (mode() === 'ver' ? 'Volver' : 'Cancelar') }}
+      </button>
+      @if (mode() !== 'ver') {
+        <button matButton="filled" type="button" (click)="guardar()">
+          {{ submitLabel() ?? (mode() === 'editar' ? 'Guardar cambios' : 'Registrar participante') }}
+        </button>
+      }
     </div>
+  `,
+  styles: `
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      padding: 24px;
+    }
+    section { display: flex; flex-direction: column; gap: 4px; }
+
+    .seccion {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+    }
+    .seccion h3 {
+      margin: 0;
+      font: var(--mat-sys-label-large);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--mat-sys-primary);
+    }
+    .numero {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--mat-sys-primary);
+      color: var(--mat-sys-on-primary);
+      font: var(--mat-sys-label-small);
+      font-weight: 700;
+    }
+
+    .rejilla { display: grid; grid-template-columns: 1fr; gap: 0 16px; }
+    @media (min-width: 768px) {
+      .rejilla.dos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .rejilla.tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .rejilla.cuatro { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    @media (min-width: 480px) and (max-width: 767px) {
+      .rejilla.cuatro { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    mat-form-field { width: 100%; }
+    .hueco { display: none; }
+    @media (min-width: 768px) { .hueco { display: block; } }
+
+    .bloque-dni {
+      padding: 16px;
+      margin-bottom: 16px;
+      border-radius: var(--mat-sys-corner-medium);
+      background: var(--mat-sys-primary-container);
+    }
+    .fila-dni { display: flex; flex-direction: column; gap: 12px; }
+    @media (min-width: 768px) { .fila-dni { flex-direction: row; align-items: center; } }
+    .campo-dni { flex: 1 1 auto; }
+    .campo-dni input { font-family: monospace; }
+    .ayuda {
+      margin: 8px 0 0;
+      font: var(--mat-sys-body-small);
+      font-style: italic;
+      color: var(--mat-sys-on-primary-container);
+    }
+    .encontrado {
+      margin: 0;
+      align-self: center;
+      font: var(--mat-sys-body-small);
+      font-style: italic;
+      color: var(--estado-aprobado);
+    }
+
+    .grupo-radio { display: flex; flex-direction: column; gap: 4px; padding-top: 4px; }
+    .grupo-radio .etiqueta {
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    mat-radio-group { display: flex; gap: 16px; }
+
+    .botonera {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 16px 24px;
+      background: var(--mat-sys-surface-container-low);
+    }
   `,
 })
 export class ParticipanteFormComponent {
@@ -333,9 +446,6 @@ export class ParticipanteFormComponent {
 
   readonly submitted = output<ParticipanteFormSubmit>();
   readonly cancelled = output<void>();
-
-  readonly SearchIcon = Search;
-  readonly lockedInput = LOCKED_INPUT;
 
   readonly tiposParticipante = TIPOS_PARTICIPANTE;
   readonly actividadesOtro = ACTIVIDAD_OTRO_PARTICIPANTE;
@@ -386,18 +496,47 @@ export class ParticipanteFormComponent {
     this.formTick();
     return this.form.controls.asociado.value;
   });
+  /** La fecha de nacimiento vive en ISO; el calendario trabaja con Date. */
+  readonly fechaNacimientoDate = computed(() => {
+    this.formTick();
+    return isoADate(this.form.controls.fechaNacimiento.value);
+  });
 
   constructor() {
     this.form.valueChanges.subscribe(() => this.formTick.update((t) => t + 1));
+    // Modo consulta: todo el formulario en solo lectura.
+    effect(() => {
+      if (this.mode() === 'ver') this.form.disable({ emitEvent: false });
+    });
   }
 
-  inputCls(locked: boolean): string {
-    return locked || this.mode() === 'ver' ? LOCKED_INPUT : ACTIVE_INPUT;
+  /**
+   * La validación es propia (mensajes por campo en `errors`), así que el estado
+   * de error de cada campo lo decide ese mapa y no los validadores del control.
+   */
+  private readonly matchers = new Map<string, ErrorStateMatcher>();
+
+  matcherDe(campo: string): ErrorStateMatcher {
+    let matcher = this.matchers.get(campo);
+    if (!matcher) {
+      matcher = { isErrorState: () => !!this.errors()[campo] };
+      this.matchers.set(campo, matcher);
+    }
+    return matcher;
   }
 
-  /** Campos obligatorios: ámbar cuando son editables, neutro cuando están bloqueados. */
-  requiredCls(locked: boolean): string {
-    return locked || this.mode() === 'ver' ? LOCKED_INPUT : REQUIRED_INPUT;
+  setFechaNacimiento(fecha: Date | null): void {
+    this.form.patchValue({ fechaNacimiento: dateAIso(fecha) });
+  }
+
+  /** Los datos que llegan del padrón quedan en solo lectura. */
+  private bloquearDemograficos(bloquear: boolean): void {
+    this.demoLocked.set(bloquear);
+    for (const campo of CAMPOS_DEMOGRAFICOS) {
+      const control = this.form.controls[campo];
+      if (bloquear) control.disable({ emitEvent: false });
+      else control.enable({ emitEvent: false });
+    }
   }
 
   soloDigitos(): void {
@@ -432,12 +571,12 @@ export class ParticipanteFormComponent {
         restricciones: prod.restricciones ?? 'Ninguna',
       });
       this.busqueda.set('ok');
-      this.demoLocked.set(true);
+      this.bloquearDemograficos(true);
       // Modal informativo estándar; al aceptar continúa la carga ya realizada.
       void this.modales.openInfo('DNI encontrado', 'DNI encontrado en la base de datos de productores.');
     } else {
       this.busqueda.set('no-encontrado');
-      this.demoLocked.set(false);
+      this.bloquearDemograficos(false);
       // Advertencia informativa (solo Aceptar); luego continúa el registro manual.
       void this.modales.openWarning(
         'DNI no encontrado',
@@ -450,6 +589,7 @@ export class ParticipanteFormComponent {
   }
 
   limpiar(): void {
+    this.bloquearDemograficos(false);
     this.form.reset({
       dni: '', apellidos: '', nombres: '', sexo: '', fechaNacimiento: '',
       estadoCivil: '', ubigeo: '', direccion: '', restricciones: '',
@@ -460,7 +600,6 @@ export class ParticipanteFormComponent {
     this.form.controls.dni.enable();
     this.dniLocked.set(false);
     this.busqueda.set(null);
-    this.demoLocked.set(false);
     this.errors.set({});
   }
 
@@ -471,6 +610,7 @@ export class ParticipanteFormComponent {
     const disponibles = this.productores.all().filter((p) => !usados.has(p.dni));
     const prod = disponibles[Math.floor(Math.random() * disponibles.length)] ?? this.productores.all()[0];
     if (!prod) return;
+    this.bloquearDemograficos(false);
     this.form.controls.dni.enable();
     this.form.patchValue({
       dni: prod.dni,
@@ -497,7 +637,7 @@ export class ParticipanteFormComponent {
     this.form.controls.dni.disable();
     this.dniLocked.set(true);
     this.busqueda.set('ok');
-    this.demoLocked.set(true);
+    this.bloquearDemograficos(true);
     this.errors.set({});
     this.toast.success('Datos del participante simulados');
   }

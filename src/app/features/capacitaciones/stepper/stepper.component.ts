@@ -8,11 +8,16 @@ import {
   viewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import {
-  LucideAngularModule,
-  ArrowLeft, Check, ChevronRight, AlertTriangle, Trash2,
-  UploadCloud, FileText, Send, Lock, Plus, X,
-} from 'lucide-angular';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
+import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatStepper, MatStepperModule } from '@angular/material/stepper';
+import { StepperSelectionEvent } from '@angular/cdk/stepper';
 import { AreaService } from '../../../core/services/area.service';
 import { CursosService } from '../../../core/services/cursos.service';
 import { ParticipantesService } from '../../../core/services/participantes.service';
@@ -21,13 +26,18 @@ import { getArea } from '../../../core/constants/areas.const';
 import { Curso, TipoCurso, isLocked } from '../../../core/models/curso.model';
 import { isoToFechaCorta } from '../../../shared/utils/fecha.util';
 import { EstadoBadgeComponent } from '../../../shared/components/estado-badge/estado-badge.component';
+import { CargaPdfComponent } from '../../../shared/components/carga-pdf/carga-pdf.component';
+import { ResumenActividadComponent } from '../resumen-actividad/resumen-actividad.component';
 import { CursoFormComponent, CursoFormState } from '../curso-form/curso-form.component';
-import { ModalComponent } from '../../../shared/components/modal/modal.component';
+import { DeclaracionDialogComponent } from './declaracion-dialog.component';
 import { ParticipanteFormComponent, ParticipanteFormSubmit } from '../participante-form/participante-form.component';
 
 const MAX_MB = 15;
 
 type Paso = 1 | 2 | 3;
+
+/** Columnas de la grilla de participantes del Paso 2. */
+const COLUMNAS = ['dni', 'nombre', 'tipo', 'actividad', 'acciones'];
 
 /**
  * Flujo de registro N1 en 3 pasos (nuevo/editar según data de la ruta).
@@ -36,451 +46,454 @@ type Paso = 1 | 2 | 3;
 @Component({
   selector: 'app-stepper',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink,
-    LucideAngularModule,
+  imports: [
+    RouterLink,
+    MatButtonModule,
+    MatCardModule,
+    MatCheckboxModule,
+    MatChipsModule,
+    MatIconModule,
+    MatStepperModule,
+    MatTableModule,
+    MatTooltipModule,
     EstadoBadgeComponent,
+    CargaPdfComponent,
+    ResumenActividadComponent,
     CursoFormComponent,
-    ParticipanteFormComponent, ModalComponent],
+    ParticipanteFormComponent,
+  ],
   template: `
-    <section class="p-6 lg:p-8 max-w-[1200px] mx-auto space-y-5 animate-page-in">
-      <div class="flex items-center gap-2 text-xs text-muted-foreground">
-        <a routerLink="/capacitaciones-n1" class="hover:text-brand flex items-center gap-1">
-          <lucide-angular [img]="ArrowLeftIcon" class="size-3" /> Bandeja N1
+    <section class="pagina">
+      <nav class="miga">
+        <a routerLink="/capacitaciones-n1">
+          <mat-icon fontSet="material-symbols-outlined">arrow_back</mat-icon>
+          Bandeja N1
         </a>
         <span>/</span>
-        <span class="text-foreground">{{ mode === 'nuevo' ? 'Nuevo registro' : 'Edición' }}</span>
+        <span class="actual">{{ mode === 'nuevo' ? 'Nuevo registro' : 'Edición' }}</span>
         @if (cursoActivo(); as curso) {
           <span>/</span>
-          <span class="font-mono text-foreground">{{ curso.codigo }}</span>
+          <span class="codigo">{{ curso.codigo }}</span>
           <app-estado-badge [estado]="curso.estado" />
         }
-      </div>
-
-      <!-- Stepper bar -->
-      <div class="bg-card ring-1 ring-border rounded-xl p-4 flex items-center justify-between">
-        @for (s of steps; track s.n; let i = $index) {
-          <div class="flex items-center flex-1">
-            <button
-              type="button"
-              [disabled]="!clickable(s.n)"
-              (click)="clickable(s.n) && paso.set(s.n)"
-              class="flex items-center gap-2"
-              [class]="clickable(s.n) ? 'cursor-pointer' : 'cursor-default'"
-            >
-              <span
-                class="size-8 rounded-full flex items-center justify-center text-xs font-bold ring-2 transition-colors"
-                [class]="paso() === s.n
-                  ? 'bg-brand text-brand-foreground ring-brand'
-                  : paso() > s.n
-                    ? 'bg-success text-success-foreground ring-success'
-                    : 'bg-card text-muted-foreground ring-border'"
-              >
-                @if (paso() > s.n) {
-                  <lucide-angular [img]="CheckIcon" class="size-4" />
-                } @else {
-                  {{ s.n }}
-                }
-              </span>
-              <span
-                class="text-xs font-semibold uppercase tracking-wide"
-                [class]="paso() === s.n ? 'text-brand' : paso() > s.n ? 'text-success' : 'text-muted-foreground'"
-              >Paso {{ s.n }}: {{ s.label }}</span>
-            </button>
-            @if (i < steps.length - 1) {
-              <div class="flex-1 h-0.5 mx-3" [class]="paso() > s.n ? 'bg-success' : 'bg-border'"></div>
-            }
-          </div>
-        }
-      </div>
+      </nav>
 
       @if (bloqueado()) {
-        <div class="rounded-lg bg-warning-soft ring-1 ring-warning/30 p-3 text-xs text-warning-foreground flex items-center gap-2">
-          <lucide-angular [img]="LockIcon" class="size-4" /> Registro en estado
-          <strong>{{ cursoActivo()?.estado }}</strong>: interfaz en solo lectura.
+        <div class="aviso-bloqueo">
+          <mat-icon fontSet="material-symbols-outlined">lock</mat-icon>
+          Registro en estado <strong>{{ cursoActivo()?.estado }}</strong>: interfaz en solo lectura.
         </div>
       }
 
-      <!-- ============ Paso 1 ============ -->
-      @if (paso() === 1) {
-        <div class="space-y-4">
-          @if (cursoActivo()?.estado === 'Observado' && observaciones().length > 0) {
-            <div class="rounded-xl ring-1 ring-destructive/25 bg-destructive/5 p-4">
-              <div class="flex items-center gap-2 text-destructive font-semibold text-sm mb-2">
-                <lucide-angular [img]="AlertTriangleIcon" class="size-4" />
-                Observaciones pendientes de subsanación
-              </div>
-              <ul class="space-y-2">
-                @for (o of observaciones(); track $index) {
-                  <li class="text-xs text-destructive bg-card/70 ring-1 ring-destructive/25 rounded-md px-3 py-2">
-                    <span class="font-mono font-bold mr-2 text-destructive">{{ o.fecha }}</span>
-                    {{ o.descripcion }}
-                    @if (o.autor) {
-                      <span class="ml-2 text-destructive/70">— {{ o.autor }}</span>
-                    }
-                  </li>
-                }
-              </ul>
-            </div>
-          }
-
-          <div class="bg-card rounded-xl ring-1 ring-border overflow-hidden">
-            <div class="px-6 py-4 border-b border-border bg-gradient-to-br from-brand/5 to-transparent flex items-start justify-between gap-3">
-              <div>
-                <div class="text-[10px] font-bold uppercase tracking-widest text-brand">
-                  Paso 1 · Datos del evento
-                </div>
-                <h1 class="text-lg font-semibold mt-0.5">{{ tituloPaso1() }}</h1>
-                <p class="text-xs text-muted-foreground mt-0.5">
-                  Área: <span class="font-semibold text-foreground">{{ area().code }}</span> — {{ area().name }}
-                </p>
-              </div>
-              @if (!bloqueado() && !isEdit()) {
-                <button
-                  type="button"
-                  (click)="cursoForm()?.simular()"
-                  class="btn-secondary h-8"
-                >Autocompletar</button>
-              }
-            </div>
-
-            <div class="p-6 bg-secondary/30">
-              <app-curso-form
-                [tipo]="tipo()"
-                [initial]="initialPaso1()"
-                [readOnly]="bloqueado()"
-                saveLabel="Guardar y continuar"
-                cancelLabel="Cancelar"
-                (saved)="handleSavePaso1($event)"
-                (cancelled)="volverABandeja()"
-              />
-            </div>
-          </div>
-        </div>
-      }
-
-      <!-- ============ Paso 2 ============ -->
-      @if (paso() === 2 && cursoActivo(); as curso) {
-        <div class="space-y-4">
-          @if (!bloqueado() && showForm()) {
-            <div class="bg-card rounded-xl ring-1 ring-border overflow-hidden">
-              <div class="px-6 py-4 border-b border-border bg-gradient-to-br from-brand/5 to-transparent flex items-start justify-between gap-3">
-                <div>
-                  <div class="text-[10px] font-bold uppercase tracking-widest text-brand">
-                    Paso 2 · Registro de participantes
-                  </div>
-                  <h2 class="text-lg font-semibold mt-0.5">Nuevo participante</h2>
-                  <p class="text-xs text-muted-foreground mt-0.5">
-                    Curso: <span class="font-mono">{{ curso.codigo }}</span> — {{ curso.nombreTema }}
-                  </p>
-                </div>
-                <div class="flex items-center gap-2">
-                  <button
-                    type="button"
-                    (click)="participanteForm()?.simular()"
-                    class="btn-secondary h-8"
-                  >Autocompletar</button>
-                  <button
-                    type="button"
-                    (click)="showForm.set(false)"
-                    aria-label="Cerrar formulario"
-                    class="btn-icon"
-                  >
-                    <lucide-angular [img]="XIcon" class="size-4" />
-                  </button>
-                </div>
-              </div>
-              <app-participante-form
-                mode="nuevo"
-                [otrosExistentes]="participantes()"
-                submitLabel="Agregar participante"
-                cancelLabel="Cancelar"
-                [resetOnSubmit]="true"
-                (submitted)="agregarParticipante($event)"
-                (cancelled)="showForm.set(false)"
-              >
-                <!-- Declaración jurada del Paso 2: cierra "4. Información
-                     adicional", justo antes del botón "Agregar participante". -->
-                <div class="pt-2 border-t border-border">
-                  <label class="flex items-start gap-3 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      class="accent-brand size-4 mt-0.5 shrink-0"
-                      [checked]="declaracionJurada()"
-                      (change)="declaracionJurada.set($any($event.target).checked)"
-                    />
-                    <span class="text-sm text-foreground leading-relaxed">
-                      Declaro bajo juramento que la información proporcionada es correcta.
-                      <span class="text-destructive">*</span>
-                    </span>
-                  </label>
-                </div>
-              </app-participante-form>
-            </div>
-          }
-
-          <div class="bg-card rounded-xl ring-1 ring-border overflow-hidden">
-              <div class="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
-                <div>
-                  <h2 class="text-sm font-bold uppercase tracking-wider">Participantes registrados</h2>
-                  <p class="text-xs text-muted-foreground">Total: {{ participantes().length }}</p>
-                </div>
-                @if (!bloqueado() && !showForm()) {
-                  <button
-                    type="button"
-                    (click)="showForm.set(true)"
-                    class="btn-primary h-8"
-                  >
-                    <lucide-angular [img]="PlusIcon" class="size-4" /> Nuevo participante
-                  </button>
-                }
-              </div>
-              <div class="overflow-auto max-h-[40vh]">
-                <table class="w-full text-sm">
-                  <thead class="bg-secondary/60 sticky top-0 z-10">
-                    <tr class="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
-                      <th class="px-3 py-2 text-left">DNI</th>
-                      <th class="px-3 py-2 text-left">Apellidos y Nombres</th>
-                      <th class="px-3 py-2 text-left">Tipo</th>
-                      <th class="px-3 py-2 text-left">Actividad</th>
-                      @if (!bloqueado()) {
-                        <th class="px-3 py-2 text-center w-16">—</th>
+      <mat-stepper
+        [linear]="true"
+        [selectedIndex]="paso() - 1"
+        (selectionChange)="onCambioPaso($event)"
+      >
+        <!-- ============ Paso 1 ============ -->
+        <mat-step label="Datos del Evento" [completed]="!!createdId()">
+          <div class="contenido-paso">
+            @if (cursoActivo()?.estado === 'Observado' && observaciones().length > 0) {
+              <mat-card appearance="outlined" class="observaciones">
+                <header>
+                  <mat-icon fontSet="material-symbols-outlined">warning</mat-icon>
+                  Observaciones pendientes de subsanación
+                </header>
+                <ul>
+                  @for (o of observaciones(); track $index) {
+                    <li>
+                      <span class="fecha">{{ o.fecha }}</span>
+                      {{ o.descripcion }}
+                      @if (o.autor) {
+                        <span class="autor">— {{ o.autor }}</span>
                       }
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-border">
-                    @if (participantes().length === 0) {
-                      <tr>
-                        <td colspan="5" class="px-6 py-10 text-center italic text-muted-foreground">
+                    </li>
+                  }
+                </ul>
+              </mat-card>
+            }
+
+            <mat-card appearance="outlined" class="tarjeta-paso">
+              <header class="cabecera-paso">
+                <div>
+                  <p class="antetitulo">Paso 1 · Datos del evento</p>
+                  <h1>{{ tituloPaso1() }}</h1>
+                  <p class="area">Área: <strong>{{ area().code }}</strong> — {{ area().name }}</p>
+                </div>
+                @if (!bloqueado() && !isEdit()) {
+                  <button matButton="outlined" type="button" (click)="cursoForm()?.simular()">
+                    Autocompletar
+                  </button>
+                }
+              </header>
+
+              <div class="cuerpo-paso">
+                <app-curso-form
+                  [tipo]="tipo()"
+                  [initial]="initialPaso1()"
+                  [readOnly]="bloqueado()"
+                  saveLabel="Guardar y continuar"
+                  cancelLabel="Cancelar"
+                  (saved)="handleSavePaso1($event)"
+                  (cancelled)="volverABandeja()"
+                />
+              </div>
+            </mat-card>
+          </div>
+        </mat-step>
+
+        <!-- ============ Paso 2 ============ -->
+        <mat-step label="Registro de Participantes" [completed]="participantes().length > 0">
+          <ng-template matStepContent>
+            @if (cursoActivo(); as curso) {
+              <div class="contenido-paso">
+                @if (!bloqueado() && showForm()) {
+                  <mat-card appearance="outlined" class="tarjeta-paso">
+                    <header class="cabecera-paso">
+                      <div>
+                        <p class="antetitulo">Paso 2 · Registro de participantes</p>
+                        <h2>Nuevo participante</h2>
+                        <p class="area">
+                          Curso: <span class="codigo">{{ curso.codigo }}</span> — {{ curso.nombreTema }}
+                        </p>
+                      </div>
+                      <div class="acciones-cabecera">
+                        <button matButton="outlined" type="button" (click)="participanteForm()?.simular()">
+                          Autocompletar
+                        </button>
+                        <button
+                          matIconButton
+                          type="button"
+                          aria-label="Cerrar formulario"
+                          (click)="showForm.set(false)"
+                        >
+                          <mat-icon fontSet="material-symbols-outlined">close</mat-icon>
+                        </button>
+                      </div>
+                    </header>
+
+                    <app-participante-form
+                      mode="nuevo"
+                      [otrosExistentes]="participantes()"
+                      submitLabel="Agregar participante"
+                      cancelLabel="Cancelar"
+                      [resetOnSubmit]="true"
+                      (submitted)="agregarParticipante($event)"
+                      (cancelled)="showForm.set(false)"
+                    >
+                      <!-- Declaración jurada del Paso 2: cierra "4. Información
+                           adicional", justo antes del botón "Agregar participante". -->
+                      <div class="declaracion">
+                        <mat-checkbox
+                          [checked]="declaracionJurada()"
+                          (change)="declaracionJurada.set($event.checked)"
+                        >
+                          Declaro bajo juramento que la información proporcionada es correcta. *
+                        </mat-checkbox>
+                      </div>
+                    </app-participante-form>
+                  </mat-card>
+                }
+
+                <mat-card appearance="outlined" class="tarjeta-paso">
+                  <header class="cabecera-lista">
+                    <div>
+                      <h2>Participantes registrados</h2>
+                      <p class="area">Total: {{ participantes().length }}</p>
+                    </div>
+                    @if (!bloqueado() && !showForm()) {
+                      <button matButton="filled" type="button" (click)="showForm.set(true)">
+                        <mat-icon fontSet="material-symbols-outlined">add</mat-icon>
+                        Nuevo participante
+                      </button>
+                    }
+                  </header>
+
+                  <div class="tabla-contenedor">
+                    <table mat-table [dataSource]="participantes()">
+                      <ng-container matColumnDef="dni">
+                        <th mat-header-cell *matHeaderCellDef>DNI</th>
+                        <td mat-cell *matCellDef="let p" class="numerico">{{ p.dni }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="nombre">
+                        <th mat-header-cell *matHeaderCellDef>Apellidos y Nombres</th>
+                        <td mat-cell *matCellDef="let p" class="destacado">{{ p.apellidos }}, {{ p.nombres }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="tipo">
+                        <th mat-header-cell *matHeaderCellDef>Tipo</th>
+                        <td mat-cell *matCellDef="let p">
+                          <mat-chip
+                            disableRipple
+                            [class]="p.tipoParticipante === 'PRODUCTOR' ? 'c-aprobado' : 'c-registrado'"
+                          >{{ p.tipoParticipante }}</mat-chip>
+                        </td>
+                      </ng-container>
+                      <ng-container matColumnDef="actividad">
+                        <th mat-header-cell *matHeaderCellDef>Actividad</th>
+                        <td mat-cell *matCellDef="let p" class="tenue">{{ p.primActividad }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="acciones">
+                        <th mat-header-cell *matHeaderCellDef></th>
+                        <td mat-cell *matCellDef="let p">
+                          @if (!bloqueado()) {
+                            <button
+                              matIconButton
+                              class="accion a-error"
+                              type="button"
+                              matTooltip="Eliminar participante"
+                              aria-label="Eliminar participante"
+                              (click)="eliminarParticipante(p.id)"
+                            >
+                              <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>
+                            </button>
+                          }
+                        </td>
+                      </ng-container>
+
+                      <tr mat-header-row *matHeaderRowDef="columnas; sticky: true"></tr>
+                      <tr mat-row *matRowDef="let p; columns: columnas"></tr>
+                      <tr class="fila-vacia" *matNoDataRow>
+                        <td [attr.colspan]="columnas.length">
                           {{ bloqueado()
                             ? 'No hay participantes registrados.'
                             : 'Aún no hay participantes. Haz clic en "Nuevo participante" para agregar.' }}
                         </td>
                       </tr>
-                    }
-                    @for (p of participantes(); track p.id) {
-                      <tr class="hover:bg-secondary/40">
-                        <td class="px-3 py-2 font-mono text-xs">{{ p.dni }}</td>
-                        <td class="px-3 py-2 font-medium">{{ p.apellidos }}, {{ p.nombres }}</td>
-                        <td class="px-3 py-2">
-                          <span class="text-[10px] px-1.5 py-0.5 font-bold uppercase rounded-sm bg-muted text-foreground">
-                            {{ p.tipoParticipante }}
-                          </span>
-                        </td>
-                        <td class="px-3 py-2 text-muted-foreground">{{ p.primActividad }}</td>
-                        @if (!bloqueado()) {
-                          <td class="px-3 py-2">
-                            <div class="flex justify-center">
-                              <button
-                                (click)="eliminarParticipante(p.id)"
-                                class="p-1.5 rounded-md text-destructive hover:bg-destructive/10"
-                                aria-label="Eliminar participante"
-                              >
-                                <lucide-angular [img]="Trash2Icon" class="size-4" />
-                              </button>
-                            </div>
-                          </td>
-                        }
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-
-              <!-- La declaración jurada vive en el formulario de participante
-                   (tras "4. Información adicional"); si el formulario está
-                   cerrado, el modal de "Continuar al Paso 3" la solicita. -->
-              <div class="px-5 py-3 border-t border-border bg-secondary/30 flex items-center justify-between gap-2">
-                <button
-                  (click)="paso.set(1)"
-                  class="btn-secondary h-8"
-                >
-                  <lucide-angular [img]="ArrowLeftIcon" class="size-4" /> Volver al Paso 1
-                </button>
-                <button
-                  (click)="continuarAPaso3()"
-                  [disabled]="participantes().length === 0 && !bloqueado()"
-                  class="btn-primary h-8"
-                >
-                  Continuar al Paso 3 <lucide-angular [img]="ChevronRightIcon" class="size-4" />
-                </button>
-              </div>
-          </div>
-        </div>
-      }
-
-      <!-- ============ Paso 3 ============ -->
-      @if (paso() === 3 && cursoActivo(); as curso) {
-        <div class="bg-card rounded-xl ring-1 ring-border overflow-hidden">
-          <div class="px-6 py-4 border-b border-border bg-gradient-to-br from-brand/5 to-transparent">
-            <div class="text-[10px] font-bold uppercase tracking-widest text-brand">
-              Paso 3 · Sustento y envío
-            </div>
-            <h2 class="text-lg font-semibold mt-0.5">Cargar acta firmada y enviar</h2>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-            <div class="space-y-4">
-              <div class="bg-secondary/40 ring-1 ring-border rounded-lg p-4">
-                <p class="text-[10px] font-bold text-brand uppercase tracking-wider mb-1">Actividad</p>
-                <h3 class="text-base font-bold leading-tight">{{ curso.nombreTema }}</h3>
-                <div class="flex justify-between text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
-                  <span>{{ curso.tipo === 'capacitacion' ? 'Capacitación' : 'Asistencia Técnica' }}</span>
-                  <span>Fecha: {{ curso.fecha }}</span>
-                </div>
-              </div>
-
-              <div>
-                <div class="flex items-center justify-between mb-2">
-                  <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                    Participantes registrados
-                  </p>
-                  <span class="text-[11px] font-bold bg-brand-soft text-brand px-2 py-0.5 rounded-full">
-                    {{ participantes().length }} {{ participantes().length === 1 ? 'persona' : 'personas' }}
-                  </span>
-                </div>
-                <ul class="ring-1 ring-border rounded-lg divide-y divide-border bg-card max-h-64 overflow-auto">
-                  @for (p of participantes(); track p.id; let i = $index) {
-                    <li class="flex items-center gap-3 p-3">
-                      <span class="text-xs font-mono text-muted-foreground w-4 text-right">{{ i + 1 }}</span>
-                      <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold truncate">{{ p.nombres }} {{ p.apellidos }}</p>
-                        <p class="text-[11px] text-muted-foreground font-mono truncate">
-                          {{ p.dni }} <span class="font-sans">| {{ p.primActividad }}</span>
-                        </p>
-                      </div>
-                    </li>
-                  }
-                  @if (participantes().length === 0) {
-                    <li class="px-4 py-6 text-xs text-center italic text-muted-foreground">
-                      No hay participantes. Vuelve al Paso 2.
-                    </li>
-                  }
-                </ul>
-              </div>
-            </div>
-
-            <div class="space-y-4">
-              <div>
-                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                  Documento de Sustento *
-                </p>
-                <p class="text-xs text-muted-foreground">Sube un único archivo PDF (máx. {{ maxMb }} MB).</p>
-              </div>
-
-              @if (!file() && !existingName()) {
-                <button
-                  type="button"
-                  [disabled]="bloqueado()"
-                  (click)="fileInput.click()"
-                  (dragover)="$event.preventDefault(); drag.set(true)"
-                  (dragleave)="drag.set(false)"
-                  (drop)="onDrop($event)"
-                  class="w-full flex flex-col items-center justify-center gap-2 py-10 px-4 rounded-lg border-2 border-dashed transition-colors"
-                  [class]="(drag() ? 'border-brand bg-brand-soft/40' : 'border-border bg-secondary/40 hover:border-brand hover:bg-brand-soft/20') + (bloqueado() ? ' opacity-50 cursor-not-allowed' : '')"
-                >
-                  <div class="size-12 rounded-full bg-brand-soft text-brand flex items-center justify-center">
-                    <lucide-angular [img]="UploadCloudIcon" class="size-6" />
+                    </table>
                   </div>
-                  <p class="text-sm font-semibold">Arrastra tu PDF aquí o haz clic para buscar</p>
-                  <p class="text-[11px] text-muted-foreground">Solo PDF de hasta {{ maxMb }} MB</p>
-                </button>
-              } @else {
-                <div class="flex items-center gap-3 p-3 bg-success-soft ring-1 ring-success/25 rounded-lg">
-                  <div class="size-9 rounded-md bg-card flex items-center justify-center text-success">
-                    <lucide-angular [img]="FileTextIcon" class="size-5" />
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm font-semibold truncate">{{ file()?.name ?? existingName() }}</p>
-                    <p class="text-[11px] text-success">
-                      {{ file() ? 'Listo para enviar' : 'Archivo previamente cargado' }}
-                    </p>
-                  </div>
-                  @if (!bloqueado()) {
-                    <button
-                      (click)="fileInput.click()"
-                      class="p-2 rounded-md text-muted-foreground hover:bg-card text-[11px] font-semibold"
-                    >Reemplazar</button>
-                    <button
-                      (click)="file.set(null); existingName.set(undefined)"
-                      class="p-2 rounded-md text-muted-foreground hover:bg-card"
-                      aria-label="Quitar archivo"
-                    >
-                      <lucide-angular [img]="Trash2Icon" class="size-4" />
+
+                  <!-- La declaración jurada vive en el formulario de participante
+                       (tras "4. Información adicional"); si el formulario está
+                       cerrado, el diálogo de "Continuar al Paso 3" la solicita. -->
+                  <footer class="pie-paso">
+                    <button matButton type="button" (click)="irAPaso(1)">
+                      <mat-icon fontSet="material-symbols-outlined">arrow_back</mat-icon>
+                      Volver al Paso 1
                     </button>
-                  }
-                </div>
-              }
+                    <button
+                      matButton="filled"
+                      type="button"
+                      [disabled]="participantes().length === 0 && !bloqueado()"
+                      (click)="continuarAPaso3()"
+                    >
+                      Continuar al Paso 3
+                      <mat-icon fontSet="material-symbols-outlined" iconPositionEnd>chevron_right</mat-icon>
+                    </button>
+                  </footer>
+                </mat-card>
+              </div>
+            }
+          </ng-template>
+        </mat-step>
 
-              <input #fileInput type="file" accept="application/pdf" class="hidden" (change)="onFileInput($event)" />
+        <!-- ============ Paso 3 ============ -->
+        <mat-step label="Sustento y Envío">
+          <ng-template matStepContent>
+            @if (cursoActivo(); as curso) {
+              <div class="contenido-paso">
+                <mat-card appearance="outlined" class="tarjeta-paso">
+                  <header class="cabecera-paso">
+                    <div>
+                      <p class="antetitulo">Paso 3 · Sustento y envío</p>
+                      <h2>Cargar acta firmada y enviar</h2>
+                    </div>
+                  </header>
 
-              @if (fileError()) {
-                <p class="text-xs text-destructive font-medium">{{ fileError() }}</p>
-              }
+                  <div class="columnas">
+                    <app-resumen-actividad
+                      [curso]="curso"
+                      [participantes]="participantes()"
+                      mensajeVacio="No hay participantes. Vuelve al Paso 2."
+                    />
 
-              <label
-                class="flex items-start gap-3 p-3 ring-1 rounded-lg"
-                [class]="bloqueado() ? 'opacity-60' : 'bg-warning-soft ring-warning/30 cursor-pointer'"
-              >
-                <input
-                  type="checkbox"
-                  [disabled]="bloqueado()"
-                  [checked]="declaro()"
-                  (change)="declaro.set($any($event.target).checked)"
-                  class="mt-0.5 size-4 accent-brand"
-                />
-                <span class="text-xs text-warning-foreground leading-relaxed">
-                  Declaro bajo juramento la veracidad de la información adjunta como sustento de la actividad realizada.
-                </span>
-              </label>
-            </div>
-          </div>
+                    <div class="bloque">
+                      <div>
+                        <p class="antetitulo tenue">Documento de Sustento *</p>
+                        <p class="nota">Sube un único archivo PDF (máx. {{ maxMb }} MB).</p>
+                      </div>
 
-          <div class="px-6 py-4 border-t border-border bg-secondary/30 flex items-center justify-between gap-2">
-            <button
-              (click)="paso.set(2)"
-              class="btn-secondary h-8"
-            >
-              <lucide-angular [img]="ArrowLeftIcon" class="size-4" /> Volver al Paso 2
-            </button>
-            <button
-              (click)="enviar()"
-              [disabled]="!puedeEnviar()"
-              class="btn-primary h-8"
-            >
-              <lucide-angular [img]="SendIcon" class="size-4" /> Enviar
-            </button>
-          </div>
-        </div>
-      }
-    <!-- Declaración jurada pendiente: modal estandarizado del sistema -->
-      @if (modalDeclaracion()) {
-        <app-modal
-          title="Declaración jurada pendiente"
-          maxWidth="max-w-md"
-          tipo="warning"
-          mensaje="Para continuar al siguiente paso debe aceptar la declaración jurada del registro."
-          [mostrarAcciones]="true"
-          labelAceptar="Continuar"
-          [aceptarDeshabilitado]="!declaracionJurada()"
-          (aceptado)="confirmarDeclaracion()"
-          (cancelado)="modalDeclaracion.set(false)"
-          (closed)="modalDeclaracion.set(false)"
-        >
-          <label class="flex items-start gap-3 bg-secondary/60 rounded-xl ring-1 ring-border p-4 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              class="accent-brand size-4 mt-0.5 shrink-0"
-              [checked]="declaracionJurada()"
-              (change)="declaracionJurada.set($any($event.target).checked)"
-            />
-            <span class="text-sm text-foreground leading-relaxed text-left">
-              Declaro bajo juramento que la información proporcionada es correcta.
-            </span>
-          </label>
-        </app-modal>
-      }
+                      <app-carga-pdf
+                        [(archivo)]="file"
+                        [nombreExistente]="existingName()"
+                        [deshabilitado]="bloqueado()"
+                        [maxMb]="maxMb"
+                        (quitado)="existingName.set(undefined)"
+                      />
 
+                      <div class="declaracion-envio" [class.inactiva]="bloqueado()">
+                        <mat-checkbox
+                          [checked]="declaro()"
+                          [disabled]="bloqueado()"
+                          (change)="declaro.set($event.checked)"
+                        >
+                          Declaro bajo juramento la veracidad de la información adjunta como sustento
+                          de la actividad realizada.
+                        </mat-checkbox>
+                      </div>
+                    </div>
+                  </div>
+
+                  <footer class="pie-paso">
+                    <button matButton type="button" (click)="irAPaso(2)">
+                      <mat-icon fontSet="material-symbols-outlined">arrow_back</mat-icon>
+                      Volver al Paso 2
+                    </button>
+                    <button matButton="filled" type="button" [disabled]="!puedeEnviar()" (click)="enviar()">
+                      <mat-icon fontSet="material-symbols-outlined">send</mat-icon>
+                      Enviar
+                    </button>
+                  </footer>
+                </mat-card>
+              </div>
+            }
+          </ng-template>
+        </mat-step>
+      </mat-stepper>
     </section>
+  `,
+  styles: `
+    .pagina {
+      padding: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    @media (min-width: 1024px) { .pagina { padding: 32px; } }
+
+    .miga {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .miga a {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: inherit;
+      text-decoration: none;
+    }
+    .miga a:hover { color: var(--mat-sys-primary); }
+    .miga mat-icon { font-size: 14px; width: 14px; height: 14px; }
+    .miga .actual { color: var(--mat-sys-on-surface); }
+    .codigo { font-family: monospace; color: var(--mat-sys-on-surface); }
+
+    .aviso-bloqueo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      border-radius: var(--mat-sys-corner-medium);
+      background: var(--estado-subsanado-fondo);
+      color: var(--estado-subsanado);
+      font: var(--mat-sys-body-small);
+    }
+    .aviso-bloqueo mat-icon { font-size: 18px; width: 18px; height: 18px; }
+
+    mat-stepper { background: transparent; }
+    .contenido-paso { display: flex; flex-direction: column; gap: 16px; }
+    .tarjeta-paso { padding: 0; overflow: hidden; }
+
+    .cabecera-paso, .cabecera-lista {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+    }
+    .cabecera-lista { align-items: center; }
+    .antetitulo {
+      margin: 0;
+      font: var(--mat-sys-label-small);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--mat-sys-primary);
+    }
+    .antetitulo.tenue { color: var(--mat-sys-on-surface-variant); }
+    .cabecera-paso h1, .cabecera-paso h2, .cabecera-lista h2 {
+      margin: 2px 0 0;
+      font: var(--mat-sys-title-medium);
+    }
+    .cabecera-lista h2 {
+      font: var(--mat-sys-label-large);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .area {
+      margin: 2px 0 0;
+      font: var(--mat-sys-body-small);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .acciones-cabecera { display: flex; align-items: center; gap: 8px; }
+    .cuerpo-paso { padding: 24px; background: var(--mat-sys-surface-container-low); }
+
+    .observaciones {
+      padding: 16px;
+      background: var(--estado-observado-fondo);
+      border-color: color-mix(in srgb, var(--estado-observado) 30%, transparent);
+    }
+    .observaciones header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font: var(--mat-sys-label-large);
+      color: var(--estado-observado);
+    }
+    .observaciones ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .observaciones li {
+      padding: 8px 12px;
+      border-radius: var(--mat-sys-corner-small);
+      background: var(--mat-sys-surface);
+      font: var(--mat-sys-body-small);
+    }
+    .observaciones .fecha { font-family: monospace; font-weight: 700; margin-right: 8px; }
+    .observaciones .autor { color: var(--mat-sys-on-surface-variant); }
+
+    .declaracion {
+      padding-top: 8px;
+      border-top: 1px solid var(--mat-sys-outline-variant);
+    }
+
+    .tabla-contenedor { overflow: auto; max-height: 40vh; }
+    table { width: 100%; }
+    .numerico { font-variant-numeric: tabular-nums; }
+    .destacado { font-weight: 600; }
+    .tenue { color: var(--mat-sys-on-surface-variant); }
+    .fila-vacia td {
+      padding: 32px 24px;
+      text-align: center;
+      font: var(--mat-sys-body-small);
+      font-style: italic;
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    .pie-paso {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 16px 24px;
+      border-top: 1px solid var(--mat-sys-outline-variant);
+      background: var(--mat-sys-surface-container-low);
+    }
+
+    .columnas { display: grid; grid-template-columns: 1fr; gap: 24px; padding: 24px; }
+    @media (min-width: 768px) { .columnas { grid-template-columns: 1fr 1fr; } }
+    .bloque { display: flex; flex-direction: column; gap: 16px; }
+    .nota { margin: 0; font: var(--mat-sys-body-small); color: var(--mat-sys-on-surface-variant); }
+
+    .declaracion-envio {
+      padding: 12px;
+      border-radius: var(--mat-sys-corner-medium);
+      background: var(--estado-subsanado-fondo);
+      color: var(--estado-subsanado);
+    }
+    .declaracion-envio.inactiva { opacity: 0.6; background: var(--mat-sys-surface-container-low); }
   `,
 })
 export class StepperComponent implements OnInit {
@@ -490,26 +503,12 @@ export class StepperComponent implements OnInit {
   private readonly cursosService = inject(CursosService);
   private readonly participantesService = inject(ParticipantesService);
   private readonly toast = inject(ToastService);
+  private readonly dialog = inject(MatDialog);
 
-  readonly ArrowLeftIcon = ArrowLeft;
-  readonly CheckIcon = Check;
-  readonly ChevronRightIcon = ChevronRight;
-  readonly AlertTriangleIcon = AlertTriangle;
-  readonly Trash2Icon = Trash2;
-  readonly UploadCloudIcon = UploadCloud;
-  readonly FileTextIcon = FileText;
-  readonly SendIcon = Send;
-  readonly LockIcon = Lock;
-  readonly PlusIcon = Plus;
-  readonly XIcon = X;
   readonly maxMb = MAX_MB;
+  readonly columnas = COLUMNAS;
 
-  readonly steps: { n: Paso; label: string }[] = [
-    { n: 1, label: 'Datos del Evento' },
-    { n: 2, label: 'Registro de Participantes' },
-    { n: 3, label: 'Sustento y Envío' },
-  ];
-
+  private readonly stepper = viewChild.required(MatStepper);
   readonly cursoForm = viewChild(CursoFormComponent);
   readonly participanteForm = viewChild(ParticipanteFormComponent);
 
@@ -519,16 +518,13 @@ export class StepperComponent implements OnInit {
   readonly paso = signal<Paso>(1);
   /** Declaración jurada del Paso 2 (se conserva al navegar entre pasos). */
   readonly declaracionJurada = signal(false);
-  readonly modalDeclaracion = signal(false);
   readonly createdId = signal<string | null>(null);
   readonly showForm = signal(false);
 
   // Paso 3
   readonly file = signal<File | null>(null);
   readonly existingName = signal<string | undefined>(undefined);
-  readonly drag = signal(false);
   readonly declaro = signal(false);
-  readonly fileError = signal<string | null>(null);
 
   readonly area = computed(() => getArea(this.areaService.currentArea()));
 
@@ -599,24 +595,36 @@ export class StepperComponent implements OnInit {
     this.existingName.set(this.cursoActivo()?.fotoSustento);
   }
 
-  clickable(n: Paso): boolean {
-    return Boolean(this.createdId()) && n <= this.paso();
+  /** El encabezado del stepper es la única fuente de la navegación manual. */
+  onCambioPaso(e: StepperSelectionEvent): void {
+    this.paso.set((e.selectedIndex + 1) as Paso);
   }
 
-  /** Paso 2 → Paso 3: exige la declaración jurada (modal estandarizado). */
+  /**
+   * Movimiento programático (botones "Volver a…" y guardado del Paso 1). Se
+   * aplaza un tick porque el stepper es lineal y evalúa `completed` del paso
+   * anterior en el momento del salto: la marca llega con la detección de
+   * cambios que sigue al guardado.
+   */
+  irAPaso(n: Paso): void {
+    setTimeout(() => (this.stepper().selectedIndex = n - 1));
+  }
+
+  /** Paso 2 → Paso 3: exige la declaración jurada (diálogo estandarizado). */
   continuarAPaso3(): void {
     if (!this.bloqueado() && !this.declaracionJurada()) {
-      this.modalDeclaracion.set(true);
+      const ref = this.dialog.open<DeclaracionDialogComponent, undefined, boolean>(
+        DeclaracionDialogComponent,
+        { width: '480px', maxWidth: '95vw', autoFocus: 'dialog', restoreFocus: true },
+      );
+      ref.afterClosed().subscribe((aceptada) => {
+        if (!aceptada) return;
+        this.declaracionJurada.set(true);
+        this.irAPaso(3);
+      });
       return;
     }
-    this.paso.set(3);
-  }
-
-  /** Continúa automáticamente tras aceptar la declaración dentro del modal. */
-  confirmarDeclaracion(): void {
-    if (!this.declaracionJurada()) return;
-    this.modalDeclaracion.set(false);
-    this.paso.set(3);
+    this.irAPaso(3);
   }
 
   volverABandeja(): void {
@@ -639,7 +647,7 @@ export class StepperComponent implements OnInit {
         detalle: data,
       });
       this.toast.success('Datos del evento actualizados');
-      this.paso.set(2);
+      this.irAPaso(2);
       return;
     }
     const fecha = isoToFechaCorta(data.fecha);
@@ -662,7 +670,7 @@ export class StepperComponent implements OnInit {
     });
     this.createdId.set(nuevo.id);
     this.toast.success('Borrador guardado · puedes continuar con los participantes');
-    this.paso.set(2);
+    this.irAPaso(2);
   }
 
   /* ===== Paso 2 ===== */
@@ -687,31 +695,6 @@ export class StepperComponent implements OnInit {
   }
 
   /* ===== Paso 3 ===== */
-  onFileInput(e: Event): void {
-    this.pickFile((e.target as HTMLInputElement).files?.[0] ?? null);
-  }
-
-  onDrop(e: DragEvent): void {
-    e.preventDefault();
-    this.drag.set(false);
-    if (!this.bloqueado()) this.pickFile(e.dataTransfer?.files?.[0] ?? null);
-  }
-
-  private pickFile(f: File | null): void {
-    this.fileError.set(null);
-    if (!f) return;
-    if (f.type !== 'application/pdf') {
-      this.fileError.set('El archivo debe ser PDF.');
-      return;
-    }
-    if (f.size > MAX_MB * 1024 * 1024) {
-      this.fileError.set(`El archivo supera el límite de ${MAX_MB} MB.`);
-      return;
-    }
-    this.file.set(f);
-    this.existingName.set(undefined);
-  }
-
   enviar(): void {
     const curso = this.cursoActivo();
     if (!curso) return;

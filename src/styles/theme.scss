@@ -80,6 +80,13 @@ body {
    La familia se fuerza porque algunos contenedores de Material (por ejemplo
    `.mat-mdc-list-item-meta`) imponen la tipografía del componente sobre el
    icono y la ligadura se vería como texto. */
+/* Los iconos que Material dibuja por su cuenta (el check del stepper, por
+   ejemplo) piden la familia "Material Icons", que no se carga: se resuelven
+   también con Symbols, donde las ligaduras tienen el mismo nombre. */
+mat-icon:not(.material-symbols-outlined) {
+  font-family: 'Material Symbols Outlined';
+}
+
 mat-icon.material-symbols-outlined,
 .material-symbols-outlined {
   font-family: 'Material Symbols Outlined' !important;
