@@ -47,7 +47,7 @@ elige su Unidad Responsable al ingresar).
 - **Lazy Loading** por pantalla (`loadComponent`) — verificado en el build (un chunk por vista).
 - **Guards**: `authGuard` (sesión) y `roleGuard` (matriz de acceso por rol con fallback).
 - **Interceptors**: `authInterceptor` (Bearer token, placeholder) y `errorInterceptor` (401 → logout, resto → toast).
-- **Design system MIDAGRI** migrado 1:1: Tailwind CSS 4 + tokens `oklch` (light/dark), tipografía DM Sans / IBM Plex Mono.
+- **Design system MIDAGRI** sobre Angular Material 3: `mat.theme()` emite los tokens `--mat-sys-*` en `src/styles/theme.scss`, con dos temas conmutables y tipografía DM Sans / IBM Plex Mono.
 - `ChangeDetectionStrategy.OnPush` en todos los componentes.
 
 ### Estructura de carpetas
@@ -68,13 +68,12 @@ docs/              01-analisis.md · 02-arquitectura.md
 | Paquete | Uso |
 |---|---|
 | `@angular/*` ^22 | Framework (router, forms, http) |
-| `tailwindcss` + `@tailwindcss/postcss` ^4 | Estilos y tokens del design system |
-| `tw-animate-css` | Animaciones utilitarias (fade/slide de la UI original) |
-| `lucide-angular` | Iconografía (misma familia que el original) |
+| `@angular/material` + `@angular/cdk` ^22 | Componentes y sistema de diseño (tokens `--mat-sys-*`) |
 | `rxjs` ~7.8 | Observables (forms, interceptors, contratos de servicios) |
 
-> Nota: `.npmrc` fija `legacy-peer-deps=true` porque `lucide-angular` declara peers
-> hasta Angular 21; es compatible en runtime con Angular 22 (verificado).
+La iconografía son **Material Symbols**, cargados por hoja de estilo en `index.html`.
+`src/styles.css` ya no trae utilidades: solo normaliza la base sobre la que Material
+pinta (Material no incluye un reset propio).
 
 ## 4. Instalación y ejecución
 

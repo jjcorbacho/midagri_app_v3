@@ -1,538 +1,141 @@
-@import "tailwindcss" source(none);
-@source "../src";
-@import "tw-animate-css";
-
 /* ============================================================
-   MIDAGRI Design System — tokens (solo Light Theme)
+   Normalización base de la aplicación
    ------------------------------------------------------------
-   Ver docs/02-arquitectura.md.
+   Angular Material no trae un reset: da por hecho que la página
+   parte de una base normalizada. Hasta la migración eso lo aportaba
+   el preflight de Tailwind; al retirarlo se conservan aquí las mismas
+   reglas, que es contra las que están escritos todos los componentes.
+
+   El sistema de diseño vive en `src/styles/theme.scss` (tokens
+   `--mat-sys-*`, tipografía, superficie y convenciones de grilla).
+   Este archivo no define colores propios ni utilidades: solo
+   normaliza el punto de partida.
    ============================================================ */
 
-@theme inline {
-  /* Radios */
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-
-  /* Color tokens */
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-
-  /* Marca y superficies */
-  --color-brand: var(--brand);
-  --color-brand-foreground: var(--brand-foreground);
-  --color-brand-soft: var(--brand-soft);
-  --color-brand-secondary: var(--brand-secondary);
-  --color-brand-accent: var(--brand-accent);
-  --color-brand-accent-soft: var(--brand-accent-soft);
-  --color-surface-1: var(--surface-1);
-  --color-surface-2: var(--surface-2);
-  --color-surface-3: var(--surface-3);
-
-  /* Sidebar */
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-muted: var(--sidebar-muted);
-  --color-sidebar-active: var(--sidebar-active);
-
-  /* Semánticos de feedback */
-  --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
-  --color-success-soft: var(--success-soft);
-  --color-warning: var(--warning);
-  --color-warning-foreground: var(--warning-foreground);
-  --color-warning-soft: var(--warning-soft);
-  --color-info: var(--info);
-  --color-info-foreground: var(--info-foreground);
-  --color-info-soft: var(--info-soft);
-
-  /* Estados de negocio */
-  --color-state-registrado: var(--state-registrado);
-  --color-state-registrado-foreground: var(--state-registrado-foreground);
-  --color-state-registrado-soft: var(--state-registrado-soft);
-  --color-state-enviado: var(--state-enviado);
-  --color-state-enviado-foreground: var(--state-enviado-foreground);
-  --color-state-enviado-soft: var(--state-enviado-soft);
-  --color-state-subsanado: var(--state-subsanado);
-  --color-state-subsanado-foreground: var(--state-subsanado-foreground);
-  --color-state-subsanado-soft: var(--state-subsanado-soft);
-  --color-state-validado: var(--state-validado);
-  --color-state-validado-foreground: var(--state-validado-foreground);
-  --color-state-validado-soft: var(--state-validado-soft);
-  --color-state-observado: var(--state-observado);
-  --color-state-observado-foreground: var(--state-observado-foreground);
-  --color-state-observado-soft: var(--state-observado-soft);
-  --color-state-aprobado: var(--state-aprobado);
-  --color-state-aprobado-foreground: var(--state-aprobado-foreground);
-  --color-state-aprobado-soft: var(--state-aprobado-soft);
-
-  /* Tipografía */
-  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-
-  /* Sombras (discretas, app-grade) */
-  --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.04);
-  --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 1px -1px rgb(15 23 42 / 0.04);
-  --shadow-md: 0 4px 8px -2px rgb(15 23 42 / 0.06), 0 2px 4px -2px rgb(15 23 42 / 0.04);
-  --shadow-lg: 0 12px 24px -8px rgb(15 23 42 / 0.10), 0 4px 8px -4px rgb(15 23 42 / 0.06);
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  /* Sin ancho por defecto: cada componente declara el borde que necesita
+     (así `border-top: 1px solid X` no hereda el borde del agente de usuario). */
+  border: 0 solid;
 }
 
-:root {
-  /* Radios base */
-  --radius: 0.625rem; /* 10px */
-
-  /* Superficies */
-  --background: oklch(0.985 0.002 240);
-  --foreground: oklch(0.18 0.02 240);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 240);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 240);
-  --surface-1: oklch(1 0 0);
-  --surface-2: oklch(0.975 0.003 240);
-  --surface-3: oklch(0.955 0.004 240);
-
-  /* Acción principal */
-  --primary: oklch(0.52 0.07 215);            /* #327490 teal MIDAGRI */
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0.005 240);
-  --secondary-foreground: oklch(0.22 0.02 240);
-  --muted: oklch(0.96 0.005 240);
-  --muted-foreground: oklch(0.48 0.01 240);
-  --accent: oklch(0.95 0.02 200);
-  --accent-foreground: oklch(0.22 0.02 240);
-  --destructive: oklch(0.58 0.21 27);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.92 0.005 240);
-  --input: oklch(0.92 0.005 240);
-  --ring: oklch(0.55 0.10 215);
-
-  /* Marca */
-  --brand: oklch(0.52 0.07 215);              /* #327490 */
-  --brand-secondary: oklch(0.68 0.07 200);    /* #4FA6B1 */
-  --brand-foreground: oklch(0.99 0 0);
-  --brand-soft: oklch(0.96 0.02 210);
-  --brand-accent: oklch(0.58 0.10 135);       /* verde oliva agrario */
-  --brand-accent-soft: oklch(0.96 0.04 135);
-
-  /* Sidebar */
-  --sidebar: oklch(0.20 0.015 240);
-  --sidebar-foreground: oklch(0.99 0 0);
-  --sidebar-muted: oklch(0.65 0.01 240);
-  --sidebar-active: oklch(0.52 0.07 215);
-
-  /* Semánticos de feedback */
-  --success: oklch(0.55 0.13 150);
-  --success-foreground: oklch(0.99 0 0);
-  --success-soft: oklch(0.96 0.05 150);
-  --warning: oklch(0.72 0.15 75);
-  --warning-foreground: oklch(0.32 0.10 75);
-  --warning-soft: oklch(0.97 0.06 90);
-  --info: oklch(0.55 0.14 245);
-  --info-foreground: oklch(0.99 0 0);
-  --info-soft: oklch(0.96 0.04 245);
-
-  /* Estados de negocio (color principal + soft para fondos) */
-  --state-registrado: oklch(0.62 0.01 240);
-  --state-registrado-foreground: oklch(0.32 0.01 240);
-  --state-registrado-soft: oklch(0.95 0.004 240);
-
-  --state-enviado: oklch(0.78 0.15 95);
-  --state-enviado-foreground: oklch(0.42 0.12 85);
-  --state-enviado-soft: oklch(0.96 0.09 100);
-
-  --state-subsanado: oklch(0.82 0.14 100);
-  --state-subsanado-foreground: oklch(0.45 0.11 90);
-  --state-subsanado-soft: oklch(0.97 0.07 105);
-
-  --state-validado: oklch(0.58 0.16 245);
-  --state-validado-foreground: oklch(0.38 0.14 245);
-  --state-validado-soft: oklch(0.96 0.04 245);
-
-  --state-observado: oklch(0.60 0.20 25);
-  --state-observado-foreground: oklch(0.42 0.17 25);
-  --state-observado-soft: oklch(0.96 0.05 25);
-
-  --state-aprobado: oklch(0.60 0.14 150);
-  --state-aprobado-foreground: oklch(0.36 0.11 150);
-  --state-aprobado-soft: oklch(0.96 0.05 150);
+html {
+  -webkit-text-size-adjust: 100%;
+  tab-size: 4;
 }
 
-/* ============================================================
-   Temas visuales conmutables — "Personalizar apariencia"
-   ------------------------------------------------------------
-   Cada tema redefine los tokens de :root bajo [data-theme] con la
-   regla 60-30-10: superficies neutras con matiz del tema (60 %),
-   secundario en sidebar/encabezados de sección (30 %) y acento en
-   CTAs/resaltes (10 %). Los tokens semánticos de feedback y de
-   estados de negocio se conservan idénticos en todos los temas
-   para no romper el significado de badges y alertas.
-   Contraste AA verificado: texto blanco sobre --primary y
-   --sidebar en todos los temas.
-   ============================================================ */
-
-/* Tema 2 — Innovación Rural
-   Paleta: #BEE9E8 #62B6CB #1B4965 #CAE9FF #5FA8D3 (agua, digitalización).
-   60 % celeste pálido en fondos · 30 % azul cielo en sidebar/secciones ·
-   10 % azul profundo #1B4965 como primario de acción (AA nativo). */
-:root[data-theme='innovacion-rural'] {
-  --background: oklch(0.982 0.008 230);
-  --surface-2: oklch(0.965 0.01 226);
-  --surface-3: oklch(0.945 0.014 226);
-  --secondary: oklch(0.955 0.012 226);
-  --muted: oklch(0.955 0.012 226);
-  --accent: oklch(0.94 0.025 220);
-  --border: oklch(0.905 0.016 225);
-  --input: oklch(0.905 0.016 225);
-  --primary: oklch(0.42 0.07 240);
-  --ring: oklch(0.5 0.09 235);
-  --brand: oklch(0.42 0.07 240);
-  --brand-secondary: oklch(0.7 0.08 215);
-  --brand-soft: oklch(0.945 0.025 230);
-  --brand-accent: oklch(0.6 0.09 235);
-  --brand-accent-soft: oklch(0.945 0.03 200);
-  --sidebar: oklch(0.3 0.045 240);
-  --sidebar-active: oklch(0.55 0.09 230);
-  /* Feedback armonizado: warning naranja tecnológico, éxito esmeralda, info cielo. */
-  --success: oklch(0.55 0.11 165);
-  --success-soft: oklch(0.96 0.04 165);
-  --warning: oklch(0.66 0.15 55);
-  --warning-foreground: oklch(0.34 0.11 55);
-  --warning-soft: oklch(0.96 0.045 60);
-  --info: oklch(0.55 0.12 235);
-  --info-soft: oklch(0.95 0.03 230);
-  --destructive: oklch(0.56 0.2 25);
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Tema 5 — Naturaleza Viva
-   Paleta: #22577A #38A3A5 #57CC99 #80ED99 #C7F9CC (agua y vida).
-   60 % menta pálida en fondos · 30 % teal #38A3A5 en sidebar/secciones ·
-   10 % azul #22577A como primario (AA) con verdes vivos en acentos. */
-:root[data-theme='naturaleza-viva'] {
-  --background: oklch(0.982 0.008 165);
-  --surface-2: oklch(0.965 0.012 165);
-  --surface-3: oklch(0.945 0.016 165);
-  --secondary: oklch(0.955 0.015 165);
-  --muted: oklch(0.955 0.015 165);
-  --accent: oklch(0.945 0.04 160);
-  --border: oklch(0.905 0.018 165);
-  --input: oklch(0.905 0.018 165);
-  --primary: oklch(0.44 0.07 235);
-  --ring: oklch(0.52 0.09 220);
-  --brand: oklch(0.44 0.07 235);
-  --brand-secondary: oklch(0.64 0.09 190);
-  --brand-soft: oklch(0.95 0.045 160);
-  --brand-accent: oklch(0.6 0.11 160);
-  --brand-accent-soft: oklch(0.94 0.07 150);
-  --sidebar: oklch(0.3 0.045 235);
-  --sidebar-active: oklch(0.58 0.1 180);
-  /* Feedback armonizado: warning amarillo natural, éxito verde vivo, info azul agua. */
-  --success: oklch(0.55 0.13 155);
-  --success-soft: oklch(0.955 0.05 155);
-  --warning: oklch(0.72 0.14 90);
-  --warning-foreground: oklch(0.35 0.1 90);
-  --warning-soft: oklch(0.965 0.06 95);
-  --info: oklch(0.55 0.11 220);
-  --info-soft: oklch(0.95 0.03 220);
-  --destructive: oklch(0.58 0.19 25);
+/* Márgenes por defecto: los componentes espacian con su propio layout. */
+blockquote,
+dd,
+dl,
+figure,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+hr,
+p,
+pre {
+  margin: 0;
 }
 
-/* ============================================================
-   Tipografía y densidad base
-   ============================================================ */
-@layer base {
-  * { border-color: var(--color-border); }
-  html, body { font-family: var(--font-sans); font-feature-settings: "cv11", "ss01"; }
-  body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
-    -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
-  }
-
-  /* Foco accesible global */
-  :where(button, [role="button"], a, input, select, textarea, [tabindex]):focus-visible {
-    outline: 2px solid var(--color-ring);
-    outline-offset: 2px;
-    border-radius: var(--radius-sm);
-  }
+/* La escala tipográfica sale de los tokens del tema, no del navegador. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-size: inherit;
+  font-weight: inherit;
 }
 
-/* ============================================================
-   Utilidades de tipografía (escala consistente)
-   ============================================================ */
-@utility text-display {
-  font-family: var(--font-display);
-  font-size: 2rem;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-  font-weight: 700;
-}
-@utility text-h1 {
-  font-size: 1.5rem;
-  line-height: 1.25;
-  letter-spacing: -0.015em;
-  font-weight: 700;
-}
-@utility text-h2 {
-  font-size: 1.25rem;
-  line-height: 1.3;
-  letter-spacing: -0.01em;
-  font-weight: 600;
-}
-@utility text-h3 {
-  font-size: 1.0625rem;
-  line-height: 1.35;
-  font-weight: 600;
-}
-@utility text-body {
-  font-size: 0.875rem;
-  line-height: 1.5;
-  font-weight: 400;
-}
-@utility text-small {
-  font-size: 0.8125rem;
-  line-height: 1.45;
-  font-weight: 400;
-}
-@utility text-caption {
-  font-size: 0.6875rem;
-  line-height: 1.4;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-weight: 600;
-  color: var(--color-muted-foreground);
+ol,
+ul,
+menu {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-/* Patrones reutilizables */
-@utility section-title {
-  font-size: 1.125rem;
-  line-height: 1.3;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--color-foreground);
-}
-@utility kpi-number {
-  font-family: var(--font-display);
-  font-size: 1.75rem;
-  line-height: 1;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-foreground);
-}
-@utility tabular {
-  font-variant-numeric: tabular-nums;
-}
-
-/* ============================================================
-   Transiciones y motion
-   ============================================================ */
-@layer base {
-  :root {
-    --motion-fast: 150ms;
-    --motion-base: 220ms;
-    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  }
-}
-
-/* ============================================================
-   Componentes del design system (clases reutilizables)
-   ------------------------------------------------------------
-   Jerarquía de botones, cards, tablas y estados vacíos.
-   Cada clase es autosuficiente: no requiere clases acompañantes.
-   ============================================================ */
-
-/* --- Botones ------------------------------------------------ */
-@utility btn-base {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  height: 2.25rem;
-  padding-inline: 1rem;
-  border-radius: var(--radius-md);
-  font-size: 0.875rem;
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-  user-select: none;
-  transition: background-color var(--motion-fast) var(--ease-out),
-    color var(--motion-fast) var(--ease-out),
-    border-color var(--motion-fast) var(--ease-out),
-    box-shadow var(--motion-fast) var(--ease-out),
-    transform var(--motion-fast) var(--ease-out);
-  &:active:not(:disabled) { transform: translateY(0.5px); }
-  &:disabled { opacity: 0.55; cursor: not-allowed; }
-}
-
-@utility btn-primary {
-  @apply btn-base;
-  background-color: var(--color-primary);
-  color: var(--color-primary-foreground);
-  box-shadow: var(--shadow-xs);
-  &:hover:not(:disabled) { background-color: color-mix(in oklch, var(--color-primary), black 8%); }
-}
-
-@utility btn-secondary {
-  @apply btn-base;
-  background-color: var(--color-card);
-  color: var(--color-foreground);
-  box-shadow: inset 0 0 0 1px var(--color-border), var(--shadow-xs);
-  &:hover:not(:disabled) { background-color: var(--color-secondary); }
-}
-
-@utility btn-ghost {
-  @apply btn-base;
-  background-color: transparent;
-  color: var(--color-muted-foreground);
-  &:hover:not(:disabled) { background-color: var(--color-secondary); color: var(--color-foreground); }
-}
-
-@utility btn-danger {
-  @apply btn-base;
-  background-color: var(--color-destructive);
-  color: var(--color-destructive-foreground);
-  box-shadow: var(--shadow-xs);
-  &:hover:not(:disabled) { background-color: color-mix(in oklch, var(--color-destructive), black 8%); }
-}
-
-@utility btn-danger-soft {
-  @apply btn-base;
-  background-color: transparent;
-  color: var(--color-destructive);
-  &:hover:not(:disabled) { background-color: color-mix(in oklch, var(--color-destructive), white 90%); }
-}
-
-@utility btn-success {
-  @apply btn-base;
-  background-color: var(--color-success);
-  color: var(--color-success-foreground);
-  box-shadow: var(--shadow-xs);
-  &:hover:not(:disabled) { background-color: color-mix(in oklch, var(--color-success), black 8%); }
-}
-
-/* Botón de icono cuadrado (acciones de tabla, toolbars) */
-@utility btn-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: var(--radius-md);
-  color: var(--color-muted-foreground);
-  cursor: pointer;
-  transition: background-color var(--motion-fast) var(--ease-out),
-    color var(--motion-fast) var(--ease-out);
-  &:hover:not(:disabled) { background-color: var(--color-secondary); color: var(--color-foreground); }
-  &:disabled { opacity: 0.45; cursor: not-allowed; }
-}
-
-/* --- Superficies -------------------------------------------- */
-@utility card-ds {
-  background-color: var(--color-card);
-  border-radius: var(--radius-xl);
-  box-shadow: inset 0 0 0 1px var(--color-border), var(--shadow-sm);
-}
-
-/* --- Tablas -------------------------------------------------- */
-@utility th-ds {
-  padding: 0.625rem 1rem;
-  text-align: left;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--color-muted-foreground);
-  white-space: nowrap;
-}
-
-@utility td-ds {
-  padding: 0.75rem 1rem;
-  font-size: 0.875rem;
+img,
+svg,
+video,
+canvas,
+audio,
+iframe,
+embed,
+object {
+  display: block;
   vertical-align: middle;
 }
 
-@utility tr-hover {
-  transition: background-color var(--motion-fast) var(--ease-out);
-  &:hover { background-color: var(--color-surface-2); }
+img,
+video {
+  max-width: 100%;
+  height: auto;
 }
 
-/* --- Estados vacíos ------------------------------------------ */
-@utility empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 3rem 1.5rem;
-  text-align: center;
-  color: var(--color-muted-foreground);
+/* Los controles heredan la tipografía en lugar de la del sistema operativo. */
+button,
+input,
+optgroup,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  margin: 0;
+  padding: 0;
+  background-color: transparent;
 }
 
-/* ============================================================
-   Animaciones de entrada
-   ============================================================ */
-/* Entrada de página solo con opacidad: cualquier transform (incluso durante
-   la animación) convertiría a la sección en containing block y descentraría
-   los modales y flotantes `fixed` que viven dentro de las vistas. */
-@keyframes ds-page-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-@keyframes ds-modal-in {
-  from { opacity: 0; transform: scale(0.97) translateY(4px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
-}
-@keyframes ds-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+button,
+[type='button'],
+[type='reset'],
+[type='submit'] {
+  appearance: button;
+  background-image: none;
+  cursor: pointer;
 }
 
-@utility animate-page-in {
-  animation: ds-page-in var(--motion-base) var(--ease-out) both;
-}
-@utility animate-modal-in {
-  animation: ds-modal-in var(--motion-base) var(--ease-out) both;
-}
-@utility animate-overlay-in {
-  animation: ds-fade-in var(--motion-fast) var(--ease-out) both;
+:disabled {
+  cursor: default;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .animate-page-in, .animate-modal-in, .animate-overlay-in { animation: none; }
+::placeholder {
+  opacity: 1;
 }
 
-/* Thin rounded scrollbar for compact subgrids */
-.thin-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+textarea {
+  resize: vertical;
 }
-.thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
-.thin-scroll::-webkit-scrollbar-track { background: transparent; }
-.thin-scroll::-webkit-scrollbar-thumb {
-  background-color: var(--border);
-  border-radius: 9999px;
+
+table {
+  border-collapse: collapse;
+  border-color: inherit;
+  text-indent: 0;
 }
-.thin-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: color-mix(in oklch, var(--muted-foreground) 40%, transparent);
+
+a {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+/* ------------------------------------------------------------
+   Foco accesible global. Material marca el foco de sus propios
+   componentes; esta regla cubre el resto de elementos enfocables.
+   ------------------------------------------------------------ */
+:where(button, [role='button'], a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
 }
