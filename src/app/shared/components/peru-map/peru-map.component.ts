@@ -7,7 +7,9 @@ import {
   output,
   signal,
 } from '@angular/core';
-import { LucideAngularModule, LocateFixed, MapPin, Plus, Minus, RotateCcw } from 'lucide-angular';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   PERU_OUTLINE_D,
   REGION_LNGLAT_BBOX,
@@ -34,12 +36,12 @@ const PERU_VIEW: ViewBox = { x: 0, y: 0, w: SVG_WIDTH, h: SVG_HEIGHT };
 @Component({
   selector: 'app-peru-map',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule],
+  imports: [MatButtonModule, MatIconModule, MatTooltipModule],
   template: `
-    <div class="relative bg-secondary/40 ring-1 ring-border rounded-lg overflow-hidden">
+    <div class="mapa">
       <!-- Chip región activa -->
-      <div class="absolute top-2 left-2 z-10 flex items-center gap-1.5 bg-card/90 backdrop-blur px-2 py-1 rounded-md ring-1 ring-border text-[10px] font-semibold uppercase tracking-wide text-brand shadow-sm">
-        <lucide-angular [img]="MapPinIcon" class="size-3" />
+      <div class="region">
+        <mat-icon fontSet="material-symbols-outlined">location_on</mat-icon>
         {{ region() ? 'Perú › ' + region() : 'Perú' }}
       </div>
 
@@ -51,19 +53,17 @@ const PERU_VIEW: ViewBox = { x: 0, y: 0, w: SVG_WIDTH, h: SVG_HEIGHT };
         (pointermove)="moverArrastre($event, $any(svgEl))"
         (pointerup)="finalizarArrastre()"
         (pointerleave)="finalizarArrastre()"
-        class="w-full aspect-[13/19] block touch-none"
-        [class.cursor-not-allowed]="disabled()"
-        [class.cursor-crosshair]="!disabled() && !!region()"
-        style="transition-property: all; transition-duration: 400ms"
+        [class.inhabilitado]="disabled()"
+        [class.seleccionable]="!disabled() && !!region()"
       >
         <!-- Contorno Perú -->
-        <path [attr.d]="outlineD" class="fill-muted stroke-border" [attr.stroke-width]="0.8" />
+        <path [attr.d]="outlineD" class="contorno" [attr.stroke-width]="0.8" />
 
         <!-- Región resaltada -->
         @if (regionRect(); as r) {
           <rect
             [attr.x]="r.x" [attr.y]="r.y" [attr.width]="r.width" [attr.height]="r.height"
-            class="fill-brand/15 stroke-brand"
+            class="resaltado"
             [attr.stroke-width]="1" stroke-dasharray="3 2" [attr.rx]="2"
           />
         }
@@ -73,45 +73,172 @@ const PERU_VIEW: ViewBox = { x: 0, y: 0, w: SVG_WIDTH, h: SVG_HEIGHT };
           <g
             [attr.transform]="'translate(' + p.x + ', ' + p.y + ')'"
             (pointerdown)="iniciarArrastre($event)"
-            [class.cursor-grab]="!disabled()"
-            [class.cursor-grabbing]="arrastrando()"
+            [class.arrastrable]="!disabled()"
+            [class.arrastrando]="arrastrando()"
           >
-            <circle [attr.r]="6" class="fill-transparent" />
-            <circle [attr.r]="4" class="fill-brand/25 animate-ping pointer-events-none" />
-            <circle [attr.r]="2.2" class="fill-brand stroke-card pointer-events-none" [attr.stroke-width]="0.6" />
+            <circle [attr.r]="6" class="area-toque" />
+            <circle [attr.r]="4" class="halo" />
+            <circle [attr.r]="2.2" class="punto" [attr.stroke-width]="0.6" />
           </g>
         }
       </svg>
 
       <!-- Controles zoom -->
-      <div class="absolute bottom-2 right-2 z-10 flex flex-col gap-1">
+      <div class="controles">
         @if (showLocate()) {
-          <button type="button" (click)="locate.emit()" aria-label="Centrar en mi ubicación" title="Centrar en mi ubicación"
-            class="size-7 rounded-md bg-primary text-primary-foreground shadow-sm flex items-center justify-center hover:bg-primary/85 transition-colors">
-            <lucide-angular [img]="LocateFixedIcon" class="size-3.5" />
+          <button
+            matIconButton
+            type="button"
+            class="control destacado"
+            matTooltip="Centrar en mi ubicación"
+            aria-label="Centrar en mi ubicación"
+            (click)="locate.emit()"
+          >
+            <mat-icon fontSet="material-symbols-outlined">my_location</mat-icon>
           </button>
         }
-        <button type="button" (click)="zoomBy(0.7)" aria-label="Acercar" title="Acercar"
-          class="size-7 rounded-md bg-card ring-1 ring-border shadow-sm flex items-center justify-center text-foreground/70 hover:text-brand hover:ring-brand transition-colors">
-          <lucide-angular [img]="PlusIcon" class="size-3.5" />
+        <button
+          matIconButton
+          type="button"
+          class="control"
+          matTooltip="Acercar"
+          aria-label="Acercar"
+          (click)="zoomBy(0.7)"
+        >
+          <mat-icon fontSet="material-symbols-outlined">add</mat-icon>
         </button>
-        <button type="button" (click)="zoomBy(1.4)" aria-label="Alejar" title="Alejar"
-          class="size-7 rounded-md bg-card ring-1 ring-border shadow-sm flex items-center justify-center text-foreground/70 hover:text-brand hover:ring-brand transition-colors">
-          <lucide-angular [img]="MinusIcon" class="size-3.5" />
+        <button
+          matIconButton
+          type="button"
+          class="control"
+          matTooltip="Alejar"
+          aria-label="Alejar"
+          (click)="zoomBy(1.4)"
+        >
+          <mat-icon fontSet="material-symbols-outlined">remove</mat-icon>
         </button>
-        <button type="button" (click)="reset()" aria-label="Restablecer vista" title="Ver Perú completo"
-          class="size-7 rounded-md bg-card ring-1 ring-border shadow-sm flex items-center justify-center text-foreground/70 hover:text-brand hover:ring-brand transition-colors">
-          <lucide-angular [img]="RotateCcwIcon" class="size-3.5" />
+        <button
+          matIconButton
+          type="button"
+          class="control"
+          matTooltip="Ver Perú completo"
+          aria-label="Restablecer vista"
+          (click)="reset()"
+        >
+          <mat-icon fontSet="material-symbols-outlined">restart_alt</mat-icon>
         </button>
       </div>
 
       <!-- Ayuda inferior -->
-      <div class="px-3 py-1.5 bg-card/80 border-t border-border text-[10px] text-muted-foreground text-center leading-tight">
+      <p class="ayuda">
         {{ region()
           ? 'Haga clic dentro de la región para fijar el punto.'
           : 'Seleccione una región en Ubicación para activar la selección.' }}
-      </div>
+      </p>
     </div>
+  `,
+  styles: `
+    .mapa {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: var(--mat-sys-corner-medium);
+      background: var(--mat-sys-surface-container-low);
+    }
+
+    .region {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: var(--mat-sys-corner-small);
+      background: var(--mat-sys-surface);
+      font: var(--mat-sys-label-small);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--mat-sys-primary);
+    }
+    .region mat-icon { font-size: 14px; width: 14px; height: 14px; }
+
+    svg {
+      display: block;
+      width: 100%;
+      aspect-ratio: 13 / 19;
+      touch-action: none;
+      transition: all 400ms;
+    }
+    svg.inhabilitado { cursor: not-allowed; }
+    svg.seleccionable { cursor: crosshair; }
+
+    .contorno {
+      fill: var(--mat-sys-surface-container-high);
+      stroke: var(--mat-sys-outline-variant);
+    }
+    .resaltado {
+      fill: color-mix(in srgb, var(--mat-sys-primary) 15%, transparent);
+      stroke: var(--mat-sys-primary);
+    }
+    .arrastrable { cursor: grab; }
+    .arrastrando { cursor: grabbing; }
+    .area-toque { fill: transparent; }
+    .halo {
+      fill: color-mix(in srgb, var(--mat-sys-primary) 25%, transparent);
+      pointer-events: none;
+      /* El pin late para que se note dónde quedó el punto fijado. */
+      animation: latido 1.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+    @keyframes latido {
+      75%, 100% { transform: scale(2); opacity: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .halo { animation: none; }
+    }
+    .punto {
+      fill: var(--mat-sys-primary);
+      stroke: var(--mat-sys-surface);
+      pointer-events: none;
+    }
+
+    .controles {
+      position: absolute;
+      right: 8px;
+      bottom: 40px;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    /* Controles compactos: el mapa es una columna lateral estrecha. */
+    .controles .control {
+      width: 32px;
+      height: 32px;
+      padding: 4px;
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: var(--mat-sys-corner-small);
+      background: var(--mat-sys-surface);
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .controles .control.destacado {
+      border-color: transparent;
+      background: var(--mat-sys-primary);
+      color: var(--mat-sys-on-primary);
+    }
+    .controles mat-icon { font-size: 18px; width: 18px; height: 18px; }
+
+    .ayuda {
+      margin: 0;
+      padding: 6px 12px;
+      border-top: 1px solid var(--mat-sys-outline-variant);
+      background: var(--mat-sys-surface);
+      font: var(--mat-sys-label-small);
+      text-align: center;
+      color: var(--mat-sys-on-surface-variant);
+    }
   `,
 })
 export class PeruMapComponent {
@@ -126,11 +253,6 @@ export class PeruMapComponent {
   /** El usuario pulsó el botón flotante de localización. */
   readonly locate = output<void>();
 
-  readonly MapPinIcon = MapPin;
-  readonly LocateFixedIcon = LocateFixed;
-  readonly PlusIcon = Plus;
-  readonly MinusIcon = Minus;
-  readonly RotateCcwIcon = RotateCcw;
   readonly outlineD = PERU_OUTLINE_D;
 
   private readonly view = signal<ViewBox>(PERU_VIEW);
