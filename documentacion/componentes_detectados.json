@@ -1,0 +1,833 @@
+{
+  "generado": "2026-08-03T16:39:31.000Z",
+  "proyecto": "midagri-angular",
+  "totales": {
+    "componentes": 36,
+    "vistas": 22,
+    "compartidos": 10,
+    "layout": 3,
+    "modales": 14,
+    "conFormulario": 6,
+    "conTabla": 7,
+    "servicios": 13
+  },
+  "servicios": [
+    {
+      "clase": "AreaService",
+      "archivo": "src/app/core/services/area.service.ts",
+      "metodos": [
+        "setCurrentArea"
+      ]
+    },
+    {
+      "clase": "AuthService",
+      "archivo": "src/app/core/services/auth.service.ts",
+      "metodos": [
+        "usuarioReconocido",
+        "resolverIngreso",
+        "confirmarIngreso",
+        "logout",
+        "getToken"
+      ]
+    },
+    {
+      "clase": "CamposService",
+      "archivo": "src/app/core/services/campos.service.ts",
+      "metodos": [
+        "camposDe",
+        "add",
+        "update",
+        "setVisibilidad",
+        "delete"
+      ]
+    },
+    {
+      "clase": "CursosService",
+      "archivo": "src/app/core/services/cursos.service.ts",
+      "metodos": [
+        "getByArea",
+        "getById",
+        "create",
+        "update",
+        "updateEstado",
+        "delete",
+        "reasignarResponsable",
+        "adjustParticipantes"
+      ]
+    },
+    {
+      "clase": "ListasAdminService",
+      "archivo": "src/app/core/services/listas-admin.service.ts",
+      "metodos": [
+        "listaPorNombre",
+        "opcionesFormulario",
+        "esListaUnidadFuncional",
+        "unidadesFuncionalesPorUnidadResponsable",
+        "perfilesAutorizados",
+        "siguienteCodigoOpcion",
+        "seleccionar",
+        "agregarLista",
+        "guardarOpcion",
+        "cambiarEstadoOpcion"
+      ]
+    },
+    {
+      "clase": "ModalService",
+      "archivo": "src/app/core/services/modal.service.ts",
+      "metodos": [
+        "openInfo",
+        "openWarning",
+        "openConfirm",
+        "openSuccess",
+        "openError",
+        "cerrar"
+      ]
+    },
+    {
+      "clase": "ParticipantesService",
+      "archivo": "src/app/core/services/participantes.service.ts",
+      "metodos": [
+        "participantesDe",
+        "add",
+        "update",
+        "delete"
+      ]
+    },
+    {
+      "clase": "PermisosMenuService",
+      "archivo": "src/app/core/services/permisos-menu.service.ts",
+      "metodos": [
+        "esPerfilPersonalizado",
+        "esquemaPara",
+        "permisosIniciales",
+        "permisosDe",
+        "sesionTiene",
+        "sesionTieneGrupo",
+        "guardar"
+      ]
+    },
+    {
+      "clase": "ProductoresService",
+      "archivo": "src/app/core/services/productores.service.ts",
+      "metodos": [
+        "findByDni",
+        "all"
+      ]
+    },
+    {
+      "clase": "ReglasService",
+      "archivo": "src/app/core/services/reglas.service.ts",
+      "metodos": [
+        "configDe",
+        "setConfig"
+      ]
+    },
+    {
+      "clase": "ThemeService",
+      "archivo": "src/app/core/services/theme.service.ts",
+      "metodos": [
+        "seleccionar"
+      ]
+    },
+    {
+      "clase": "ToastService",
+      "archivo": "src/app/core/services/toast.service.ts",
+      "metodos": [
+        "success",
+        "info",
+        "warning",
+        "error",
+        "dismiss"
+      ]
+    },
+    {
+      "clase": "UsuariosService",
+      "archivo": "src/app/core/services/usuarios.service.ts",
+      "metodos": [
+        "recalcularVigencias",
+        "registrosVisibles",
+        "perfilesRegistrables",
+        "findById",
+        "findByUserGen",
+        "existeDni",
+        "existeUnidadParaDni",
+        "existeFechaContratoParaDni",
+        "existeOrdenParaDni",
+        "create",
+        "update",
+        "toggleEstado",
+        "restablecerClave",
+        "existeUsuarioGeneradoParaOtroDni",
+        "generarUsuarioUnico",
+        "consultarReniec",
+        "derivarOpa"
+      ]
+    }
+  ],
+  "componentes": [
+    {
+      "clase": "AutocompleteComponent",
+      "selector": "app-autocomplete",
+      "categoria": "compartido",
+      "archivo": "src/app/shared/components/autocomplete/autocomplete.component.ts",
+      "lineas": 271,
+      "esModal": false,
+      "usaFormularios": true,
+      "tieneTabla": false,
+      "señales": 3,
+      "computados": 1,
+      "importa": [
+        "ReactiveFormsModule",
+        "LucideAngularModule"
+      ],
+      "usadoPor": [
+        "UsuarioFormComponent"
+      ]
+    },
+    {
+      "clase": "ColumnSelectorComponent",
+      "selector": "app-column-selector",
+      "categoria": "compartido",
+      "archivo": "src/app/shared/components/column-selector/column-selector.component.ts",
+      "lineas": 153,
+      "esModal": true,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 1,
+      "computados": 2,
+      "importa": [
+        "LucideAngularModule",
+        "ModalComponent"
+      ],
+      "usadoPor": [
+        "GestionUsuariosComponent"
+      ]
+    },
+    {
+      "clase": "DateRangePickerComponent",
+      "selector": "app-date-range-picker",
+      "categoria": "compartido",
+      "archivo": "src/app/shared/components/date-range-picker/date-range-picker.component.ts",
+      "lineas": 246,
+      "esModal": true,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 4,
+      "computados": 2,
+      "importa": [
+        "LucideAngularModule"
+      ],
+      "usadoPor": [
+        "BandejaComponent"
+      ]
+    },
+    {
+      "clase": "EstadoBadgeComponent",
+      "selector": "app-estado-badge",
+      "categoria": "compartido",
+      "archivo": "src/app/shared/components/estado-badge/estado-badge.component.ts",
+      "lineas": 38,
+      "esModal": false,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 0,
+      "computados": 1,
+      "importa": [],
+      "usadoPor": [
+        "BandejaComponent",
+        "StepperComponent",
+        "SeguimientoPanelComponent",
+        "ReasignarRegistroModalComponent"
+      ]
+    },
+    {
+      "clase": "FeedbackModalComponent",
+      "selector": "app-feedback-modal",
+      "categoria": "compartido",
+      "archivo": "src/app/shared/components/modal/feedback-modal.component.ts",
+      "lineas": 60,
+      "esModal": true,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 0,
+      "computados": 1,
+      "importa": [
+        "ModalComponent"
+      ],
+      "usadoPor": [
+        "AppComponent"
+      ]
+    },
+    {
+      "clase": "KpiCardComponent",
+      "selector": "app-kpi-card",
+      "categoria": "compartido",
+      "archivo": "src/app/shared/components/kpi-card/kpi-card.component.ts",
+      "lineas": 42,
+      "esModal": false,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 0,
+      "computados": 1,
+      "importa": [
+        "LucideAngularModule"
+      ],
+      "usadoPor": [
+        "BandejaComponent"
+      ]
+    },
+    {
+      "clase": "ModalComponent",
+      "selector": "app-modal",
+      "categoria": "compartido",
+      "archivo": "src/app/shared/components/modal/modal.component.ts",
+      "lineas": 131,
+      "esModal": true,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 0,
+      "computados": 0,
+      "importa": [
+        "LucideAngularModule"
+      ],
+      "usadoPor": [
+        "ListasComponent",
+        "BandejaComponent",
+        "StepperComponent",
+        "SustentoModalComponent",
+        "SeguimientoPanelComponent",
+        "ReasignarRegistroModalComponent",
+        "HeaderComponent",
+        "ColumnSelectorComponent",
+        "FeedbackModalComponent"
+      ]
+    },
+    {
+      "clase": "PeruMapComponent",
+      "selector": "app-peru-map",
+      "categoria": "compartido",
+      "archivo": "src/app/shared/components/peru-map/peru-map.component.ts",
+      "lineas": 245,
+      "esModal": false,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 1,
+      "computados": 3,
+      "importa": [
+        "LucideAngularModule"
+      ],
+      "usadoPor": [
+        "CursoFormComponent"
+      ]
+    },
+    {
+      "clase": "ThemeSwitcherComponent",
+      "selector": "app-theme-switcher",
+      "categoria": "compartido",
+      "archivo": "src/app/shared/components/theme-switcher/theme-switcher.component.ts",
+      "lineas": 105,
+      "esModal": true,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 1,
+      "computados": 0,
+      "importa": [
+        "LucideAngularModule"
+      ],
+      "usadoPor": [
+        "AppComponent"
+      ]
+    },
+    {
+      "clase": "ToastContainerComponent",
+      "selector": "app-toast-container",
+      "categoria": "compartido",
+      "archivo": "src/app/shared/components/toast/toast-container.component.ts",
+      "lineas": 57,
+      "esModal": false,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 0,
+      "computados": 0,
+      "importa": [
+        "LucideAngularModule"
+      ],
+      "usadoPor": [
+        "AppComponent"
+      ]
+    },
+    {
+      "clase": "HeaderComponent",
+      "selector": "app-header",
+      "categoria": "layout",
+      "archivo": "src/app/layout/header/header.component.ts",
+      "lineas": 202,
+      "esModal": true,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 2,
+      "computados": 1,
+      "importa": [
+        "LucideAngularModule",
+        "ModalComponent"
+      ],
+      "usadoPor": [
+        "ShellComponent"
+      ]
+    },
+    {
+      "clase": "ShellComponent",
+      "selector": "app-shell",
+      "categoria": "layout",
+      "archivo": "src/app/layout/shell/shell.component.ts",
+      "lineas": 24,
+      "esModal": false,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 0,
+      "computados": 0,
+      "importa": [
+        "RouterOutlet",
+        "SidebarComponent",
+        "HeaderComponent"
+      ],
+      "usadoPor": []
+    },
+    {
+      "clase": "SidebarComponent",
+      "selector": "app-sidebar",
+      "categoria": "layout",
+      "archivo": "src/app/layout/sidebar/sidebar.component.ts",
+      "lineas": 407,
+      "esModal": false,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 1,
+      "computados": 0,
+      "importa": [
+        "RouterLink",
+        "LucideAngularModule"
+      ],
+      "usadoPor": [
+        "ShellComponent"
+      ]
+    },
+    {
+      "clase": "AppComponent",
+      "selector": "app-root",
+      "categoria": "raíz",
+      "archivo": "src/app/app.component.ts",
+      "lineas": 21,
+      "esModal": false,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 0,
+      "computados": 0,
+      "importa": [
+        "RouterOutlet",
+        "ToastContainerComponent",
+        "ThemeSwitcherComponent",
+        "FeedbackModalComponent"
+      ],
+      "usadoPor": []
+    },
+    {
+      "clase": "BandejaComponent",
+      "selector": "app-bandeja",
+      "categoria": "vista",
+      "archivo": "src/app/features/capacitaciones/bandeja/bandeja.component.ts",
+      "lineas": 768,
+      "esModal": true,
+      "usaFormularios": false,
+      "tieneTabla": true,
+      "señales": 8,
+      "computados": 11,
+      "importa": [
+        "LucideAngularModule",
+        "EstadoBadgeComponent",
+        "KpiCardComponent",
+        "ModalComponent",
+        "SustentoModalComponent",
+        "DateRangePickerComponent"
+      ],
+      "usadoPor": []
+    },
+    {
+      "clase": "CampoModalComponent",
+      "selector": "app-campo-modal",
+      "categoria": "vista",
+      "archivo": "src/app/features/configuracion/campos/campo-modal.component.ts",
+      "lineas": 214,
+      "esModal": true,
+      "usaFormularios": true,
+      "tieneTabla": false,
+      "señales": 2,
+      "computados": 4,
+      "importa": [
+        "ReactiveFormsModule",
+        "LucideAngularModule"
+      ],
+      "usadoPor": [
+        "CamposComponent"
+      ]
+    },
+    {
+      "clase": "CampoPreviewComponent",
+      "selector": "app-campo-preview",
+      "categoria": "vista",
+      "archivo": "src/app/features/configuracion/campos/campo-preview.component.ts",
+      "lineas": 58,
+      "esModal": false,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 0,
+      "computados": 1,
+      "importa": [],
+      "usadoPor": [
+        "CamposComponent"
+      ]
+    },
+    {
+      "clase": "CamposComponent",
+      "selector": "app-campos",
+      "categoria": "vista",
+      "archivo": "src/app/features/configuracion/campos/campos.component.ts",
+      "lineas": 625,
+      "esModal": false,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 1,
+      "computados": 10,
+      "importa": [
+        "NgTemplateOutlet",
+        "LucideAngularModule",
+        "CampoPreviewComponent",
+        "CampoModalComponent",
+        "OpcionesModalComponent"
+      ],
+      "usadoPor": []
+    },
+    {
+      "clase": "CursoFormComponent",
+      "selector": "app-curso-form",
+      "categoria": "vista",
+      "archivo": "src/app/features/capacitaciones/curso-form/curso-form.component.ts",
+      "lineas": 717,
+      "esModal": false,
+      "usaFormularios": true,
+      "tieneTabla": false,
+      "señales": 2,
+      "computados": 10,
+      "importa": [
+        "ReactiveFormsModule",
+        "LucideAngularModule",
+        "PeruMapComponent"
+      ],
+      "usadoPor": [
+        "StepperComponent"
+      ]
+    },
+    {
+      "clase": "DashboardComponent",
+      "selector": "app-dashboard",
+      "categoria": "vista",
+      "archivo": "src/app/features/dashboard/dashboard.component.ts",
+      "lineas": 155,
+      "esModal": false,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 0,
+      "computados": 0,
+      "importa": [
+        "RouterLink",
+        "LucideAngularModule"
+      ],
+      "usadoPor": []
+    },
+    {
+      "clase": "GestionUsuariosComponent",
+      "selector": "app-gestion-usuarios",
+      "categoria": "vista",
+      "archivo": "src/app/features/usuarios/gestion-usuarios.component.ts",
+      "lineas": 589,
+      "esModal": false,
+      "usaFormularios": false,
+      "tieneTabla": true,
+      "señales": 4,
+      "computados": 9,
+      "importa": [
+        "LucideAngularModule",
+        "ReasignarRegistroModalComponent",
+        "ColumnSelectorComponent"
+      ],
+      "usadoPor": []
+    },
+    {
+      "clase": "ListasComponent",
+      "selector": "app-listas",
+      "categoria": "vista",
+      "archivo": "src/app/features/administracion/listas/listas.component.ts",
+      "lineas": 433,
+      "esModal": true,
+      "usaFormularios": false,
+      "tieneTabla": true,
+      "señales": 7,
+      "computados": 7,
+      "importa": [
+        "LucideAngularModule",
+        "ModalComponent"
+      ],
+      "usadoPor": []
+    },
+    {
+      "clase": "LoginComponent",
+      "selector": "app-login",
+      "categoria": "vista",
+      "archivo": "src/app/features/autenticacion/login.component.ts",
+      "lineas": 422,
+      "esModal": false,
+      "usaFormularios": true,
+      "tieneTabla": false,
+      "señales": 8,
+      "computados": 6,
+      "importa": [
+        "ReactiveFormsModule",
+        "LucideAngularModule"
+      ],
+      "usadoPor": []
+    },
+    {
+      "clase": "NotFoundComponent",
+      "selector": "app-not-found",
+      "categoria": "vista",
+      "archivo": "src/app/features/errores/not-found.component.ts",
+      "lineas": 25,
+      "esModal": false,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 0,
+      "computados": 0,
+      "importa": [
+        "RouterLink"
+      ],
+      "usadoPor": []
+    },
+    {
+      "clase": "OpcionesModalComponent",
+      "selector": "app-opciones-modal",
+      "categoria": "vista",
+      "archivo": "src/app/features/configuracion/campos/opciones-modal.component.ts",
+      "lineas": 97,
+      "esModal": true,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 1,
+      "computados": 0,
+      "importa": [
+        "LucideAngularModule"
+      ],
+      "usadoPor": [
+        "CamposComponent"
+      ]
+    },
+    {
+      "clase": "ParticipanteFormComponent",
+      "selector": "app-participante-form",
+      "categoria": "vista",
+      "archivo": "src/app/features/capacitaciones/participante-form/participante-form.component.ts",
+      "lineas": 535,
+      "esModal": false,
+      "usaFormularios": true,
+      "tieneTabla": false,
+      "señales": 3,
+      "computados": 3,
+      "importa": [
+        "ReactiveFormsModule",
+        "LucideAngularModule"
+      ],
+      "usadoPor": [
+        "StepperComponent"
+      ]
+    },
+    {
+      "clase": "PerfilComponent",
+      "selector": "app-perfil",
+      "categoria": "vista",
+      "archivo": "src/app/features/perfil/perfil.component.ts",
+      "lineas": 74,
+      "esModal": false,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 0,
+      "computados": 0,
+      "importa": [
+        "LucideAngularModule"
+      ],
+      "usadoPor": []
+    },
+    {
+      "clase": "PermisosMenuFormComponent",
+      "selector": "app-permisos-menu-form",
+      "categoria": "vista",
+      "archivo": "src/app/features/usuarios/permisos-menu-form.component.ts",
+      "lineas": 95,
+      "esModal": false,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 0,
+      "computados": 0,
+      "importa": [
+        "LucideAngularModule"
+      ],
+      "usadoPor": [
+        "UsuarioFormComponent"
+      ]
+    },
+    {
+      "clase": "ReasignarRegistroModalComponent",
+      "selector": "app-reasignar-registro-modal",
+      "categoria": "vista",
+      "archivo": "src/app/features/usuarios/reasignar-registro-modal.component.ts",
+      "lineas": 372,
+      "esModal": true,
+      "usaFormularios": false,
+      "tieneTabla": true,
+      "señales": 2,
+      "computados": 6,
+      "importa": [
+        "LucideAngularModule",
+        "ModalComponent",
+        "EstadoBadgeComponent"
+      ],
+      "usadoPor": [
+        "GestionUsuariosComponent"
+      ]
+    },
+    {
+      "clase": "ReglasComponent",
+      "selector": "app-reglas",
+      "categoria": "vista",
+      "archivo": "src/app/features/configuracion/reglas/reglas.component.ts",
+      "lineas": 685,
+      "esModal": false,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 0,
+      "computados": 14,
+      "importa": [
+        "LucideAngularModule"
+      ],
+      "usadoPor": []
+    },
+    {
+      "clase": "ReportesComponent",
+      "selector": "app-reportes",
+      "categoria": "vista",
+      "archivo": "src/app/features/reportes/reportes.component.ts",
+      "lineas": 25,
+      "esModal": false,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 0,
+      "computados": 0,
+      "importa": [],
+      "usadoPor": []
+    },
+    {
+      "clase": "SeguimientoComponent",
+      "selector": "app-seguimiento",
+      "categoria": "vista",
+      "archivo": "src/app/features/seguimiento/seguimiento.component.ts",
+      "lineas": 123,
+      "esModal": false,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 0,
+      "computados": 0,
+      "importa": [
+        "LucideAngularModule",
+        "SeguimientoPanelComponent"
+      ],
+      "usadoPor": []
+    },
+    {
+      "clase": "SeguimientoPanelComponent",
+      "selector": "app-seguimiento-panel",
+      "categoria": "vista",
+      "archivo": "src/app/features/seguimiento/seguimiento-panel.component.ts",
+      "lineas": 568,
+      "esModal": true,
+      "usaFormularios": false,
+      "tieneTabla": true,
+      "señales": 4,
+      "computados": 8,
+      "importa": [
+        "LucideAngularModule",
+        "EstadoBadgeComponent",
+        "ModalComponent"
+      ],
+      "usadoPor": [
+        "SeguimientoComponent"
+      ]
+    },
+    {
+      "clase": "StepperComponent",
+      "selector": "app-stepper",
+      "categoria": "vista",
+      "archivo": "src/app/features/capacitaciones/stepper/stepper.component.ts",
+      "lineas": 738,
+      "esModal": true,
+      "usaFormularios": false,
+      "tieneTabla": true,
+      "señales": 5,
+      "computados": 7,
+      "importa": [
+        "RouterLink",
+        "LucideAngularModule",
+        "EstadoBadgeComponent",
+        "CursoFormComponent",
+        "ParticipanteFormComponent",
+        "ModalComponent"
+      ],
+      "usadoPor": []
+    },
+    {
+      "clase": "SustentoModalComponent",
+      "selector": "app-sustento-modal",
+      "categoria": "vista",
+      "archivo": "src/app/features/capacitaciones/sustento-modal/sustento-modal.component.ts",
+      "lineas": 189,
+      "esModal": true,
+      "usaFormularios": false,
+      "tieneTabla": false,
+      "señales": 2,
+      "computados": 1,
+      "importa": [
+        "LucideAngularModule",
+        "ModalComponent"
+      ],
+      "usadoPor": [
+        "BandejaComponent"
+      ]
+    },
+    {
+      "clase": "UsuarioFormComponent",
+      "selector": "app-usuario-form",
+      "categoria": "vista",
+      "archivo": "src/app/features/usuarios/usuario-form.component.ts",
+      "lineas": 1995,
+      "esModal": false,
+      "usaFormularios": true,
+      "tieneTabla": true,
+      "señales": 7,
+      "computados": 31,
+      "importa": [
+        "ReactiveFormsModule",
+        "LucideAngularModule",
+        "PermisosMenuFormComponent",
+        "AutocompleteComponent"
+      ],
+      "usadoPor": []
+    }
+  ]
+}

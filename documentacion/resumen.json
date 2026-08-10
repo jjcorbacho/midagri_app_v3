@@ -1,0 +1,63 @@
+{
+  "generado": "2026-08-03T16:49:59.094Z",
+  "git": {
+    "remoto": "git@github.com:jjcorbacho/midagri_app_v3.git",
+    "rama": "feature/vigencias-periodos-y-datos-prueba",
+    "commit": "5ebebdd3a3adbdb4122036c29c293f970562bae5",
+    "commitCorto": "5ebebdd",
+    "autor": "Julio Jose Corbacho Chinchilla",
+    "fechaCommit": "2026-07-30 14:16:36 -0500",
+    "mensaje": "Vigencias por año de gestión, periodo en cabecera y datos de prueba",
+    "sucio": true
+  },
+  "duracionSegundos": 8,
+  "pantallas": 18,
+  "capturas": 284,
+  "paginasImagen": 346,
+  "rutasDeclaradas": 24,
+  "rutasDocumentadas": 18,
+  "formularios": 48,
+  "tablas": 62,
+  "modales": 60,
+  "componentes": 36,
+  "servicios": 13,
+  "perfiles": 5,
+  "temas": 2,
+  "resoluciones": 4,
+  "erroresConsola": 0,
+  "advertenciasConsola": 0,
+  "pasosFallidos": 0,
+  "hallazgos": 1165,
+  "severidad": {
+    "alta": 214,
+    "media": 903,
+    "baja": 48
+  },
+  "recomendaciones": [
+    {
+      "titulo": "Convertir el sidebar en drawer por debajo de md",
+      "detalle": "el menú lateral conserva su ancho fijo en móvil y deja el contenido en unos 150 px, lo que provoca 28 avisos de scroll horizontal y 351 elementos fuera del viewport."
+    },
+    {
+      "titulo": "Ajustar los tokens de color por debajo de WCAG AA",
+      "detalle": "466 textos quedan por debajo de la relación 4.5:1, concentrados en unos pocos tokens compartidos (texto del sidebar, texto secundario al 70 % de opacidad y los chips de estado). Corregirlos en src/styles.css resuelve la mayoría de una vez."
+    },
+    {
+      "titulo": "Declarar scroll horizontal explícito en las bandejas",
+      "detalle": "las tablas de capacitaciones, seguimiento y usuarios desbordan su contenedor desde 1366 px; conviene envolverlas en un contenedor con overflow-x-auto y ocultar columnas secundarias por breakpoint usando el selector de columnas existente."
+    },
+    {
+      "titulo": "Etiquetar los controles de formulario para lectores de pantalla",
+      "detalle": "105 pantallas contienen campos sin label asociado, aria-label ni placeholder; el caso más denso es Configuración de campos."
+    },
+    {
+      "titulo": "Aumentar el área táctil de las acciones por fila",
+      "detalle": "52 pantallas táctiles tienen controles por debajo de 32×32 px; la recomendación es 44×44 px."
+    },
+    {
+      "titulo": "Corregir el colspan de las filas de estado vacío",
+      "detalle": "el modal de reasignación de registros muestra 6 encabezados frente a 1 celda, lo que rompe visualmente la tabla cuando no hay datos."
+    }
+  ],
+  "errores": []
+}
