@@ -9,6 +9,22 @@ capacitación y asistencia técnica de las 26 áreas usuarias, gestiona particip
 > - [docs/01-analisis.md](docs/01-analisis.md) — Auditoría del sistema original (inventario, funcionalidades, riesgos).
 > - [docs/02-arquitectura.md](docs/02-arquitectura.md) — Arquitectura, relación entre módulos, flujo de navegación y escalabilidad.
 
+## Ramas: dos versiones en paralelo
+
+El repositorio mantiene **a propósito** dos versiones del producto, con la misma
+funcionalidad y distinta capa visual. **No se mergean entre sí.**
+
+| Rama | Capa visual |
+|---|---|
+| `main` · `tailwind` | Design system propio: Tailwind CSS 4, tokens `oklch`, clases `btn-*`/`th-ds`, iconos lucide |
+| `angular-material` | Angular Material 3: tokens `--mat-sys-*` emitidos por `mat.theme()`, Material Symbols |
+
+`tailwind` es una copia estable de `main` para que esa línea siga viva aunque
+`main` evolucione. La migración a Material se propuso en el PR #15, que se
+**cerró sin mergear** por esta decisión; queda como registro del diff completo.
+
+Al abrir una incidencia o un cambio, indica sobre qué línea aplica.
+
 ---
 
 ## 1. Descripción funcional
