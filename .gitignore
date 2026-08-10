@@ -39,6 +39,17 @@ testem.log
 /typings
 __screenshots__/
 
+# Inventario visual generado por `npm run screenshots`
+/capturas/**/*.png
+!/capturas/reporte/
+
+# Evidencia generada por `npm run evidencia`
+/documentacion/capturas/
+/documentacion/evidencia_aplicacion.pdf
+/documentacion/.imagenes-pdf/
+/documentacion/.evidencia.html
+/documentacion/.trabajo.html
+
 # System files
 .DS_Store
 Thumbs.db
