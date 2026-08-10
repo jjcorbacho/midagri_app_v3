@@ -2,9 +2,16 @@
 
 **Fecha:** 17 de julio de 2026 · **Alcance:** exclusivamente presentación (UI/UX); cero cambios en lógica de negocio, servicios, modelos, permisos o rutas.
 
+> **Estado (10/08/2026).** Las secciones 1, 2 y 4–9 son el registro fechado de la
+> auditoría y de las entregas de julio, cuando el design system era propio
+> (Tailwind + clases `btn-*`/`th-ds` + lucide). Ese sistema fue **sustituido por
+> Angular Material 3**; las reglas vigentes están en la **§3 (reescrita)** y en
+> la **§10**. Donde una sección histórica describa un patrón ya retirado, lleva
+> una nota. La arquitectura visual de referencia es `02-arquitectura.md` §6.
+
 ---
 
-## 1. Diagnóstico del estado actual
+## 1. Diagnóstico del estado actual *(julio 2026 — histórico)*
 
 La aplicación ya cuenta con un **design system propio ("N1")** definido en `src/styles.css`, notablemente maduro:
 
@@ -30,13 +37,37 @@ La aplicación ya cuenta con un **design system propio ("N1")** definido en `src
 | **Baja** | El sidebar colapsado depende solo de iconos (sin tooltips en todos los ítems) | `layout/sidebar` |
 | **Baja** | Falta un indicador de "avance" en formularios largos (el patrón de bloques ya guía el scroll, pero sin señal de progreso) | formulario de usuarios |
 
-## 3. Sistema de diseño (reglas de uso)
+## 3. Sistema de diseño — reglas de uso *(vigentes, agosto 2026)*
 
-- **Tipografía:** DM Sans única; jerarquía `text-display/h1/h2/h3/body/small/caption`. Números identitarios (DNI, montos, contadores) siempre `font-mono tabular-nums`.
-- **Espaciado:** escala Tailwind con ritmo verticales `space-y-4/5` entre bloques, `gap-3` en grillas de campos, `p-5` en cards, `px-4 py-3` en celdas.
-- **Componentes:** siempre reutilizar `app-modal`, `app-estado-badge`, `app-autocomplete`, `btn-*`, `card-ds`; prohibido introducir estilos ad-hoc que dupliquen tokens.
-- **Iconografía:** solo lucide; 16 px (`size-4`) en encabezados de sección y botones, 14 px (`size-3.5`) en acciones de tabla.
-- **Color:** los tokens semánticos (`--success`, `--warning`, `--state-*`) son **invariantes entre temas** — un badge "Aprobado" es verde en cualquier tema; el tema solo redefine identidad (primario/secundario/acento/sidebar/fondos).
+- **Tipografía:** nunca en píxeles sueltos. Se aplica el token completo con la
+  forma abreviada: `font: var(--mat-sys-body-medium)`, `…headline-small`,
+  `…title-small`, `…label-medium`. Números identitarios (DNI, montos,
+  contadores) llevan `font-variant-numeric: tabular-nums`.
+- **Color:** solo tokens. `--mat-sys-*` para todo lo del tema y `--estado-*`
+  para los seis estados de negocio del flujo N1, que Material no modela.
+  Prohibido cualquier hex o color de paleta fija en componentes.
+- **Espaciado y layout:** cada componente declara su propio layout en su bloque
+  `styles`, en múltiplos de 4 px (`gap: 8px/12px/16px`, `padding: 16px/24px`).
+  No hay clases de espaciado globales.
+- **Componentes:** primero Angular Material (`mat-card`, `mat-table`,
+  `mat-form-field`, `mat-chip`, `mat-slide-toggle`, `mat-expansion-panel`…);
+  después los compartidos del proyecto (`app-estado-badge`, `app-kpi-card`,
+  `app-autocomplete`, `app-column-selector`, `app-date-range-picker`,
+  `app-peru-map`). Escribir un control a mano es la última opción.
+- **Diálogos:** `MatDialog` siempre. Feedback genérico por `ModalService`
+  (`openInfo/openWarning/openConfirm/openSuccess/openError`, promesas);
+  los diálogos con formulario son componentes propios de su feature.
+- **Iconografía:** solo Material Symbols por ligadura
+  (`<mat-icon fontSet="material-symbols-outlined">`); 20 px en encabezados de
+  sección, 18 px en barras compactas, tamaño por defecto en acciones de fila.
+- **Solo lectura:** un dato no editable va con el control **deshabilitado**,
+  nunca atenuado con clases.
+- **Errores de formulario:** `mat-error` dentro del `mat-form-field`. Si la
+  validación es propia (no de `Validators`), el input necesita igualmente un
+  `FormControl` y un `[errorStateMatcher]`: sin `ngControl`, Material nunca
+  evalúa el estado de error.
+- **Invariancia entre temas:** los estados de negocio no cambian con el tema —
+  un chip "Aprobado" es verde en cualquiera; el tema solo redefine identidad.
 
 ## 4. Temas visuales — regla 60-30-10 y justificación
 
@@ -60,16 +91,22 @@ Paletas de referencia (Coolors) y su narrativa:
 | Fase | Contenido | Riesgo |
 |---|---|---|
 | **1 (implementada)** | Sistema de temas: tokens `[data-theme]`, `ThemeService` (aplicación en `<html>` + persistencia en localStorage), botón flotante "Personalizar apariencia" con panel lateral accesible, visible en todas las pantallas | Bajo: aditivo, el tema por defecto es la apariencia actual |
-| **2** | Migrar tablas restantes a `th-ds`/`td-ds`; tooltips del sidebar colapsado | Bajo |
-| **3** | Densidad táctil móvil (`btn-icon` ≥ 44 px en pantallas táctiles vía media query), labels a 12 px | Medio: revisar densidad de tablas |
+| **2** | ~~Migrar tablas restantes a `th-ds`/`td-ds`~~; tooltips del sidebar colapsado | Bajo · *sin objeto: todas las grillas son `mat-table`* |
+| **3** | Densidad táctil móvil (botones de icono ≥ 44 px en pantallas táctiles vía media query), labels a 12 px | Medio: revisar densidad de tablas · *sigue pendiente* |
 | **4** | Indicador de progreso en formularios largos (bloques completados) y micro-ayudas contextuales | Medio |
 | **5** | Auditoría WCAG AA instrumentada (axe) por vista y ajustes finos de contraste | Bajo |
 
 Cada fase se verifica en el navegador contra los flujos críticos (login, registro de usuarios, reasignación, bandejas) antes de continuar.
 
-## 5b. Estándar de acciones de tabla (julio 2026)
+## 5b. Estándar de acciones de tabla (julio 2026, vigente)
 
-La columna **Acciones** de `/usuarios` es el patrón canónico del sistema: botones cuadrados `p-2 rounded-lg transition-all` (32 px, icono lucide `size-4`), un tono tokenizado por tipo de acción, agrupados con `flex items-center justify-center gap-1 flex-wrap` (responsive). Queda prohibido el fondo circular (`rounded-full`) y los menús kebab para ≤4 acciones: las acciones se muestran siempre visibles. Aplicado en `Administración → Listas` (kebab reemplazado por Editar + Cambiar Estado visibles; cabecera con Nuevo/Excel/PDF/Actualizar cuadrados; el icono de impresión pasó a documento-PDF con identidad roja suave `destructive`). Los desplegables de ámbito territorial (Región/Provincia y multi-selección de Distrito) muestran un máximo de 4 elementos visibles (`max-h-[150px]`) con scroll interno `thin-scroll`.
+La columna **Acciones** de `/usuarios` sigue siendo el patrón canónico, ahora
+expresado en Material: `<button matIconButton class="accion a-…">` con un tono
+por tipo de acción (`a-neutro`, `a-marca`, `a-info`, `a-exito`, `a-error`,
+`excel`) declarado una sola vez en `theme.scss`, agrupados en `.acciones-fila`.
+Se conserva la regla de fondo: **acciones siempre visibles**, sin menús kebab
+para ≤4 acciones. *(La formulación original en clases de utilidad era:)*
+botones cuadrados `p-2 rounded-lg transition-all` (32 px, icono lucide `size-4`), un tono tokenizado por tipo de acción, agrupados con `flex items-center justify-center gap-1 flex-wrap` (responsive). Queda prohibido el fondo circular (`rounded-full`) y los menús kebab para ≤4 acciones: las acciones se muestran siempre visibles. Aplicado en `Administración → Listas` (kebab reemplazado por Editar + Cambiar Estado visibles; cabecera con Nuevo/Excel/PDF/Actualizar cuadrados; el icono de impresión pasó a documento-PDF con identidad roja suave `destructive`). Los desplegables de ámbito territorial (Región/Provincia y multi-selección de Distrito) muestran un máximo de 4 elementos visibles (`max-h-[150px]`) con scroll interno `thin-scroll`.
 
 ## 6. Erradicación de colores fijos (auditoría de julio 2026)
 
@@ -111,3 +148,52 @@ Barridos automatizados sobre todo `src/app` (botones con colores directos, `aler
 - **Limpieza**: señales y plantillas muertas retiradas (`validarOpen`, paso de confirmación de reasignar, icono ShieldCheck del sidebar).
 
 **Pendientes recomendados** (sin riesgo de regresión inmediata): migrar los `th`/`td` inline de las tablas a `th-ds`/`td-ds`; unificar los selects de filtro (`bg-card`) con `INPUT_BASE` (`bg-background`); y objetivo táctil ≥44 px para `btn-icon` en móvil.
+
+> *Estado:* los dos primeros quedaron sin objeto con la migración a Material
+> (todas las grillas son `mat-table` y los campos, `mat-form-field`). El
+> objetivo táctil en móvil **sigue pendiente**.
+
+## 10. Migración a Angular Material 3 (agosto 2026)
+
+Sustitución completa del design system propio por Angular Material, en once
+fases con verificación en navegador y `ng build` limpio en cada una.
+
+| Fase | Alcance |
+|---|---|
+| 0–1 | Base de Material (`mat.theme()`) y login |
+| 2 | Layout: `mat-sidenav`, toolbar y menús |
+| 3 | Servicios de feedback (`ModalService`→`MatDialog`, `ToastService`→`MatSnackBar`) y los compartidos: kpi-card, estado-badge, autocomplete, date-range-picker, column-selector, theme-switcher |
+| 4 | Gestión de usuarios |
+| 5 | Bandeja N1 |
+| 6 | Asistente N1 de 3 pasos (stepper, curso-form, participante-form) |
+| 7 | Seguimiento (revisión y aprobación) |
+| 8 | Configuración: campos y reglas |
+| 9 | Administración de listas |
+| 10 | Dashboard, perfil y reportes |
+| 11 | Mapa del Perú y 404; retirada de lucide |
+| — | Retirada de Tailwind: `styles.css` pasa a ser solo normalización (60,4 kB → 17,1 kB de hoja global) |
+
+**Qué desapareció:** `tailwindcss`, `@tailwindcss/postcss`, `tw-animate-css`,
+`postcss`, `.postcssrc.json`, `lucide-angular`, el `app-modal` propio y
+`input-styles.const.ts`, junto con todas las utilidades del design system
+anterior (`btn-*`, `card-ds`, `th-ds`/`td-ds`, `empty-state`, `animate-page-in`,
+`text-h1`…), que quedaron sin un solo uso.
+
+**Qué se conservó a propósito:** los seis estados de negocio como tokens
+propios (`--estado-*`), porque Material no tiene una noción equivalente y son
+los que dan significado a los chips; los dos temas conmutables y su
+persistencia; y las convenciones de grilla, ahora centralizadas en
+`theme.scss` en lugar de repetirse por vista.
+
+**Trampas encontradas** (útiles para quien siga):
+
+- `[errorStateMatcher]` solo se evalúa si el input tiene `ngControl`:
+  `MatInput.ngDoCheck` sale antes cuando no lo hay, así que una vista con el
+  estado en signals y `[value]`/`(input)` **nunca** mostrará `mat-error`.
+- Un `@else` con más de un nodo raíz rompe la proyección de `matSuffix`
+  (NG8011): hay que duplicar el `mat-form-field` entero en cada rama.
+- Un `mat-form-field` suelto tras un `<p>` se solapa: la etiqueta flotante se
+  dibuja sobre el borde superior y pisa la línea anterior.
+- El presupuesto de 4 kB de estilos por componente es real; cuando una vista lo
+  excede, suele ser señal de que le sobra una parte (así salió
+  `preview-formulario` de `campos`).

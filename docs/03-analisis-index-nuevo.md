@@ -19,7 +19,7 @@ Arquitectura ya consolidada en migraciones previas (commits `23bcd38` … `c7b24
 | Listas | `ListasAdminService` (signals + localStorage `sodega_listas_admin_db_v1`) + pantalla `ListasComponent`; los formularios consumen `opcionesFormulario()` reactivamente |
 | Gestión de usuarios | KPIs con filtro, búsqueda, paginación, acciones por iconos, modal Reasignar Registro (transferencia total vía `CursosService`) |
 | Formulario de usuario | Reactive Forms multi-pestaña (Datos / Permisos), modos nuevo·editar·presupuesto, ámbitos territoriales, metas por ámbito (Admin DZ → Técnico), RENIEC |
-| Design system | Light-only con tokens (`bg-card`, `ring-border`, `bg-primary` teal, `state-*`, `btn-primary/secondary/success`, `INPUT_BASE/REQUIRED/DISABLED`) — **fuente de verdad visual** |
+| Design system | Light-only con tokens (`bg-card`, `ring-border`, `bg-primary` teal, `state-*`, `btn-primary/secondary/success`, `INPUT_BASE/REQUIRED/DISABLED`) — **fuente de verdad visual** *(ago-2026: sustituido por Angular Material 3; ver `02-arquitectura.md` §6)* |
 
 ## 2. Análisis del HTML nuevo
 

@@ -4,6 +4,13 @@
 **Fecha de auditoría:** 05/07/2026
 **Origen:** Prototipo generado con Lovable (React) · **Destino:** Angular 22 Enterprise
 
+> **Documento histórico.** Registra la auditoría del sistema original y las
+> decisiones tomadas en julio de 2026. La capa visual descrita aquí (Tailwind
+> y lucide, migrados 1:1 desde React) fue **sustituida por Angular Material 3**
+> en agosto de 2026; las filas afectadas están marcadas. Para el estado actual,
+> ver `02-arquitectura.md` §6. Las secciones 1–4 describen el sistema **origen**
+> y siguen siendo válidas como tal.
+
 ---
 
 ## 1. Tecnologías encontradas en el sistema original
@@ -85,22 +92,23 @@
 
 | Riesgo | Impacto | Mitigación aplicada |
 |---|---|---|
-| Tailwind 4 con `@theme/@utility` no es el setup Angular por defecto | Estilos rotos | Se integró `@tailwindcss/postcss` (`.postcssrc.json`); tokens migrados 1:1 |
-| 40 primitivas shadcn/Radix sin equivalente Angular | Reescritura masiva | Solo ~6 se usaban; se reimplementaron como componentes propios (badge, modal, kpi, toast) |
+| Tailwind 4 con `@theme/@utility` no es el setup Angular por defecto | Estilos rotos | Se integró `@tailwindcss/postcss` (`.postcssrc.json`); tokens migrados 1:1. **Superado (ago-2026):** Tailwind se retiró al adoptar Angular Material 3; el design system vive en `styles/theme.scss` |
+| 40 primitivas shadcn/Radix sin equivalente Angular | Reescritura masiva | Solo ~6 se usaban; se reimplementaron como componentes propios (badge, modal, kpi, toast). **Revisado (ago-2026):** esas primitivas propias se sustituyeron por las de Angular Material (`MatDialog`, `MatSnackBar`, `mat-chip`…) |
 | Bug latente del original: al crear un curso, el id `createdId` asumido con `Date.now()` podía no coincidir con el id real | Paso 2 sin curso | En Angular `CursosService.create()` **devuelve** el registro creado y el stepper usa su id real |
 | Código muerto en `_shell.tsx` (bloque duplicado tras `return`) | Ninguno | No se migró (era inalcanzable) |
 | Eventos globales `window.dispatchEvent('sodega:simular-*')` | Antipatrón | Reemplazados por métodos públicos + `viewChild` |
-| lucide-angular declara peers hasta Angular 21 | Instalación | `.npmrc` con `legacy-peer-deps`; verificado en build y runtime |
+| lucide-angular declara peers hasta Angular 21 | Instalación | `.npmrc` con `legacy-peer-deps`; verificado en build y runtime. **Obsoleto (ago-2026):** lucide se retiró (iconos = Material Symbols). La bandera sigue puesta, pero por otro conflicto: `@angular/animations@22.1` exige `@angular/core@22.1.0` exacto |
 | Tooltips Radix con animación | Detalle visual | Sustituidos por `title` nativo (misma información, menor complejidad) |
 | Calendario shadcn en vista previa de campo tipo fecha | Detalle visual | Sustituido por `<input type="date">` nativo |
 | Datos seed con generadores IIFE deterministas | Paridad de demo | Portados literalmente (mismos 246 cursos / ~1.900 participantes) |
 
 ## 6. Componentes reutilizables identificados (y migrados a `shared/`)
 
-- `EstadoBadge` → `shared/components/estado-badge`
+- `EstadoBadge` → `shared/components/estado-badge` *(hoy sobre `mat-chip`)*
 - Tarjeta KPI → `shared/components/kpi-card`
-- Modal genérico (3 implementaciones duplicadas en el original) → `shared/components/modal` (unificado)
-- Toaster → `shared/components/toast` + `ToastService`
+- Modal genérico (3 implementaciones duplicadas en el original) → unificado en
+  `shared/components/modal` *(hoy `feedback-dialog` sobre `MatDialog`, vía `ModalService`)*
+- Toaster → `ToastService` *(hoy sobre `MatSnackBar`; el contenedor propio desapareció)*
 - Mapa del Perú → `shared/components/peru-map`
 - Utilidades UTM / regiones / fechas → `shared/utils`
 
