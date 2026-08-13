@@ -25,12 +25,14 @@ const TONE_MAP: Record<KpiTone, string> = {
          una y dos líneas quedan a la misma altura en la fila. El bloque de
          texto se estira y reparte (etiqueta arriba, cifra abajo) para que los
          números queden alineados entre tarjetas. -->
-    <div class="bg-card h-full p-5 rounded-xl ring-1 ring-border shadow-xs hover:shadow-md transition-shadow duration-200 flex justify-between items-stretch">
+    <div class="bg-card h-full p-5 rounded-xl ring-1 ring-border shadow-xs hover:shadow-md transition-shadow duration-200 flex justify-between items-stretch gap-1">
       <div class="flex flex-col justify-between">
         <p class="text-caption mb-1">{{ label() }}</p>
         <h3 class="kpi-number text-3xl">{{ value() }}</h3>
       </div>
-      <div class="size-12 self-center rounded-xl flex items-center justify-center" [class]="toneCls()">
+      <!-- shrink-0: sin esto el flex comprime el ancho del recuadro cuando la
+           etiqueta es larga y el ícono queda ovalado (33×48 en vez de 48×48). -->
+      <div class="size-12 shrink-0 self-center rounded-xl flex items-center justify-center" [class]="toneCls()">
         <lucide-angular [img]="icon()" class="size-6" />
       </div>
     </div>

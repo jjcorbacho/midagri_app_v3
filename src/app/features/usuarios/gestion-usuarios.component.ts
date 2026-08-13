@@ -42,7 +42,7 @@ const COLUMNAS_USUARIOS: ColumnaTabla[] = [
   { id: 'periodo', nombre: 'Periodo de Gestión', visible: true, orden: 10, clase: 'w-40' },
   { id: 'vigencia', nombre: 'Vigencia', visible: true, orden: 11, clase: 'w-48' },
   { id: 'vencimiento', nombre: 'Vencimiento', visible: true, orden: 12, clase: 'w-28' },
-  { id: 'progPresup', nombre: 'Prog. presupuestal', visible: false, orden: 13, clase: 'w-64' },
+  { id: 'progPresup', nombre: 'Categoría', visible: false, orden: 13, clase: 'w-64' },
   { id: 'ubigeo', nombre: 'Ubigeo', visible: false, orden: 14, clase: 'w-24' },
 ];
 

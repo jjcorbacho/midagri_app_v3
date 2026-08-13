@@ -328,9 +328,10 @@ export const UNIDADES_POR_PROGRAMA: Record<string, string[]> = {
 };
 
 /**
- * "Categoría" del modo presupuestal Jefe de Área (reemplaza a la pareja
- * Categoría presup. + Programa presupuestal cuando registra un Jefe de Área
- * o el Admin General registra perfiles herederos del presupuesto).
+ * Opciones del campo "Categoría" (control `programaPresup`) en el modo
+ * presupuestal Jefe de Área: ahí sustituye a la pareja Categoría presup. +
+ * Categoría cuando registra un Jefe de Área o el Admin General registra
+ * perfiles herederos del presupuesto.
  */
 export const CATEGORIAS_PRESUPUESTALES_JEFE_AREA = [
   '9001 - Acciones Centrales',

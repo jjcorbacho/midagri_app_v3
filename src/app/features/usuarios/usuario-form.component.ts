@@ -249,7 +249,7 @@ const INP_NORMAL = INPUT_BASE;
                 }
                 <div>
                   <label class="block text-xs font-medium text-muted-foreground mb-1">
-                    {{ modoJefeArea() ? 'Categoría' : 'Programa presupuestal' }} <span class="text-destructive">*</span>
+                    Categoría <span class="text-destructive">*</span>
                   </label>
                   <select formControlName="programaPresup" (change)="onProgramaChange()" [class]="presupuestoBloqueado() || !programaHabilitado() ? inpDisabled : inpMandatory">
                     <option value="">Seleccione</option>
@@ -807,13 +807,13 @@ const INP_NORMAL = INPUT_BASE;
 
             <div>
               <label for="mp-categoria" class="block text-xs font-medium text-muted-foreground mb-1">
-                {{ modoJefeArea() ? 'Categoría' : 'Programa presupuestal' }} <span class="text-destructive">*</span>
+                Categoría <span class="text-destructive">*</span>
               </label>
               <select
                 id="mp-categoria"
                 formControlName="programaPresup"
                 (change)="onProgramaChange()"
-                [attr.aria-label]="modoJefeArea() ? 'Categoría' : 'Programa presupuestal'"
+                aria-label="Categoría"
                 [attr.aria-invalid]="!!erroresPresupuesto()['programaPresup']"
                 [attr.aria-describedby]="erroresPresupuesto()['programaPresup'] ? 'mp-categoria-error' : null"
                 [class]="presupuestoBloqueado() || !programaHabilitado() ? inpDisabled : inpMandatory"
@@ -1117,9 +1117,10 @@ export class UsuarioFormComponent implements OnInit {
   ];
 
   /**
-   * Vista presupuestal del Jefe de Área (3 columnas, "Categoría" en lugar de
-   * Categoría presup. + Programa): aplica al Jefe de Área, a sus perfiles
-   * herederos y al Admin General cuando registra uno de esos perfiles.
+   * Vista presupuestal del Jefe de Área (3 columnas: se oculta "Categoría
+   * presup." y "Categoría" toma la lista de Jefe de Área): aplica al Jefe de
+   * Área, a sus perfiles herederos y al Admin General cuando registra uno de
+   * esos perfiles.
    */
   readonly modoJefeArea = computed(() => {
     this.formTick();
@@ -1545,7 +1546,7 @@ export class UsuarioFormComponent implements OnInit {
     ];
     if (!this.modoJefeArea()) campos.push({ control: 'categoriaPresup', etiqueta: 'Categoría presupuestal' });
     campos.push(
-      { control: 'programaPresup', etiqueta: this.modoJefeArea() ? 'Categoría' : 'Programa presupuestal' },
+      { control: 'programaPresup', etiqueta: 'Categoría' },
       { control: 'unidadFuncional', etiqueta: 'Unidad Funcional' },
     );
     return campos;
@@ -1957,11 +1958,7 @@ export class UsuarioFormComponent implements OnInit {
       !v.programaPresup &&
       !this.programaOpasOpcional(v.perfil)
     ) {
-      this.mostrarAlerta(
-        modoJefe
-          ? { titulo: 'Categoría Requerida', mensaje: 'Debe seleccionar una Categoría.' }
-          : { titulo: 'Programa Presupuestal Requerido', mensaje: 'Debe seleccionar un Programa Presupuestal estratégico.' },
-      );
+      this.mostrarAlerta({ titulo: 'Categoría Requerida', mensaje: 'Debe seleccionar una Categoría.' });
       return false;
     }
     if (!v.unidadFuncional && !this.programaOpasOpcional(v.perfil)) {
