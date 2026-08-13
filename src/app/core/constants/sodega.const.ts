@@ -329,7 +329,7 @@ export const UNIDADES_POR_PROGRAMA: Record<string, string[]> = {
 
 /**
  * Opciones del campo "Categoría" (control `programaPresup`) en el modo
- * presupuestal Jefe de Área: ahí sustituye a la pareja Categoría presup. +
+ * presupuestal Jefe de Área: ahí sustituye a la pareja Tipo presupuestal +
  * Categoría cuando registra un Jefe de Área o el Admin General registra
  * perfiles herederos del presupuesto.
  */

@@ -238,7 +238,7 @@ const INP_NORMAL = INPUT_BASE;
                 </div>
                 @if (!modoJefeArea()) {
                   <div>
-                    <label class="block text-xs font-medium text-muted-foreground mb-1">Categoría presup. <span class="text-destructive">*</span></label>
+                    <label class="block text-xs font-medium text-muted-foreground mb-1">Tipo presupuestal <span class="text-destructive">*</span></label>
                     <select formControlName="categoriaPresup" (change)="onCategoriaChange()" [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory">
                       <option value="">Seleccione</option>
                       @for (c of categorias(); track c) {
@@ -781,17 +781,17 @@ const INP_NORMAL = INPUT_BASE;
               }
             </div>
 
-            <!-- Categoría presupuestal: solo fuera de la vista Jefe de Área (mismo criterio del formulario). -->
+            <!-- Tipo presupuestal: solo fuera de la vista Jefe de Área (mismo criterio del formulario). -->
             @if (!modoJefeArea()) {
               <div>
                 <label for="mp-categoria-presup" class="block text-xs font-medium text-muted-foreground mb-1">
-                  Categoría presupuestal <span class="text-destructive">*</span>
+                  Tipo presupuestal <span class="text-destructive">*</span>
                 </label>
                 <select
                   id="mp-categoria-presup"
                   formControlName="categoriaPresup"
                   (change)="onCategoriaChange()"
-                  aria-label="Categoría presupuestal"
+                  aria-label="Tipo presupuestal"
                   [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory"
                 >
                   <option value="">Seleccione</option>
@@ -1117,9 +1117,9 @@ export class UsuarioFormComponent implements OnInit {
   ];
 
   /**
-   * Vista presupuestal del Jefe de Área (3 columnas: se oculta "Categoría
-   * presup." y "Categoría" toma la lista de Jefe de Área): aplica al Jefe de
-   * Área, a sus perfiles herederos y al Admin General cuando registra uno de
+   * Vista presupuestal del Jefe de Área (3 columnas: se oculta "Tipo
+   * presupuestal" y "Categoría" toma la lista de Jefe de Área): aplica al Jefe
+   * de Área, a sus perfiles herederos y al Admin General cuando registra uno de
    * esos perfiles.
    */
   readonly modoJefeArea = computed(() => {
@@ -1544,7 +1544,7 @@ export class UsuarioFormComponent implements OnInit {
       { control: 'unidad', etiqueta: 'Unidad Responsable' },
       { control: 'fuenteFinanc', etiqueta: 'Fuente de Financiamiento' },
     ];
-    if (!this.modoJefeArea()) campos.push({ control: 'categoriaPresup', etiqueta: 'Categoría presupuestal' });
+    if (!this.modoJefeArea()) campos.push({ control: 'categoriaPresup', etiqueta: 'Tipo presupuestal' });
     campos.push(
       { control: 'programaPresup', etiqueta: 'Categoría' },
       { control: 'unidadFuncional', etiqueta: 'Unidad Funcional' },
@@ -1950,7 +1950,7 @@ export class UsuarioFormComponent implements OnInit {
       return false;
     }
     if (!modoJefe && !v.categoriaPresup) {
-      this.mostrarAlerta({ titulo: 'Categoría Presupuestal Requerida', mensaje: 'Debe seleccionar una Categoría Presupuestal.' });
+      this.mostrarAlerta({ titulo: 'Tipo Presupuestal Requerido', mensaje: 'Debe seleccionar un Tipo presupuestal.' });
       return false;
     }
     if (
