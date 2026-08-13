@@ -236,6 +236,72 @@ export const PARTICIPANTES_INICIALES: Participante[] = [
   { id: 'p3', cursoId: '1', tipoParticipante: 'OTRO', dni: '12365478', apellidos: 'Ccahuana Yupanqui', nombres: 'Pedro', fechaNacimiento: '1973-01-25', primActividad: 'Asistencia técnica' },
 ];
 
+// ============================================================
+// FUENTE DE VERDAD DE PARTICIPANTES
+// ------------------------------------------------------------
+// `Curso.participantes` es solo un contador denormalizado (lo que
+// devolverá el API en la bandeja). Las filas reales viven en
+// `PARTICIPANTES_INICIALES`, que es lo que consume
+// `ParticipantesService.participantesDe(cursoId)` y renderiza el
+// Paso 2 del stepper.
+//
+// Regla de este archivo: todo curso con contador > 0 debe tener
+// exactamente esas filas. Los seeds de más abajo generan las suyas
+// y, al final, un pase de reconciliación recalcula el contador a
+// partir del array para que ambos no puedan volver a divergir.
+// ============================================================
+
+/** Pools compartidos por los generadores del seed. */
+const NOMBRES_POOL: readonly (readonly [string, string])[] = [
+  ['Quispe Huamán', 'Carlos Alberto'], ['Mamani Condori', 'Rosa María'], ['Vilca Roque', 'Luis Enrique'],
+  ['Ccahuana Yupanqui', 'Pedro Pablo'], ['Huamán Flores', 'María Elena'], ['Apaza Choque', 'Juana'],
+  ['Salas Vega', 'Jorge'], ['Ramos Pérez', 'Lucía'], ['Núñez Castro', 'Sofía'], ['Torres Lima', 'Andrés'],
+  ['Pari Coaquira', 'Felipe'], ['Suca Maquera', 'Elena'], ['Chávez Bravo', 'Manuel'],
+  ['Rojas Ayala', 'Diana'], ['Sánchez Pinto', 'Óscar'], ['Cárdenas León', 'Beatriz'],
+  ['Flores Quispe', 'Hernán'], ['Gutiérrez Mora', 'Isabel'], ['Choque Mamani', 'Víctor'],
+  ['Pacheco Tito', 'Gladys'],
+];
+
+const ACTIVIDADES_POOL: readonly string[] = [
+  'Agricultura — Papa', 'Agricultura — Café', 'Agricultura — Quinua', 'Ganadería — Bovinos',
+  'Ganadería — Alpacas', 'Agricultura — Cacao', 'Agricultura — Arroz', 'Forestal — Eucalipto',
+];
+
+const TIPOS_PARTICIPANTE: readonly Participante['tipoParticipante'][] = ['PRODUCTOR', 'OTRO'];
+
+const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+/** Fecha de nacimiento determinista (mismo criterio en los tres generadores). */
+const fechaNacSeed = (p: number, i: number): string =>
+  `19${70 + ((p + i * 3) % 30)}-${String(((p + i) % 12) + 1).padStart(2, '0')}-${String(((p * 5 + i) % 27) + 1).padStart(2, '0')}`;
+
+// ===== Participantes de los cursos escritos a mano (bloques de arriba) =====
+// Estos cursos declaraban el contador pero no traían filas: la bandeja mostraba
+// "18" en CAP-2024-002 y el Paso 2 salía vacío. Aquí se crean las filas que
+// faltaban, respetando el contador ya declarado.
+(() => {
+  const yaTienenFilas = new Set(PARTICIPANTES_INICIALES.map((p) => p.cursoId));
+  let partSeq = 1;
+  let dniSeq = 70000000;
+
+  CURSOS_INICIALES.forEach((curso, ci) => {
+    if (yaTienenFilas.has(curso.id)) return;
+    for (let p = 0; p < curso.participantes; p++) {
+      const [apellidos, nombres] = NOMBRES_POOL[(p + ci) % NOMBRES_POOL.length];
+      PARTICIPANTES_INICIALES.push({
+        id: `m${partSeq++}`,
+        cursoId: curso.id,
+        tipoParticipante: TIPOS_PARTICIPANTE[(p + ci) % TIPOS_PARTICIPANTE.length],
+        dni: String(dniSeq++),
+        apellidos,
+        nombres,
+        fechaNacimiento: fechaNacSeed(p, ci),
+        primActividad: ACTIVIDADES_POOL[(p + ci) % ACTIVIDADES_POOL.length],
+      });
+    }
+  });
+})();
+
 // ===== Seed masivo: 11 registros para 3 áreas con 1-6 participantes c/u =====
 (() => {
   const seedAreas = [
@@ -264,15 +330,10 @@ export const PARTICIPANTES_INICIALES: Participante[] = [
     'AT en manejo reproductivo bovino',
   ];
   const estadosSeed: EstadoCurso[] = ['Registrado', 'Enviado', 'Enviado-Subsanado', 'Validado', 'Observado', 'Aprobado'];
-  const nombresPool = [
-    ['Quispe Huamán', 'Carlos Alberto'], ['Mamani Condori', 'Rosa María'], ['Vilca Roque', 'Luis Enrique'],
-    ['Ccahuana Yupanqui', 'Pedro Pablo'], ['Huamán Flores', 'María Elena'], ['Apaza Choque', 'Juana'],
-    ['Salas Vega', 'Jorge'], ['Ramos Pérez', 'Lucía'], ['Núñez Castro', 'Sofía'], ['Torres Lima', 'Andrés'],
-    ['Pari Coaquira', 'Felipe'], ['Suca Maquera', 'Elena'],
-  ];
-  const actividades = ['Agricultura — Papa', 'Agricultura — Café', 'Agricultura — Quinua', 'Ganadería — Bovinos', 'Ganadería — Alpacas', 'Agricultura — Cacao'];
-  const tipos: Participante['tipoParticipante'][] = ['PRODUCTOR', 'OTRO'];
-  const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const nombresPool = NOMBRES_POOL.slice(0, 12);
+  const actividades = ACTIVIDADES_POOL.slice(0, 6);
+  const tipos = TIPOS_PARTICIPANTE;
+  const meses = MESES;
 
   let cursoSeq = 1000;
   let partSeq = 1000;
@@ -321,7 +382,7 @@ export const PARTICIPANTES_INICIALES: Participante[] = [
           dni: String(dniSeq++),
           apellidos: np[0],
           nombres: np[1],
-          fechaNacimiento: `19${70 + ((p + i * 3) % 30)}-${String(((p + i) % 12) + 1).padStart(2, '0')}-${String(((p * 5 + i) % 27) + 1).padStart(2, '0')}`,
+          fechaNacimiento: fechaNacSeed(p, i),
           primActividad: actividades[(p + i + ai) % actividades.length],
         });
       }
@@ -359,18 +420,10 @@ export const PARTICIPANTES_INICIALES: Participante[] = [
     'AT en manejo de invernaderos', 'AT en preparación de bioles',
   ];
   const estadosSeed2: EstadoCurso[] = ['Registrado', 'Enviado', 'Enviado-Subsanado', 'Validado', 'Observado', 'Aprobado'];
-  const nombresPool2 = [
-    ['Quispe Huamán', 'Carlos Alberto'], ['Mamani Condori', 'Rosa María'], ['Vilca Roque', 'Luis Enrique'],
-    ['Ccahuana Yupanqui', 'Pedro Pablo'], ['Huamán Flores', 'María Elena'], ['Apaza Choque', 'Juana'],
-    ['Salas Vega', 'Jorge'], ['Ramos Pérez', 'Lucía'], ['Núñez Castro', 'Sofía'], ['Torres Lima', 'Andrés'],
-    ['Pari Coaquira', 'Felipe'], ['Suca Maquera', 'Elena'], ['Chávez Bravo', 'Manuel'],
-    ['Rojas Ayala', 'Diana'], ['Sánchez Pinto', 'Óscar'], ['Cárdenas León', 'Beatriz'],
-    ['Flores Quispe', 'Hernán'], ['Gutiérrez Mora', 'Isabel'], ['Choque Mamani', 'Víctor'],
-    ['Pacheco Tito', 'Gladys'],
-  ];
-  const actividades2 = ['Agricultura — Papa', 'Agricultura — Café', 'Agricultura — Quinua', 'Ganadería — Bovinos', 'Ganadería — Alpacas', 'Agricultura — Cacao', 'Agricultura — Arroz', 'Forestal — Eucalipto'];
-  const tipos2: Participante['tipoParticipante'][] = ['PRODUCTOR', 'OTRO'];
-  const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const nombresPool2 = NOMBRES_POOL;
+  const actividades2 = ACTIVIDADES_POOL;
+  const tipos2 = TIPOS_PARTICIPANTE;
+  const meses = MESES;
 
   let cursoSeq = 5000;
   let partSeq = 5000;
@@ -421,12 +474,26 @@ export const PARTICIPANTES_INICIALES: Participante[] = [
           dni: String(dniSeq++),
           apellidos: np[0],
           nombres: np[1],
-          fechaNacimiento: `19${70 + ((p + i * 3) % 30)}-${String(((p + i) % 12) + 1).padStart(2, '0')}-${String(((p * 5 + i) % 27) + 1).padStart(2, '0')}`,
+          fechaNacimiento: fechaNacSeed(p, i),
           primActividad: actividades2[(p + i + ai) % actividades2.length],
         });
       }
     }
   });
+})();
+
+// ===== Reconciliación final: el contador se DERIVA de las filas =====
+// Invariante del seed: `curso.participantes === participantesDe(curso.id).length`.
+// A partir de aquí el contador ya no se escribe a mano; en runtime lo mantiene
+// `CursosService.adjustParticipantes()` desde `ParticipantesService`.
+(() => {
+  const conteoPorCurso = new Map<string, number>();
+  for (const p of PARTICIPANTES_INICIALES) {
+    conteoPorCurso.set(p.cursoId, (conteoPorCurso.get(p.cursoId) ?? 0) + 1);
+  }
+  for (const c of CURSOS_INICIALES) {
+    c.participantes = conteoPorCurso.get(c.id) ?? 0;
+  }
 })();
 
 /** Padrón simulado de productores (búsqueda por DNI en Paso 2). */

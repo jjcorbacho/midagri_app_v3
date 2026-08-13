@@ -52,7 +52,7 @@ const INP_REQ = INPUT_REQUIRED;
           </div>
           <div class="p-3 space-y-3">
             <div class="p-3 bg-secondary/40 ring-1 ring-border rounded-lg">
-              <label class="block text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Agregar lista</label>
+              <label class="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Agregar lista</label>
               <div class="flex gap-2">
                 <input
                   type="text"
@@ -154,9 +154,9 @@ const INP_REQ = INPUT_REQUIRED;
             <div class="ring-1 ring-border rounded-lg overflow-auto bg-card max-h-[420px]">
               <table class="w-full min-w-[680px] text-left">
                 <thead class="bg-secondary sticky top-0 z-10 shadow-sm">
-                  <tr class="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                    <th class="px-4 py-3 w-28 text-center">Acciones</th>
-                    <th class="px-4 py-3">Descripción</th>
+                  <tr class="label-ds">
+                    <th class="th-ds py-3 w-28 text-center">Acciones</th>
+                    <th class="th-ds py-3">Descripción</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-border">
@@ -173,7 +173,7 @@ const INP_REQ = INPUT_REQUIRED;
                   }
                   @for (fila of opcionesFiltradas(); track fila.indice) {
                     <tr class="hover:bg-secondary/40 transition-colors">
-                      <td class="px-4 py-2.5">
+                      <td class="td-ds py-2.5">
                         <!-- Acciones visibles (mismo patrón de la columna Acciones de /usuarios) -->
                         <div class="flex items-center justify-center gap-1 flex-wrap">
                           <button (click)="abrirModalOpcion(fila.indice)" title="Editar" aria-label="Editar opción"
@@ -218,7 +218,7 @@ const INP_REQ = INPUT_REQUIRED;
         >
           <div class="space-y-4">
             <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Código <span class="text-destructive">*</span></label>
+              <label class="block text-xs font-medium text-muted-foreground mb-1">Código <span class="text-destructive">*</span></label>
               <input
                 type="text"
                 placeholder="Código automático"
@@ -230,7 +230,7 @@ const INP_REQ = INPUT_REQUIRED;
             </div>
             @if (listaActivaEsUnidadFuncional()) {
               <div>
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">
+                <label class="block text-xs font-medium text-muted-foreground mb-1">
                   Unidad Responsable <span class="text-destructive">*</span>
                 </label>
                 <select
@@ -246,7 +246,7 @@ const INP_REQ = INPUT_REQUIRED;
               </div>
             }
             <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">
+              <label class="block text-xs font-medium text-muted-foreground mb-1">
                 Nombre {{ listaActivaEsUnidadFuncional() ? 'Unidad Funcional' : listaActiva() }} <span class="text-destructive">*</span>
               </label>
               <input

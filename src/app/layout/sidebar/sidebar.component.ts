@@ -54,10 +54,35 @@ interface NavItem {
   children?: NavChild[];
 }
 
+const CHILD_REG_CAPACITACIONES: NavChild = {
+  to: '/capacitaciones-n1/capacitaciones',
+  label: 'Registro de Capacitaciones',
+  icon: GraduationCap,
+};
+const CHILD_REG_ASISTENCIA: NavChild = {
+  to: '/capacitaciones-n1/asistencia-tecnica',
+  label: 'Registro de Asist. Técnica',
+  icon: Wrench,
+};
 const CHILD_USUARIOS: NavChild = { to: '/usuarios', label: 'Gestión de Usuarios', icon: UsersRound };
 const CHILD_LISTAS: NavChild = { to: '/administracion/listas', label: 'Listas', icon: ListChecks };
 const CHILD_CONFIG_CAMPOS: NavChild = { to: '/configuracion/campos', label: 'Configuración Campos', icon: Sliders };
 const CHILD_CONFIG_REGLAS: NavChild = { to: '/configuracion/reglas', label: 'Configuración Reglas', icon: Wrench };
+
+/**
+ * Grupo Registro (Capacitaciones + Asistencia Técnica, según permisos).
+ * Cada submenú se muestra solo si el usuario tiene su permiso, de modo que
+ * un perfil con una sola de las dos altas ve una única entrada.
+ */
+function grupoRegistro(children: NavChild[]): NavItem {
+  return {
+    to: children[0]?.to ?? '/capacitaciones-n1',
+    label: 'Registro',
+    icon: ClipboardCheck,
+    matchPrefix: ['/capacitaciones-n1'],
+    children,
+  };
+}
 
 /** Grupo Administración (Gestión de Usuarios + Listas, según permisos). */
 function grupoAdministracion(children: NavChild[]): NavItem {
@@ -70,25 +95,27 @@ function grupoAdministracion(children: NavChild[]): NavItem {
   };
 }
 
-/** Grupo Configuración (Campos + Reglas, según permisos). */
+/**
+ * Entrada única "Configuración" (sin viñetas).
+ *
+ * Campos y Reglas dejaron de ser dos destinos independientes: son las etapas
+ * de un mismo flujo (campos → estructura → reglas), así que el menú expone un
+ * solo botón. Los permisos se siguen respetando: `children` solo se usa para
+ * decidir el destino de entrada — campos si el usuario lo tiene, y si no,
+ * reglas — y el grupo no se construye cuando la lista llega vacía.
+ */
 function grupoConfiguracion(children: NavChild[]): NavItem {
   return {
     to: children[0]?.to ?? '/configuracion',
     label: 'Configuración',
     icon: Settings,
     matchPrefix: ['/configuracion'],
-    children,
   };
 }
 
 const NAV_FULL: NavItem[] = [
   { to: '/dashboard', label: 'Inicio', icon: Home },
-  {
-    to: '/capacitaciones-n1',
-    label: 'Capacitaciones / Asist. Técnica N1',
-    icon: GraduationCap,
-    matchPrefix: ['/capacitaciones-n1'],
-  },
+  grupoRegistro([CHILD_REG_CAPACITACIONES, CHILD_REG_ASISTENCIA]),
   // Vista unificada: la botonera interna Revisión/Aprobación cambia de modo.
   { to: '/seguimiento/revision', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] },
   { to: '/reportes', label: 'Reportes', icon: FileText },
@@ -98,10 +125,6 @@ const NAV_FULL: NavItem[] = [
     label: 'Configuración',
     icon: Settings,
     matchPrefix: ['/configuracion'],
-    children: [
-      { to: '/configuracion/campos', label: 'Configuración Campos', icon: Sliders },
-      { to: '/configuracion/reglas', label: 'Configuración Reglas', icon: Wrench },
-    ],
   },
 ];
 
@@ -120,10 +143,10 @@ const COLLAPSE_KEY = 'midagri.sidebar.collapsed';
         <a
           routerLink="/dashboard"
           class="size-10 rounded-md flex items-center justify-center ring-1 ring-sidebar-foreground/20 bg-brand text-brand-foreground font-bold text-sm shrink-0"
-          aria-label="MIDAGRI - Inicio"
+          aria-label="SODEGA - Inicio"
         >M</a>
         @if (!collapsed()) {
-          <span class="text-[11px] font-semibold tracking-wider text-sidebar-foreground/70 uppercase">MIDAGRI</span>
+          <span class="text-[11px] font-semibold tracking-wider text-sidebar-foreground/70 uppercase">SODEGA</span>
         }
         <button
           (click)="toggle()"
@@ -267,28 +290,16 @@ export class SidebarComponent {
     }
     if (this.auth.isTecnico1()) {
       const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
-      if (this.registra(PERMISO_CAPACITACION) || this.registra(PERMISO_ASISTENCIA_TECNICA)) {
-        items.push({
-          to: '/capacitaciones-n1',
-          label: 'Capacitaciones / Asist. Técnica N1',
-          icon: GraduationCap,
-          matchPrefix: ['/capacitaciones-n1'],
-        });
-      }
+      const registro = this.childrenRegistro();
+      if (registro.length) items.push(grupoRegistro(registro));
       return items;
     }
     // Administrador General y perfiles personalizados (lista "Perfil Autorizado"):
     // menú derivado íntegramente de los permisos del registro activo.
     if (this.auth.session()) {
       const items: NavItem[] = [{ to: '/dashboard', label: 'Inicio', icon: Home }];
-      if (this.registra(PERMISO_CAPACITACION) || this.registra(PERMISO_ASISTENCIA_TECNICA)) {
-        items.push({
-          to: '/capacitaciones-n1',
-          label: 'Capacitaciones / Asist. Técnica N1',
-          icon: GraduationCap,
-          matchPrefix: ['/capacitaciones-n1'],
-        });
-      }
+      const registro = this.childrenRegistro();
+      if (registro.length) items.push(grupoRegistro(registro));
       // Entrada única "Seguimiento": abre revisión si el permiso lo cubre;
       // de lo contrario, aprobación. La botonera interna alterna los modos.
       if (this.registra(PERMISO_SEGUIMIENTO_REVISION)) {
@@ -326,6 +337,14 @@ export class SidebarComponent {
     const children: NavChild[] = [];
     if (this.registra(PERMISO_GESTION_USUARIOS)) children.push(CHILD_USUARIOS);
     if (this.registra(PERMISO_LISTAS)) children.push(CHILD_LISTAS);
+    return children;
+  }
+
+  /** Hijos del grupo Registro según los permisos del registro activo. */
+  private childrenRegistro(): NavChild[] {
+    const children: NavChild[] = [];
+    if (this.registra(PERMISO_CAPACITACION)) children.push(CHILD_REG_CAPACITACIONES);
+    if (this.registra(PERMISO_ASISTENCIA_TECNICA)) children.push(CHILD_REG_ASISTENCIA);
     return children;
   }
 

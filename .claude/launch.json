@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "midagri-dev",
+      "name": "midagri-main-dev",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["ng", "serve", "--port", "4310"],
-      "port": 4310
+      "runtimeArgs": ["ng", "serve", "--port", "4311"],
+      "port": 4311
     }
   ]
 }

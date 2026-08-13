@@ -2,9 +2,11 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import {
   LucideAngularModule,
   Save, RotateCcw, GraduationCap, Headset, Users, Clock, Target,
-  AlertTriangle, Info, Lock, CheckCircle2, Sprout,
+  AlertTriangle, Info, Lock, CheckCircle2, Sprout, ChevronRight,
 } from 'lucide-angular';
+import { RouterLink } from '@angular/router';
 import { AreaService } from '../../../core/services/area.service';
+import { ConfiguracionFlujoService } from '../../../core/services/configuracion-flujo.service';
 import { ReglasService } from '../../../core/services/reglas.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { AreaConfig, CriterioExito, MetaGeneral, PeriodoMedicion } from '../../../core/models/area-config.model';
@@ -26,7 +28,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
 @Component({
   selector: 'app-reglas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule],
+  imports: [LucideAngularModule, RouterLink],
   template: `
     <div class="min-h-full bg-muted/30 py-6 lg:py-8 px-4 lg:px-8 animate-page-in">
       <div class="max-w-6xl mx-auto bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
@@ -34,6 +36,20 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
         <!-- Header -->
         <header class="px-6 py-4 border-b border-border bg-card flex justify-between items-center gap-3">
           <div class="min-w-0">
+            <!-- Etapa 3 del flujo: se rotula el registro que viene de la
+                 etapa 1 para que el usuario sepa qué está configurando. -->
+            @if (flujo.registro(); as registro) {
+              <div class="flex items-center gap-2 text-xs font-semibold text-brand uppercase tracking-wider mb-1 flex-wrap">
+                <a routerLink="/configuracion/campos" class="hover:underline">Configuración</a>
+                <lucide-angular [img]="ChevronRightIcon" class="size-3 text-muted-foreground/60" />
+                <a routerLink="/configuracion/estructura-formulario" class="hover:underline">Estructura</a>
+                <lucide-angular [img]="ChevronRightIcon" class="size-3 text-muted-foreground/60" />
+                <span class="text-muted-foreground">Reglas</span>
+                <span class="ml-1 normal-case font-medium text-muted-foreground">
+                  · {{ flujo.labelFormulario(registro.formulario) }}
+                </span>
+              </div>
+            }
             <h1 class="text-h1 text-foreground">Configurador de Reglas — {{ area().code }}</h1>
             <p class="text-xs text-muted-foreground truncate">
               {{ area().name }}. Define actividades, aforos y criterios de éxito del periodo.
@@ -177,7 +193,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                       </div>
                       <div class="grid grid-cols-2 gap-3">
                         <div>
-                          <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                          <label class="flex items-center gap-1 label-ds mb-1">
                             <lucide-angular [img]="ClockIcon" class="size-3" /> Horas mínimas
                           </label>
                           <input type="number" min="1" [value]="draft().capacitacion.horasMin"
@@ -185,7 +201,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                             class="w-full h-9 bg-background border border-input rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand" />
                         </div>
                         <div>
-                          <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                          <label class="flex items-center gap-1 label-ds mb-1">
                             <lucide-angular [img]="ClockIcon" class="size-3" /> Horas máximas
                           </label>
                           <input type="number" [min]="draft().capacitacion.horasMin" [value]="draft().capacitacion.horasMax"
@@ -194,7 +210,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                             [class]="draft().capacitacion.horasMax < draft().capacitacion.horasMin ? 'border-destructive' : 'border-input'" />
                         </div>
                         <div>
-                          <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                          <label class="flex items-center gap-1 label-ds mb-1">
                             <lucide-angular [img]="UsersIcon" class="size-3" /> Aforo mínimo
                           </label>
                           <div class="relative">
@@ -204,7 +220,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                           </div>
                         </div>
                         <div>
-                          <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                          <label class="flex items-center gap-1 label-ds mb-1">
                             <lucide-angular [img]="UsersIcon" class="size-3" /> Aforo máximo
                           </label>
                           <input type="number" min="1" [value]="draft().capacitacion.participantesMax"
@@ -231,7 +247,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                       </div>
                       <div class="grid grid-cols-2 gap-3">
                         <div>
-                          <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                          <label class="flex items-center gap-1 label-ds mb-1">
                             <lucide-angular [img]="ClockIcon" class="size-3" /> Horas mínimas
                           </label>
                           <input type="number" min="1" [value]="draft().asistencia.horasMin"
@@ -239,7 +255,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                             class="w-full h-9 bg-background border border-input rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand" />
                         </div>
                         <div>
-                          <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                          <label class="flex items-center gap-1 label-ds mb-1">
                             <lucide-angular [img]="ClockIcon" class="size-3" /> Horas máximas
                           </label>
                           <input type="number" [min]="draft().asistencia.horasMin" [value]="draft().asistencia.horasMax"
@@ -249,7 +265,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                         </div>
                         @if (!soloAtIndividual()) {
                           <div>
-                            <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                            <label class="flex items-center gap-1 label-ds mb-1">
                               <lucide-angular [img]="UsersIcon" class="size-3" /> Aforo mínimo
                             </label>
                             <div class="relative">
@@ -259,7 +275,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                             </div>
                           </div>
                           <div>
-                            <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                            <label class="flex items-center gap-1 label-ds mb-1">
                               <lucide-angular [img]="UsersIcon" class="size-3" /> Aforo máximo
                             </label>
                             <input type="number" min="1" [value]="draft().asistencia.participantesMax"
@@ -291,7 +307,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <label for="meta-general-cap" class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                      <label for="meta-general-cap" class="flex items-center gap-1 label-ds mb-1">
                         <lucide-angular [img]="GraduationCapIcon" class="size-3" /> Cantidad de Capacitaciones
                       </label>
                       <input id="meta-general-cap" type="number" min="0" [value]="draft().metaGeneral.capacitaciones"
@@ -299,7 +315,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                         class="w-full h-9 bg-background border border-input rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand" />
                     </div>
                     <div>
-                      <label for="meta-general-at" class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                      <label for="meta-general-at" class="flex items-center gap-1 label-ds mb-1">
                         <lucide-angular [img]="HeadsetIcon" class="size-3" /> Cantidad de Asistencia Técnica
                       </label>
                       <input id="meta-general-at" type="number" min="0" [value]="draft().metaGeneral.asistenciasTecnicas"
@@ -307,7 +323,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                         class="w-full h-9 bg-background border border-input rounded-md px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-brand" />
                     </div>
                     <div>
-                      <label for="meta-general-ha" class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                      <label for="meta-general-ha" class="flex items-center gap-1 label-ds mb-1">
                         <lucide-angular [img]="SproutIcon" class="size-3" /> Cantidad de Hectáreas
                       </label>
                       <input id="meta-general-ha" type="number" min="0" [value]="draft().metaGeneral.hectareas"
@@ -362,7 +378,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                           </p>
                           <div class="grid grid-cols-2 gap-4">
                             <div>
-                              <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                              <label class="flex items-center gap-1 label-ds mb-1">
                                 <lucide-angular [img]="TargetIcon" class="size-3" /> Meta capacitaciones
                               </label>
                               <input type="number" min="1" [value]="draft().metaCapacitaciones"
@@ -372,7 +388,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                               <p class="text-[10px] text-muted-foreground mt-1">≥ N sesiones por periodo.</p>
                             </div>
                             <div>
-                              <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                              <label class="flex items-center gap-1 label-ds mb-1">
                                 <lucide-angular [img]="TargetIcon" class="size-3" /> Meta asistencias técnicas
                               </label>
                               <input type="number" min="1" [value]="draft().metaAT"
@@ -403,7 +419,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                           </p>
                           <div class="grid grid-cols-2 gap-4">
                             <div>
-                              <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                              <label class="flex items-center gap-1 label-ds mb-1">
                                 <lucide-angular [img]="TargetIcon" class="size-3" /> Capacitaciones ≥
                               </label>
                               <input type="number" min="1" [value]="draft().metaCapacitaciones"
@@ -413,7 +429,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                               <p class="text-[10px] text-muted-foreground mt-1">Mínimo requerido.</p>
                             </div>
                             <div>
-                              <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                              <label class="flex items-center gap-1 label-ds mb-1">
                                 <lucide-angular [img]="TargetIcon" class="size-3" /> Asistencias técnicas ≥
                               </label>
                               <input type="number" min="1" [value]="draft().metaAT"
@@ -445,7 +461,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                     </p>
                     @if (capOn()) {
                       <div>
-                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                        <label class="flex items-center gap-1 label-ds mb-1">
                           <lucide-angular [img]="TargetIcon" class="size-3" /> Meta de capacitaciones (por periodo)
                         </label>
                         <input type="number" min="1" [value]="draft().metaCapacitaciones"
@@ -456,7 +472,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                       </div>
                     } @else {
                       <div>
-                        <label class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                        <label class="flex items-center gap-1 label-ds mb-1">
                           <lucide-angular [img]="TargetIcon" class="size-3" /> Meta de asistencias técnicas (por periodo)
                         </label>
                         <input type="number" min="1" [value]="draft().metaAT"
@@ -481,7 +497,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
               <div class="pt-1">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label class="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-1.5">
+                    <label class="block label-ds mb-1.5">
                       Periodo de medición
                     </label>
                     <select
@@ -540,6 +556,8 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
 })
 export class ReglasComponent {
   private readonly areaService = inject(AreaService);
+  readonly flujo = inject(ConfiguracionFlujoService);
+  readonly ChevronRightIcon = ChevronRight;
   private readonly reglasService = inject(ReglasService);
   private readonly toast = inject(ToastService);
 

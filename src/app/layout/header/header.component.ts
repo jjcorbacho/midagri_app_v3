@@ -22,7 +22,7 @@ const MOSTRAR_SELECTOR_AREA = false;
     <header class="h-16 bg-card/95 backdrop-blur border-b border-border flex items-center justify-between px-6 sticky top-0 z-20">
       <div class="flex items-center gap-6">
         <div class="flex flex-col justify-center leading-tight min-w-0">
-          <span class="text-[10px] uppercase tracking-wider font-semibold text-brand">MIDAGRI</span>
+          <span class="text-[10px] uppercase tracking-wider font-semibold text-brand">SODEGA</span>
           <span class="text-sm font-medium text-muted-foreground">Sistema de Capacitaciones</span>
           <!-- Periodo de gestión del usuario autenticado (visible en toda la app). -->
           @if (periodoTexto(); as periodo) {
@@ -122,7 +122,7 @@ const MOSTRAR_SELECTOR_AREA = false;
             <form class="space-y-3" (submit)="$event.preventDefault(); pwdOpen.set(false)">
               @for (l of ['Clave actual', 'Clave nueva', 'Confirmar clave nueva']; track l) {
                 <div>
-                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">{{ l }}</label>
+                  <label class="block text-xs font-medium text-muted-foreground mb-1">{{ l }}</label>
                   <input
                     type="password"
                     required

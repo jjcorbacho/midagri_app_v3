@@ -27,28 +27,28 @@ import { AreaService } from '../../core/services/area.service';
             <div class="flex items-start gap-3 p-3 rounded-lg bg-secondary/40">
               <lucide-angular [img]="MailIcon" class="size-4 text-brand mt-0.5" />
               <div>
-                <div class="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Correo institucional</div>
+                <div class="label-ds">Correo institucional</div>
                 <div class="text-sm font-medium">{{ user.email }}</div>
               </div>
             </div>
             <div class="flex items-start gap-3 p-3 rounded-lg bg-secondary/40">
               <lucide-angular [img]="BriefcaseIcon" class="size-4 text-brand mt-0.5" />
               <div>
-                <div class="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Rol</div>
+                <div class="label-ds">Rol</div>
                 <div class="text-sm font-medium">{{ user.rol }}</div>
               </div>
             </div>
             <div class="flex items-start gap-3 p-3 rounded-lg bg-secondary/40">
               <lucide-angular [img]="Building2Icon" class="size-4 text-brand mt-0.5" />
               <div>
-                <div class="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Área activa</div>
+                <div class="label-ds">Área activa</div>
                 <div class="text-sm font-medium">{{ areaService.currentArea() }}</div>
               </div>
             </div>
             <div class="flex items-start gap-3 p-3 rounded-lg bg-secondary/40">
               <lucide-angular [img]="ShieldCheckIcon" class="size-4 text-brand mt-0.5" />
               <div>
-                <div class="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Estado</div>
+                <div class="label-ds">Estado</div>
                 <div class="text-sm font-medium">Activo</div>
               </div>
             </div>

@@ -24,7 +24,7 @@ const ICONOS_GRUPO: Record<IconoGrupoPermiso, LucideIconData> = {
   template: `
     <div class="border-t border-border pt-5 space-y-3">
       <div>
-        <h4 class="text-[11px] font-semibold uppercase tracking-wider text-brand flex items-center gap-2">
+        <h4 class="label-ds text-brand flex items-center gap-2">
           <lucide-angular [img]="ListChecksIcon" class="size-4" /> {{ esquema().titulo }}
         </h4>
         <p class="text-xs text-muted-foreground mt-0.5">{{ esquema().descripcion }}</p>

@@ -148,9 +148,9 @@ const ICON_TONES: Record<string, string> = {
         <div class="overflow-auto max-h-[60vh]">
           <table class="w-full text-left" [style.min-width.px]="anchoMinimoTabla()">
             <thead class="bg-secondary sticky top-0 z-10 shadow-sm">
-              <tr class="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+              <tr class="text-muted-foreground label-ds">
                 @for (col of columnasVisibles(); track col.id) {
-                  <th class="px-4 py-3" [class]="col.clase ?? ''">{{ col.nombre }}</th>
+                  <th class="th-ds py-3" [class]="col.clase ?? ''">{{ col.nombre }}</th>
                 }
               </tr>
             </thead>
@@ -171,7 +171,7 @@ const ICON_TONES: Record<string, string> = {
                   @for (col of columnasVisibles(); track col.id) {
                     @switch (col.id) {
                       @case ('acciones') {
-                        <td class="px-4 py-4 whitespace-nowrap w-px">
+                        <td class="td-ds py-4 whitespace-nowrap w-px">
                           <div class="flex items-center justify-center gap-1 flex-nowrap">
                             <button title="Editar Datos" aria-label="Editar Datos" (click)="accion('EDITAR', u)"
                               class="p-2 rounded-lg transition-all" [class]="tone('slate')">
@@ -205,10 +205,10 @@ const ICON_TONES: Record<string, string> = {
                         </td>
                       }
                       @case ('empleado') {
-                        <td class="px-4 py-4 text-sm font-semibold text-foreground leading-tight">{{ nombreFila(u) }}</td>
+                        <td class="td-ds py-4 font-semibold text-foreground leading-tight">{{ nombreFila(u) }}</td>
                       }
                       @case ('estado') {
-                        <td class="px-4 py-4 text-center whitespace-nowrap">
+                        <td class="td-ds py-4 text-center whitespace-nowrap">
                           <span
                             class="${BADGE_PILL}"
                             [class]="u.estado === 'HABILITADO'
@@ -218,25 +218,25 @@ const ICON_TONES: Record<string, string> = {
                         </td>
                       }
                       @case ('usuario') {
-                        <td class="px-4 py-4 text-sm text-muted-foreground font-medium">{{ u.userGen }}</td>
+                        <td class="td-ds py-4 text-muted-foreground font-medium">{{ u.userGen }}</td>
                       }
                       @case ('dni') {
-                        <td class="px-4 py-4 text-sm font-mono tabular-nums text-foreground/80">{{ u.dni }}</td>
+                        <td class="td-ds py-4 font-mono tabular-nums text-foreground/80">{{ u.dni }}</td>
                       }
                       @case ('perfil') {
-                        <td class="px-4 py-4 text-sm font-semibold text-foreground">{{ u.perfil }}</td>
+                        <td class="td-ds py-4 font-semibold text-foreground">{{ u.perfil }}</td>
                       }
                       @case ('regimen') {
-                        <td class="px-4 py-4 text-sm text-foreground/80 whitespace-nowrap">{{ u.regimen || '—' }}</td>
+                        <td class="td-ds py-4 text-foreground/80 whitespace-nowrap">{{ u.regimen || '—' }}</td>
                       }
                       @case ('unidadResponsable') {
-                        <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[220px]" [title]="unidadResponsableDe(u)">{{ unidadResponsableDe(u) }}</td>
+                        <td class="td-ds py-4 text-muted-foreground truncate max-w-[220px]" [title]="unidadResponsableDe(u)">{{ unidadResponsableDe(u) }}</td>
                       }
                       @case ('unidadFuncional') {
-                        <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[220px]" [title]="opasDe(u)">{{ opasDe(u) }}</td>
+                        <td class="td-ds py-4 text-muted-foreground truncate max-w-[220px]" [title]="opasDe(u)">{{ opasDe(u) }}</td>
                       }
                       @case ('periodo') {
-                        <td class="px-4 py-4">
+                        <td class="td-ds py-4">
                           @if (mesesContrato(u); as meses) {
                             <!-- Temporales: meses comprendidos en el contrato -->
                             <span class="text-xs text-foreground/80 leading-snug">{{ meses }}</span>
@@ -254,16 +254,16 @@ const ICON_TONES: Record<string, string> = {
                         </td>
                       }
                       @case ('vigencia') {
-                        <td class="px-4 py-4 whitespace-nowrap"><span [class]="vigenciaCls(u)">{{ u.vigenciaCalculada }}</span></td>
+                        <td class="td-ds py-4 whitespace-nowrap"><span [class]="vigenciaCls(u)">{{ u.vigenciaCalculada }}</span></td>
                       }
                       @case ('vencimiento') {
-                        <td class="px-4 py-4 whitespace-nowrap"><span [class]="vencimientoCls(u)">{{ vencimientoDe(u) }}</span></td>
+                        <td class="td-ds py-4 whitespace-nowrap"><span [class]="vencimientoCls(u)">{{ vencimientoDe(u) }}</span></td>
                       }
                       @case ('progPresup') {
-                        <td class="px-4 py-4 text-sm text-muted-foreground truncate max-w-[180px]" [title]="progPresupDe(u)">{{ progPresupDe(u) }}</td>
+                        <td class="td-ds py-4 text-muted-foreground truncate max-w-[180px]" [title]="progPresupDe(u)">{{ progPresupDe(u) }}</td>
                       }
                       @case ('ubigeo') {
-                        <td class="px-4 py-4 text-sm text-foreground/80" [title]="ubigeoDe(u)">{{ ubigeoDe(u) }}</td>
+                        <td class="td-ds py-4 text-foreground/80" [title]="ubigeoDe(u)">{{ ubigeoDe(u) }}</td>
                       }
                     }
                   }

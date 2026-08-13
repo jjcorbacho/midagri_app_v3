@@ -95,15 +95,15 @@ const INP_REQ = INPUT_REQUIRED;
         <section class="bg-card rounded-xl ring-1 ring-border p-5">
           <div class="flex items-center gap-2 border-b border-border pb-2 mb-4 text-brand">
             <lucide-angular [img]="SparklesIcon" class="size-4" />
-            <h3 class="text-[11px] font-semibold uppercase tracking-wider">Datos generales</h3>
+            <h3 class="label-ds">Datos generales</h3>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3" [formGroup]="form">
             <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Código</label>
+              <label class="block text-xs font-medium text-muted-foreground mb-1">Código</label>
               <input [value]="form.controls.codigo.value" disabled [class]="inpDisabled" />
             </div>
             <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Temática *</label>
+              <label class="block text-xs font-medium text-muted-foreground mb-1">Temática *</label>
               <select formControlName="tematica" [class]="inpReq()">
                 <option value="">— Seleccione —</option>
                 @for (t of tematicas; track t) {
@@ -115,7 +115,7 @@ const INP_REQ = INPUT_REQUIRED;
               }
             </div>
             <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Tipo</label>
+              <label class="block text-xs font-medium text-muted-foreground mb-1">Tipo</label>
               <select formControlName="tipoEvento" [class]="inp">
                 @for (t of tiposEvento; track t) {
                   <option [value]="t">{{ t }}</option>
@@ -124,7 +124,7 @@ const INP_REQ = INPUT_REQUIRED;
             </div>
             @if (tipo() === 'asistencia') {
               <div>
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Modalidad *</label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Modalidad *</label>
                 <select formControlName="modalidadAT" [class]="inpReq()">
                   @for (m of modalidadesAt(); track m) {
                     <option [value]="m">{{ m }}</option>
@@ -133,40 +133,40 @@ const INP_REQ = INPUT_REQUIRED;
               </div>
             }
             <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Fecha *</label>
+              <label class="block text-xs font-medium text-muted-foreground mb-1">Fecha *</label>
               <input type="date" formControlName="fecha" [class]="inpReq()" />
               @if (errores()['fecha']) {
                 <p class="text-[11px] text-destructive mt-1">{{ errores()['fecha'] }}</p>
               }
             </div>
             <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Nro. Horas *</label>
+              <label class="block text-xs font-medium text-muted-foreground mb-1">Nro. Horas *</label>
               <input type="number" [min]="cfg().horasMin" [max]="cfg().horasMax" formControlName="horas" [class]="inpReq()" />
               @if (errores()['horas']) {
                 <p class="text-[11px] text-destructive mt-1">{{ errores()['horas'] }}</p>
               }
             </div>
             <div class="md:col-span-2">
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Nombre *</label>
+              <label class="block text-xs font-medium text-muted-foreground mb-1">Nombre *</label>
               <input formControlName="nombre" maxlength="200" [class]="inpReq()" />
               @if (errores()['nombre']) {
                 <p class="text-[11px] text-destructive mt-1">{{ errores()['nombre'] }}</p>
               }
             </div>
             <div class="md:col-span-2">
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Extensionista *</label>
+              <label class="block text-xs font-medium text-muted-foreground mb-1">Extensionista *</label>
               <input formControlName="extensionista" maxlength="120" [class]="inpReq()" />
               @if (errores()['extensionista']) {
                 <p class="text-[11px] text-destructive mt-1">{{ errores()['extensionista'] }}</p>
               }
             </div>
             <div class="md:col-span-2">
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Observaciones</label>
+              <label class="block text-xs font-medium text-muted-foreground mb-1">Observaciones</label>
               <textarea rows="2" formControlName="observaciones" maxlength="500" [class]="inp"></textarea>
             </div>
             @if (mostrarVinculo()) {
               <div class="md:col-span-2">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Capacitación vinculada</label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Capacitación vinculada</label>
                 <select formControlName="capacitacionVinculadaId" [class]="inp">
                   <option value="">— Sin vincular —</option>
                   @for (c of capacitacionesVinculables(); track c.id) {
@@ -185,11 +185,11 @@ const INP_REQ = INPUT_REQUIRED;
         <section class="bg-card rounded-xl ring-1 ring-border p-5">
           <div class="flex items-center gap-2 border-b border-border pb-2 mb-4 text-brand">
             <lucide-angular [img]="MapPinIcon" class="size-4" />
-            <h3 class="text-[11px] font-semibold uppercase tracking-wider">Ubicación</h3>
+            <h3 class="label-ds">Ubicación</h3>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3" [formGroup]="form">
             <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Región *</label>
+              <label class="block text-xs font-medium text-muted-foreground mb-1">Región *</label>
               <select formControlName="region" (change)="onRegionChange()" [class]="inpReq()">
                 <option value="">— Seleccione —</option>
                 @for (r of ubigeo; track r.nombre) {
@@ -201,7 +201,7 @@ const INP_REQ = INPUT_REQUIRED;
               }
             </div>
             <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Provincia *</label>
+              <label class="block text-xs font-medium text-muted-foreground mb-1">Provincia *</label>
               <select formControlName="provincia" (change)="onProvinciaChange()" [class]="inpReq()">
                 <option value="">— Seleccione —</option>
                 @for (p of provincias(); track p.nombre) {
@@ -213,7 +213,7 @@ const INP_REQ = INPUT_REQUIRED;
               }
             </div>
             <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Distrito *</label>
+              <label class="block text-xs font-medium text-muted-foreground mb-1">Distrito *</label>
               <select formControlName="distrito" (change)="onDistritoChange()" [class]="inpReq()">
                 <option value="">— Seleccione —</option>
                 @for (d of distritos(); track d.nombre) {
@@ -225,7 +225,7 @@ const INP_REQ = INPUT_REQUIRED;
               }
             </div>
             <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Centro Poblado</label>
+              <label class="block text-xs font-medium text-muted-foreground mb-1">Centro Poblado</label>
               <select formControlName="centroPoblado" [class]="inp">
                 <option value="">— Seleccione —</option>
                 @for (c of centrosPoblados(); track c) {
@@ -240,12 +240,12 @@ const INP_REQ = INPUT_REQUIRED;
         <section class="bg-card rounded-xl ring-1 ring-border p-5">
           <div class="flex items-center gap-2 border-b border-border pb-2 mb-4 text-brand">
             <lucide-angular [img]="CompassIcon" class="size-4" />
-            <h3 class="text-[11px] font-semibold uppercase tracking-wider">Coordenadas</h3>
+            <h3 class="label-ds">Coordenadas</h3>
           </div>
           <div class="flex flex-col md:flex-row gap-5">
             <!-- Mapa lateral -->
             <div class="w-full md:w-64 shrink-0">
-              <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              <p class="label-ds text-muted-foreground mb-2">
                 Ubicación en el mapa
               </p>
               <app-peru-map
@@ -273,46 +273,46 @@ const INP_REQ = INPUT_REQUIRED;
             <!-- Campos -->
             <div class="flex-1 space-y-5" [formGroup]="form">
               <div>
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                <p class="label-ds text-muted-foreground mb-2">
                   Coordenadas geográficas
                 </p>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
-                    <label class="block text-[11px] font-medium text-muted-foreground mb-1">Longitud</label>
+                    <label class="block text-xs font-medium text-muted-foreground mb-1">Longitud</label>
                     <input formControlName="longitud" placeholder="-72.881" [class]="inp" />
                     @if (errores()['longitud']) {
                       <p class="text-[11px] text-destructive mt-1">{{ errores()['longitud'] }}</p>
                     }
                   </div>
                   <div>
-                    <label class="block text-[11px] font-medium text-muted-foreground mb-1">Latitud</label>
+                    <label class="block text-xs font-medium text-muted-foreground mb-1">Latitud</label>
                     <input formControlName="latitud" placeholder="-13.635" [class]="inp" />
                     @if (errores()['latitud']) {
                       <p class="text-[11px] text-destructive mt-1">{{ errores()['latitud'] }}</p>
                     }
                   </div>
                   <div>
-                    <label class="block text-[11px] font-medium text-muted-foreground mb-1">Altitud (msnm)</label>
+                    <label class="block text-xs font-medium text-muted-foreground mb-1">Altitud (msnm)</label>
                     <input type="number" formControlName="altitud" placeholder="3200" [class]="inp" />
                   </div>
                 </div>
               </div>
 
               <div class="pt-4 border-t border-dashed border-border">
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                <p class="label-ds text-muted-foreground mb-2">
                   Coordenadas UTM
                 </p>
                 <div class="grid grid-cols-1 md:grid-cols-[110px_1fr_1fr] gap-3">
                   <div>
-                    <label class="block text-[11px] font-medium text-muted-foreground mb-1">Zona</label>
+                    <label class="block text-xs font-medium text-muted-foreground mb-1">Zona</label>
                     <input formControlName="utmZona" placeholder="18S" maxlength="4" [class]="inp" />
                   </div>
                   <div>
-                    <label class="block text-[11px] font-medium text-muted-foreground mb-1">Coord. Este</label>
+                    <label class="block text-xs font-medium text-muted-foreground mb-1">Coord. Este</label>
                     <input formControlName="utmEste" placeholder="000000.000" inputmode="decimal" [class]="inp" />
                   </div>
                   <div>
-                    <label class="block text-[11px] font-medium text-muted-foreground mb-1">Coord. Norte</label>
+                    <label class="block text-xs font-medium text-muted-foreground mb-1">Coord. Norte</label>
                     <input formControlName="utmNorte" placeholder="0000000.000" inputmode="decimal" [class]="inp" />
                   </div>
                 </div>
@@ -326,12 +326,12 @@ const INP_REQ = INPUT_REQUIRED;
           <section class="bg-card rounded-xl ring-1 ring-border p-5">
             <div class="flex items-center gap-2 border-b border-border pb-2 mb-4 text-brand">
               <lucide-angular [img]="SparklesIcon" class="size-4" />
-              <h3 class="text-[11px] font-semibold uppercase tracking-wider">Campos adicionales del área</h3>
+              <h3 class="label-ds">Campos adicionales del área</h3>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               @for (c of customs(); track c.id) {
                 <div>
-                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">
+                  <label class="block text-xs font-medium text-muted-foreground mb-1">
                     {{ c.nombre }}{{ c.requerido ? ' *' : '' }}
                   </label>
                   @switch (c.tipo) {

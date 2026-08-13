@@ -31,7 +31,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
             <div class="size-10 bg-brand rounded-md flex items-center justify-center font-bold">M</div>
             <div>
               <div class="text-[10px] uppercase tracking-widest text-sidebar-muted">Ministerio de Desarrollo Agrario y Riego</div>
-              <div class="font-semibold">MIDAGRI · Perú</div>
+              <div class="font-semibold">SODEGA · Perú</div>
             </div>
           </div>
         </div>
@@ -53,7 +53,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
           <div>
             <div class="text-[10px] uppercase tracking-widest text-brand font-semibold mb-2">Acceso institucional</div>
             <h2 class="text-2xl font-semibold">Iniciar sesión</h2>
-            <p class="text-sm text-muted-foreground mt-1">Usa tu usuario institucional MIDAGRI.</p>
+            <p class="text-sm text-muted-foreground mt-1">Usa tu usuario institucional SODEGA.</p>
             <div class="mt-3 rounded-md bg-brand/10 ring-1 ring-brand/20 px-3 py-2 text-[11px] text-brand space-y-0.5">
               <div><strong>Acceso unificado SODEGA</strong> · cualquier clave</div>
               <div>• <code>ccandelaria</code> — Administrador General (elige su perfil al ingresar)</div>
@@ -71,7 +71,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
 
           <div class="space-y-3">
             <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Usuario</label>
+              <label class="block text-xs font-medium text-muted-foreground mb-1">Usuario</label>
               <div class="relative">
                 <lucide-angular [img]="UserIcon" class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <input
@@ -87,7 +87,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
               </div>
             </div>
             <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Contraseña</label>
+              <label class="block text-xs font-medium text-muted-foreground mb-1">Contraseña</label>
               <div class="relative">
                 <lucide-angular [img]="LockIcon" class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <input
@@ -135,7 +135,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
           <div class="space-y-4">
             @if (modo() === 'seleccion-opa') {
               <div>
-                <label class="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                <label class="block label-ds mb-1">
                   Unidad Responsable / OPA <span class="text-destructive">*</span>
                 </label>
                 <select
@@ -149,7 +149,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
                 </select>
               </div>
               <div>
-                <label class="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Perfil Autorizado</label>
+                <label class="block label-ds mb-1">Perfil Autorizado</label>
                 <input
                   type="text"
                   readonly
@@ -159,7 +159,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
               </div>
             } @else {
               <div>
-                <label class="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                <label class="block label-ds mb-1">
                   Perfil Autorizado <span class="text-destructive">*</span>
                 </label>
                 <select
@@ -221,7 +221,7 @@ import { Perfil, PERFILES, UsuarioSodega } from '../../core/models/usuario-sodeg
                 Por favor, ingrese el correo electrónico que tiene registrado en el sistema, la nueva clave se enviará a este correo.
               </p>
               <div>
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">
+                <label class="block text-xs font-medium text-muted-foreground mb-1">
                   Correo electrónico <span class="text-destructive">*</span>
                 </label>
                 <input

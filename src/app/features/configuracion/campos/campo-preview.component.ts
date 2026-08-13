@@ -7,7 +7,7 @@ import { CampoTipo } from '../../../core/models/campo.model';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="space-y-1">
-      <label class="text-[11px] font-bold text-muted-foreground uppercase">{{ nombre() }}</label>
+      <label class="text-xs font-bold text-muted-foreground uppercase">{{ nombre() }}</label>
       @switch (tipo()) {
         @case ('textarea') {
           <textarea disabled rows="2" class="w-full bg-surface-2 border border-border rounded px-3 py-1.5 text-xs"></textarea>

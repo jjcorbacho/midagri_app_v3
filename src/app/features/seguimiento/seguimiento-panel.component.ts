@@ -140,21 +140,21 @@ const ICON_TONES: Record<string, string> = {
         <div class="overflow-auto max-h-[60vh]">
           <table class="w-full text-left min-w-[1100px]">
             <thead class="bg-secondary sticky top-0 z-10 shadow-sm">
-              <tr class="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
-                <th class="px-4 py-3 w-10"></th>
-                <th class="px-4 py-3 text-center">Acciones</th>
-                <th class="px-4 py-3">Tipo / Tema</th>
-                <th class="px-4 py-3">Estado</th>
-                <th class="px-4 py-3">Fecha</th>
-                <th class="px-4 py-3 text-center">Horas</th>
-                <th class="px-4 py-3 text-center">Participantes</th>
-                <th class="px-4 py-3">Ubicación</th>
+              <tr class="text-muted-foreground label-ds">
+                <th class="th-ds py-3 w-10"></th>
+                <th class="th-ds py-3 text-center">Acciones</th>
+                <th class="th-ds py-3">Tipo / Tema</th>
+                <th class="th-ds py-3">Estado</th>
+                <th class="th-ds py-3">Fecha</th>
+                <th class="th-ds py-3 text-center">Horas</th>
+                <th class="th-ds py-3 text-center">Participantes</th>
+                <th class="th-ds py-3">Ubicación</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border">
               @for (c of filtered(); track c.id) {
                 <tr class="hover:bg-secondary/40 transition-colors">
-                  <td class="px-4 py-4">
+                  <td class="td-ds py-4">
                     <input
                       type="checkbox"
                       [checked]="sel().has(c.id)"
@@ -164,7 +164,7 @@ const ICON_TONES: Record<string, string> = {
                       class="size-4 accent-primary disabled:opacity-30 disabled:cursor-not-allowed"
                     />
                   </td>
-                  <td class="px-4 py-4">
+                  <td class="td-ds py-4">
                     <div class="flex items-center justify-center gap-1 flex-wrap">
                       <button title="Ver datos" aria-label="Ver datos" (click)="irPaso(c, 1)"
                         class="p-2 rounded-lg transition-all" [class]="tone('blue')">
@@ -188,7 +188,7 @@ const ICON_TONES: Record<string, string> = {
                       }
                     </div>
                   </td>
-                  <td class="px-4 py-4">
+                  <td class="td-ds py-4">
                     <div class="mb-1">
                       <span
                         class="text-[9px] px-1.5 py-0.5 font-bold uppercase rounded-sm"
@@ -199,34 +199,34 @@ const ICON_TONES: Record<string, string> = {
                     <p class="text-sm font-semibold text-foreground leading-tight max-w-sm">{{ c.nombreTema }}</p>
                     <p class="text-[11px] text-muted-foreground mt-0.5 truncate max-w-sm">{{ c.extensionista }}</p>
                   </td>
-                  <td class="px-4 py-4 whitespace-nowrap"><app-estado-badge [estado]="c.estado" /></td>
-                  <td class="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground font-medium">{{ c.fecha }}</td>
-                  <td class="px-4 py-4 text-center text-sm font-bold text-foreground/80 tabular-nums">{{ c.horas }} h</td>
-                  <td class="px-4 py-4 text-center">
+                  <td class="td-ds py-4 whitespace-nowrap"><app-estado-badge [estado]="c.estado" /></td>
+                  <td class="td-ds py-4 whitespace-nowrap text-muted-foreground font-medium">{{ c.fecha }}</td>
+                  <td class="td-ds py-4 text-center font-bold text-foreground/80 tabular-nums">{{ c.horas }} h</td>
+                  <td class="td-ds py-4 text-center">
                     <button
                       type="button"
                       (click)="toggleExpand(c.id)"
-                      [disabled]="(c.participantes ?? 0) === 0"
+                      [disabled]="totalDe(c) === 0"
                       class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ring-1 text-xs font-bold tabular-nums transition-colors"
                       [class]="participantesBtnCls(c)"
                       [attr.aria-expanded]="isExpanded(c)"
                       [attr.aria-label]="showCount(c) + ' participante(s)'"
                     >
                       <lucide-angular [img]="UsersIcon" class="size-3.5" />
-                      <span>{{ showCount(c) }}{{ queryActive() && matchesDe(c.id).length > 0 ? ' / ' + (c.participantes ?? 0) : '' }}</span>
-                      @if ((c.participantes ?? 0) > 0) {
+                      <span>{{ showCount(c) }}{{ queryActive() && matchesDe(c.id).length > 0 ? ' / ' + totalDe(c) : '' }}</span>
+                      @if (totalDe(c) > 0) {
                         <lucide-angular [img]="isExpanded(c) ? ChevronUpIcon : ChevronDownIcon" class="size-3.5" />
                       }
                     </button>
                   </td>
-                  <td class="px-4 py-4">
+                  <td class="td-ds py-4">
                     <div class="flex items-start text-xs text-muted-foreground">
                       <lucide-angular [img]="MapPinIcon" class="size-3 mr-1 mt-0.5 text-muted-foreground/70 shrink-0" />
                       <span>{{ c.region }} / {{ c.provincia }} / {{ c.distrito }}</span>
                     </div>
                   </td>
                 </tr>
-                @if (isExpanded(c) && (c.participantes ?? 0) > 0) {
+                @if (isExpanded(c) && totalDe(c) > 0) {
                   <tr class="bg-secondary/20">
                     <td colspan="8" class="px-0 py-0">
                       <div class="thin-scroll max-h-[156px] overflow-y-auto">
@@ -442,8 +442,13 @@ export class SeguimientoPanelComponent {
     return this.queryActive() ? this.matchesDe(c.id) : this.participantesService.participantesDe(c.id);
   }
 
+  /** Total real de participantes (fuente de verdad: `ParticipantesService`). */
+  totalDe(c: Curso): number {
+    return this.participantesService.totalDe(c.id);
+  }
+
   showCount(c: Curso): number {
-    return this.queryActive() ? this.matchesDe(c.id).length : (c.participantes ?? 0);
+    return this.queryActive() ? this.matchesDe(c.id).length : this.totalDe(c);
   }
 
   esMatch(c: Curso, p: Participante): boolean {
@@ -460,7 +465,7 @@ export class SeguimientoPanelComponent {
   }
 
   participantesBtnCls(c: Curso): string {
-    const total = c.participantes ?? 0;
+    const total = this.totalDe(c);
     if (total === 0) return 'ring-border text-muted-foreground/60 cursor-not-allowed';
     return this.isExpanded(c)
       ? 'bg-brand text-brand-foreground ring-brand'
@@ -551,7 +556,7 @@ export class SeguimientoPanelComponent {
       { titulo: 'Fecha', valor: (c) => c.fecha },
       { titulo: 'Hora', valor: (c) => c.hora },
       { titulo: 'Horas', valor: (c) => c.horas },
-      { titulo: 'Participantes', valor: (c) => c.participantes },
+      { titulo: 'Participantes', valor: (c) => this.totalDe(c) },
       { titulo: 'Región', valor: (c) => c.region },
       { titulo: 'Provincia', valor: (c) => c.provincia },
       { titulo: 'Distrito', valor: (c) => c.distrito },

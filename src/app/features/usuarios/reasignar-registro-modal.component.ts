@@ -31,7 +31,7 @@ export interface ResultadoReasignacion {
         <div class="space-y-4">
           <!-- Encabezado: registro de origen (solo lectura) + botón que carga sus registros -->
           <div class="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 md:items-center">
-            <p class="md:col-span-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p class="md:col-span-3 label-ds text-muted-foreground">
               Registro de origen
             </p>
             <div class="md:col-span-6">
@@ -63,13 +63,13 @@ export interface ResultadoReasignacion {
             <div class="overflow-auto max-h-[23vh] thin-scroll">
               <table class="w-full text-left min-w-[760px]" aria-label="Registros del personal de origen">
                 <thead class="bg-secondary sticky top-0 z-10">
-                  <tr class="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
-                    <th class="px-4 py-3 w-24">DNI</th>
-                    <th class="px-4 py-3">Apellidos y Nombres</th>
-                    <th class="px-4 py-3">Profesión - Especialidad</th>
-                    <th class="px-4 py-3">Temática</th>
-                    <th class="px-4 py-3 w-36">Tipo</th>
-                    <th class="px-4 py-3 w-32 text-center">Estado</th>
+                  <tr class="text-muted-foreground label-ds">
+                    <th class="th-ds py-3 w-24">DNI</th>
+                    <th class="th-ds py-3">Apellidos y Nombres</th>
+                    <th class="th-ds py-3">Profesión - Especialidad</th>
+                    <th class="th-ds py-3">Temática</th>
+                    <th class="th-ds py-3 w-36">Tipo</th>
+                    <th class="th-ds py-3 w-32 text-center">Estado</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-border">
@@ -88,12 +88,12 @@ export interface ResultadoReasignacion {
                   }
                   @for (r of registrosOrigenVisibles(); track r.id) {
                     <tr class="hover:bg-secondary/40 transition-colors">
-                      <td class="px-4 py-3 text-sm font-mono tabular-nums text-foreground/80">{{ origen().dni }}</td>
-                      <td class="px-4 py-3 text-sm font-semibold text-foreground">{{ nombreDe(origen()) }}</td>
-                      <td class="px-4 py-3 text-sm text-muted-foreground">{{ origen().profesion }}</td>
-                      <td class="px-4 py-3 text-sm text-foreground/80">{{ tematicaDe(r) }}</td>
-                      <td class="px-4 py-3 text-sm text-muted-foreground">{{ tipoDe(r) }}</td>
-                      <td class="px-4 py-3 text-center"><app-estado-badge [estado]="r.estado" /></td>
+                      <td class="td-ds font-mono tabular-nums text-foreground/80">{{ origen().dni }}</td>
+                      <td class="td-ds font-semibold text-foreground">{{ nombreDe(origen()) }}</td>
+                      <td class="td-ds text-muted-foreground">{{ origen().profesion }}</td>
+                      <td class="td-ds text-foreground/80">{{ tematicaDe(r) }}</td>
+                      <td class="td-ds text-muted-foreground">{{ tipoDe(r) }}</td>
+                      <td class="td-ds text-center"><app-estado-badge [estado]="r.estado" /></td>
                     </tr>
                   }
                 </tbody>
@@ -109,7 +109,7 @@ export interface ResultadoReasignacion {
           <div class="flex items-center gap-2 border-b border-border pb-2 text-brand">
             <lucide-angular [img]="UserCheckIcon" class="size-4" />
             <div>
-              <h3 class="text-[11px] font-semibold uppercase tracking-wider">Trabajador asignado (Personal que tomará el cargo)</h3>
+              <h3 class="label-ds">Trabajador asignado (Personal que tomará el cargo)</h3>
               <p class="text-xs text-muted-foreground normal-case tracking-normal font-normal">
                 Persona que asumirá todos los registros del técnico seleccionado.
               </p>
@@ -139,13 +139,13 @@ export interface ResultadoReasignacion {
             <div class="overflow-auto max-h-[23vh] thin-scroll">
               <table class="w-full text-left min-w-[760px]" aria-label="Registros del personal asignado">
                 <thead class="bg-secondary sticky top-0 z-10">
-                  <tr class="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
-                    <th class="px-4 py-3 w-24">DNI</th>
-                    <th class="px-4 py-3">Apellidos y Nombres</th>
-                    <th class="px-4 py-3">Profesión - Especialidad</th>
-                    <th class="px-4 py-3">Temática</th>
-                    <th class="px-4 py-3 w-36">Tipo</th>
-                    <th class="px-4 py-3 w-32 text-center">Estado</th>
+                  <tr class="text-muted-foreground label-ds">
+                    <th class="th-ds py-3 w-24">DNI</th>
+                    <th class="th-ds py-3">Apellidos y Nombres</th>
+                    <th class="th-ds py-3">Profesión - Especialidad</th>
+                    <th class="th-ds py-3">Temática</th>
+                    <th class="th-ds py-3 w-36">Tipo</th>
+                    <th class="th-ds py-3 w-32 text-center">Estado</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-border">
@@ -164,12 +164,12 @@ export interface ResultadoReasignacion {
                   }
                   @for (r of registrosDestino(); track r.id) {
                     <tr class="hover:bg-secondary/40 transition-colors">
-                      <td class="px-4 py-3 text-sm font-mono tabular-nums text-foreground/80">{{ seleccionado()?.dni }}</td>
-                      <td class="px-4 py-3 text-sm font-semibold text-foreground">{{ nombreDe(seleccionado()!) }}</td>
-                      <td class="px-4 py-3 text-sm text-muted-foreground">{{ seleccionado()?.profesion }}</td>
-                      <td class="px-4 py-3 text-sm text-foreground/80">{{ tematicaDe(r) }}</td>
-                      <td class="px-4 py-3 text-sm text-muted-foreground">{{ tipoDe(r) }}</td>
-                      <td class="px-4 py-3 text-center"><app-estado-badge [estado]="r.estado" /></td>
+                      <td class="td-ds font-mono tabular-nums text-foreground/80">{{ seleccionado()?.dni }}</td>
+                      <td class="td-ds font-semibold text-foreground">{{ nombreDe(seleccionado()!) }}</td>
+                      <td class="td-ds text-muted-foreground">{{ seleccionado()?.profesion }}</td>
+                      <td class="td-ds text-foreground/80">{{ tematicaDe(r) }}</td>
+                      <td class="td-ds text-muted-foreground">{{ tipoDe(r) }}</td>
+                      <td class="td-ds text-center"><app-estado-badge [estado]="r.estado" /></td>
                     </tr>
                   }
                 </tbody>

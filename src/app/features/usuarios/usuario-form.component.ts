@@ -6,6 +6,7 @@ import {
   IdCard, KeyRound, UserCheck, Wallet, ShieldHalf, Search, LoaderCircle,
   ArrowLeft, ArrowRight, Save, Trash2, SquarePlus, Target, CircleCheck, TriangleAlert,
 } from 'lucide-angular';
+import { isoToDDMMYYYY, todayISO } from '../../shared/utils/fecha.util';
 import { AuthService } from '../../core/services/auth.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { ListasAdminService } from '../../core/services/listas-admin.service';
@@ -17,13 +18,11 @@ import {
   MetaAmbitoTerritorial,
   PERFILES,
   Perfil,
-  MESES_ES,
   PeriodoGestion,
   TipoPeriodoGestion,
   UsuarioSodega,
   anioGestionVigente,
   aplicaMetasPorAmbito,
-  aniosDeRango,
   calcularDiasCalendarioEntre,
   esRegimenTemporal,
   excedeAnioGestion,
@@ -32,8 +31,7 @@ import {
   perfilRequiereAmbito,
   perfilSoloRegion,
   estadoPeriodo,
-  mesesActivablesPeriodoRegular,
-  nombresDeMeses,
+  mesesDeRangoNumeros,
   regimenesPermitidosParaNuevoServicio,
   toTitleCase,
 } from '../../core/models/usuario-sodega.model';
@@ -114,12 +112,12 @@ const INP_NORMAL = INPUT_BASE;
           <div class="bg-card rounded-xl ring-1 ring-border shadow-sm p-5 space-y-4">
             <div class="flex items-center gap-2 border-b border-border pb-2 text-brand">
               <lucide-angular [img]="UserCheckIcon" class="size-4" />
-              <h3 class="text-[11px] font-semibold uppercase tracking-wider">Datos Personales</h3>
+              <h3 class="label-ds">Datos Personales</h3>
             </div>
 
             <div class="grid grid-cols-12 gap-3">
               <div class="col-span-4">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Nro DNI <span class="text-destructive">*</span></label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Nro DNI <span class="text-destructive">*</span></label>
                 <div class="flex gap-1.5">
                   <input
                     type="text" maxlength="8" placeholder="Ingrese DNI"
@@ -142,26 +140,26 @@ const INP_NORMAL = INPUT_BASE;
 
             <div class="grid grid-cols-12 gap-3">
               <div class="col-span-4">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Apellido paterno</label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Apellido paterno</label>
                 <input formControlName="apePat" readonly placeholder="Apellido paterno" [class]="inpDisabled" />
               </div>
               <div class="col-span-4">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Apellido materno</label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Apellido materno</label>
                 <input formControlName="apeMat" readonly placeholder="Apellido materno" [class]="inpDisabled" />
               </div>
               <div class="col-span-4">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Nombre(s)</label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Nombre(s)</label>
                 <input formControlName="nombres" readonly placeholder="Nombre(s)" [class]="inpDisabled" />
               </div>
             </div>
 
             <div class="grid grid-cols-12 gap-3">
               <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Estado civil</label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Estado civil</label>
                 <input formControlName="estCivil" readonly placeholder="Estado civil" [class]="inpDisabled" />
               </div>
               <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Profesión - especialidad <span class="text-destructive">*</span></label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Profesión - especialidad <span class="text-destructive">*</span></label>
                 <select formControlName="profesion" [class]="reniecEditable() ? inpMandatory : inpDisabled">
                   <option value="">--Seleccione--</option>
                   @for (p of profesiones(); track p) {
@@ -170,22 +168,22 @@ const INP_NORMAL = INPUT_BASE;
                 </select>
               </div>
               <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Dirección domiciliaria</label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Dirección domiciliaria</label>
                 <input formControlName="direccion" readonly placeholder="Dirección domiciliaria" [class]="inpDisabled" />
               </div>
               <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Ubigeo RENIEC</label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Ubigeo RENIEC</label>
                 <input formControlName="ubigeo" readonly placeholder="UBIGEO" [class]="inpDisabled" />
               </div>
             </div>
 
             <div class="grid grid-cols-12 gap-3">
               <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Restricciones</label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Restricciones</label>
                 <input formControlName="restricciones" readonly placeholder="Restricciones" [class]="inpDisabled" />
               </div>
               <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Sexo <span class="text-destructive">*</span></label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Sexo <span class="text-destructive">*</span></label>
                 <select formControlName="sexo" [class]="reniecEditable() ? inpMandatory : inpDisabled">
                   <option value="">--Seleccione--</option>
                   @for (s of sexos(); track s) {
@@ -194,18 +192,18 @@ const INP_NORMAL = INPUT_BASE;
                 </select>
               </div>
               <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Fecha nac. (RENIEC)</label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Fecha nac. (RENIEC)</label>
                 <input formControlName="fechaNac" readonly placeholder="dd/mm/aaaa" [class]="inpDisabled" />
               </div>
               <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Edad calculada</label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Edad calculada</label>
                 <input formControlName="edad" readonly placeholder="Edad calculada" [class]="inpDisabled" />
               </div>
             </div>
 
             <div class="grid grid-cols-12">
               <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Celular de contacto</label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Celular de contacto</label>
                 <input formControlName="celular" placeholder="999 999 999" [class]="inpNormal" />
               </div>
             </div>
@@ -215,10 +213,10 @@ const INP_NORMAL = INPUT_BASE;
           <div class="bg-card rounded-xl ring-1 ring-border shadow-sm p-5 space-y-4">
             <div class="flex items-center gap-2 border-b border-border pb-2 text-brand">
               <lucide-angular [img]="WalletIcon" class="size-4" />
-              <h3 class="text-[11px] font-semibold uppercase tracking-wider">Datos Presupuestales</h3>
+              <h3 class="label-ds">Datos Presupuestales</h3>
             </div>
             <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Unidad Responsable <span class="text-destructive">*</span></label>
+              <label class="block text-xs font-medium text-muted-foreground mb-1">Unidad Responsable <span class="text-destructive">*</span></label>
               <select formControlName="unidad" [class]="unidadBloqueada() ? inpDisabled : inpMandatory">
                 <option value="">--Seleccione--</option>
                 @for (u of unidadesResponsables(); track u) {
@@ -230,7 +228,7 @@ const INP_NORMAL = INPUT_BASE;
             @if (mostrarPresupuesto()) {
               <div class="grid gap-3 border-t border-border pt-4" [class]="modoJefeArea() ? 'grid-cols-3' : 'grid-cols-4'">
                 <div>
-                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">Fuente de financ. <span class="text-destructive">*</span></label>
+                  <label class="block text-xs font-medium text-muted-foreground mb-1">Fuente de financ. <span class="text-destructive">*</span></label>
                   <select formControlName="fuenteFinanc" [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory">
                     <option value="">Seleccione</option>
                     @for (f of fuentes(); track f) {
@@ -240,7 +238,7 @@ const INP_NORMAL = INPUT_BASE;
                 </div>
                 @if (!modoJefeArea()) {
                   <div>
-                    <label class="block text-[11px] font-medium text-muted-foreground mb-1">Categoría presup. <span class="text-destructive">*</span></label>
+                    <label class="block text-xs font-medium text-muted-foreground mb-1">Categoría presup. <span class="text-destructive">*</span></label>
                     <select formControlName="categoriaPresup" (change)="onCategoriaChange()" [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory">
                       <option value="">Seleccione</option>
                       @for (c of categorias(); track c) {
@@ -250,7 +248,7 @@ const INP_NORMAL = INPUT_BASE;
                   </div>
                 }
                 <div>
-                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">
+                  <label class="block text-xs font-medium text-muted-foreground mb-1">
                     {{ modoJefeArea() ? 'Categoría' : 'Programa presupuestal' }} <span class="text-destructive">*</span>
                   </label>
                   <select formControlName="programaPresup" (change)="onProgramaChange()" [class]="presupuestoBloqueado() || !programaHabilitado() ? inpDisabled : inpMandatory">
@@ -261,7 +259,7 @@ const INP_NORMAL = INPUT_BASE;
                   </select>
                 </div>
                 <div>
-                  <label class="block text-[11px] font-medium text-muted-foreground mb-1">
+                  <label class="block text-xs font-medium text-muted-foreground mb-1">
                     {{ modoJefeArea() ? 'Unidad Funcional' : 'Unidad funcional (Opas)' }} <span class="text-destructive">*</span>
                   </label>
                   <select formControlName="unidadFuncional" [class]="presupuestoBloqueado() ? inpDisabled : inpMandatory">
@@ -292,20 +290,20 @@ const INP_NORMAL = INPUT_BASE;
           <div class="bg-card rounded-xl ring-1 ring-border shadow-sm p-5 space-y-4">
             <div class="flex items-center gap-2 border-b border-border pb-2 text-brand">
               <lucide-angular [img]="ShieldHalfIcon" class="size-4" />
-              <h3 class="text-[11px] font-semibold uppercase tracking-wider">Cuenta de acceso institucional</h3>
+              <h3 class="label-ds">Cuenta de acceso institucional</h3>
             </div>
 
             <div class="grid grid-cols-12 gap-3">
               <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Usuario generado</label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Usuario generado</label>
                 <input formControlName="userGen" readonly placeholder="Usuario Automático" [class]="inpDisabled" />
               </div>
               <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Correo Personal <span class="text-destructive">*</span></label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Correo Personal <span class="text-destructive">*</span></label>
                 <input formControlName="correo" placeholder="correo@midagri.gob.pe" [class]="inpMandatory" />
               </div>
               <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Régimen laboral <span class="text-destructive">*</span></label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Régimen laboral <span class="text-destructive">*</span></label>
                 <select formControlName="regimen" (change)="onRegimenChange()" [class]="inpMandatory">
                   <option value="">--Seleccione--</option>
                   @for (r of regimenesDisponibles(); track r) {
@@ -314,7 +312,7 @@ const INP_NORMAL = INPUT_BASE;
                 </select>
               </div>
               <div class="col-span-3">
-                <label class="block text-[11px] font-medium text-muted-foreground mb-1">Estado de cuenta</label>
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Estado de cuenta</label>
                 <select formControlName="estado" [class]="inpNormal">
                   <option value="HABILITADO">Habilitado</option>
                   <option value="INHABILITADO">Inhabilitado</option>
@@ -326,7 +324,7 @@ const INP_NORMAL = INPUT_BASE;
             @if (regimenTemporal()) {
               <div class="grid grid-cols-12 gap-3 p-4 bg-brand-soft/50 rounded-xl ring-1 ring-brand/20">
                 <div [class]="esLocador() ? 'col-span-4' : 'col-span-6'">
-                  <label class="block text-[11px] font-medium text-brand mb-1">Fecha de inicio <span class="text-destructive">*</span></label>
+                  <label class="block text-xs font-medium text-brand mb-1">Fecha de inicio <span class="text-destructive">*</span></label>
                   <input
                     type="date"
                     formControlName="fechaIni"
@@ -336,7 +334,7 @@ const INP_NORMAL = INPUT_BASE;
                   />
                 </div>
                 <div [class]="esLocador() ? 'col-span-4' : 'col-span-6'">
-                  <label class="block text-[11px] font-medium text-brand mb-1">Fecha fin <span class="text-destructive">*</span></label>
+                  <label class="block text-xs font-medium text-brand mb-1">Fecha fin <span class="text-destructive">*</span></label>
                   <input
                     type="date"
                     formControlName="fechaFin"
@@ -350,7 +348,7 @@ const INP_NORMAL = INPUT_BASE;
                 </p>
                 @if (esLocador()) {
                   <div class="col-span-4">
-                    <label class="block text-[11px] font-medium text-brand mb-1">Nro. de Orden (O.S.) <span class="text-destructive">*</span></label>
+                    <label class="block text-xs font-medium text-brand mb-1">Nro. de Orden (O.S.) <span class="text-destructive">*</span></label>
                     <input formControlName="nroOrden" placeholder="Ejem: O.S. N° 00421-2026" [class]="inpMandatory + ' uppercase'" />
                   </div>
                 }
@@ -360,11 +358,11 @@ const INP_NORMAL = INPUT_BASE;
             <!-- Tipo de Periodo (se habilita al elegir el Régimen Laboral) -->
             @if (mostrarSeccionPeriodo()) {
               <div class="p-4 bg-brand-soft/50 rounded-xl ring-1 ring-brand/20 space-y-3">
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-brand">Tipo de Periodo</p>
+                <p class="label-ds text-brand">Tipo de Periodo</p>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label for="periodo-tipo" class="block text-[11px] font-medium text-brand mb-1">
+                    <label for="periodo-tipo" class="block text-xs font-medium text-brand mb-1">
                       Tipo de periodo <span class="text-destructive">*</span>
                     </label>
                     <select id="periodo-tipo" formControlName="periodoTipo" (change)="onTipoPeriodoChange()" [class]="inpMandatory">
@@ -374,88 +372,44 @@ const INP_NORMAL = INPUT_BASE;
                       }
                     </select>
                   </div>
-                  @if (form.controls.periodoTipo.value === 'Regular') {
-                    <div>
-                      <label for="periodo-anio" class="block text-[11px] font-medium text-brand mb-1">
-                        Año de Gestión <span class="text-destructive">*</span>
-                      </label>
-                      <select id="periodo-anio" formControlName="periodoAnio" (change)="onAnioGestionChange()" [class]="inpMandatory">
-                        @for (a of aniosGestion(); track a) {
-                          <option [value]="a">{{ a }}</option>
-                        }
-                      </select>
-                    </div>
-                  }
                 </div>
 
-                @if (form.controls.periodoTipo.value === 'Regular') {
-                  <!-- Regular: selección múltiple de meses -->
-                  <div>
-                    <p class="text-[11px] font-medium text-brand mb-2">
-                      Meses del periodo <span class="text-destructive">*</span>
-                      @if (mesesAutomaticos()) {
-                        <span class="normal-case font-normal text-muted-foreground">
-                          · calculados automáticamente según la vigencia del contrato
-                        </span>
-                      } @else if (mesesHabilitados().length === 0) {
-                        <span class="normal-case font-normal text-muted-foreground">
-                          · ningún mes puede activarse para el año de gestión seleccionado
-                        </span>
-                      }
-                    </p>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-1.5" role="group" aria-label="Meses del periodo">
-                      @for (m of mesesCatalogo; track m.numero) {
-                        <label
-                          class="flex items-center gap-2 text-sm select-none rounded-lg px-2 py-1 transition-colors"
-                          [class]="esMesHabilitado(m.numero)
-                            ? 'text-foreground/90 cursor-pointer hover:bg-card/60'
-                            : 'text-muted-foreground/60 cursor-not-allowed'"
-                          [title]="esMesHabilitado(m.numero)
-                            ? ''
-                            : (mesesAutomaticos()
-                                ? 'Este mes está fuera de la vigencia del contrato'
-                                : 'Este mes ya no puede activarse para el año de gestión seleccionado')"
-                        >
-                          <input
-                            type="checkbox"
-                            class="accent-brand size-4 disabled:cursor-not-allowed"
-                            [checked]="mesesSeleccionados().includes(m.numero)"
-                            [disabled]="!esMesHabilitado(m.numero)"
-                            (change)="toggleMes(m.numero, $any($event.target).checked)"
-                          />
-                          <span>{{ m.nombre }}</span>
-                        </label>
-                      }
-                    </div>
-                  </div>
-                } @else if (form.controls.periodoTipo.value === 'Extraordinario') {
-                  <!-- Extraordinario: rango de fechas -->
+                <!-- Ambos tipos de periodo se registran con un rango de fechas.
+                     Solo cambian los topes: Regular no admite fechas anteriores
+                     al día de alta y, en CAS Temporal / Locador (OS), tampoco
+                     posteriores al fin de la vigencia del contrato. -->
+                @if (form.controls.periodoTipo.value) {
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label for="periodo-desde" class="block text-[11px] font-medium text-brand mb-1">
+                      <label for="periodo-desde" class="block text-xs font-medium text-brand mb-1">
                         Fecha Inicio <span class="text-destructive">*</span>
                       </label>
                       <input
                         id="periodo-desde"
                         type="date"
                         formControlName="periodoFechaIni"
-                        [max]="fechaMaxVigencia"
+                        [min]="periodoFechaMin()"
+                        [max]="periodoFechaMax()"
                         [class]="inpMandatory"
                       />
                     </div>
                     <div>
-                      <label for="periodo-hasta" class="block text-[11px] font-medium text-brand mb-1">
+                      <label for="periodo-hasta" class="block text-xs font-medium text-brand mb-1">
                         Fecha Fin <span class="text-destructive">*</span>
                       </label>
                       <input
                         id="periodo-hasta"
                         type="date"
                         formControlName="periodoFechaFin"
-                        [max]="fechaMaxVigencia"
+                        [min]="form.controls.periodoFechaIni.value || periodoFechaMin()"
+                        [max]="periodoFechaMax()"
                         [class]="inpMandatory"
                       />
                     </div>
                   </div>
+                  @if (ayudaPeriodo(); as ayuda) {
+                    <p class="text-[11px] text-muted-foreground leading-relaxed">{{ ayuda }}</p>
+                  }
                 }
 
                 @if (form.controls.periodoTipo.value) {
@@ -471,11 +425,11 @@ const INP_NORMAL = INPUT_BASE;
                 <div class="bg-card rounded-xl ring-1 ring-border shadow-sm overflow-x-auto">
                   <table class="w-full min-w-[520px] text-left">
                     <thead class="bg-secondary">
-                      <tr class="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                        <th class="px-4 py-3 w-40">Tipo de Periodo</th>
-                        <th class="px-4 py-3">Meses / Fechas Activas</th>
-                        <th class="px-4 py-3 w-32 text-center">Estado</th>
-                        <th class="px-4 py-3 w-20 text-center">Acciones</th>
+                      <tr class="label-ds">
+                        <th class="th-ds py-3 w-40">Tipo de Periodo</th>
+                        <th class="th-ds py-3">Meses / Fechas Activas</th>
+                        <th class="th-ds py-3 w-32 text-center">Estado</th>
+                        <th class="th-ds py-3 w-20 text-center">Acciones</th>
                       </tr>
                     </thead>
                     <tbody class="divide-y divide-border">
@@ -488,9 +442,9 @@ const INP_NORMAL = INPUT_BASE;
                       }
                       @for (pg of periodos(); track $index; let i = $index) {
                         <tr class="hover:bg-secondary/40 transition-colors">
-                          <td class="px-4 py-3 text-sm font-semibold text-foreground">{{ pg.tipo }}</td>
-                          <td class="px-4 py-3 text-sm text-foreground/80">{{ formatearPeriodo(pg) }}</td>
-                          <td class="px-4 py-3 text-center">
+                          <td class="td-ds font-semibold text-foreground">{{ pg.tipo }}</td>
+                          <td class="td-ds text-foreground/80">{{ formatearPeriodo(pg) }}</td>
+                          <td class="td-ds text-center">
                             <span
                               class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 whitespace-nowrap"
                               [class]="estadoPeriodo(pg) === 'Expirado'
@@ -498,7 +452,7 @@ const INP_NORMAL = INPUT_BASE;
                                 : 'bg-state-aprobado-soft text-state-aprobado-foreground ring-state-aprobado/30'"
                             >{{ estadoPeriodo(pg) }}</span>
                           </td>
-                          <td class="px-2 py-3 text-center">
+                          <td class="td-ds px-2 text-center">
                             <button type="button" (click)="eliminarPeriodo(i)" class="p-2 rounded-lg transition-all bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground" title="Eliminar periodo" aria-label="Eliminar periodo">
                               <lucide-angular [img]="Trash2Icon" class="size-3.5" />
                             </button>
@@ -514,7 +468,7 @@ const INP_NORMAL = INPUT_BASE;
             <!-- Perfil autorizado + Ámbito asignado (apilado a ancho completo) -->
             <div class="space-y-4 border-t border-border pt-5">
               <div class="space-y-1">
-                <label for="perfil-autorizado" class="block text-[11px] font-medium text-muted-foreground mb-1">Perfil autorizado <span class="text-destructive">*</span></label>
+                <label for="perfil-autorizado" class="block text-xs font-medium text-muted-foreground mb-1">Perfil autorizado <span class="text-destructive">*</span></label>
                 <select id="perfil-autorizado" formControlName="perfil" (change)="onPerfilChange()" [class]="inpMandatory">
                   <option value="">--Seleccione--</option>
                   @for (p of perfilesRegistrables(); track p) {
@@ -559,7 +513,7 @@ const INP_NORMAL = INPUT_BASE;
                   @if (esTecnicoSeleccionado()) {
                     <!-- Buscador + multi-selección de distritos (solo Técnicos) -->
                     <div class="md:col-span-4">
-                      <label for="buscador-distrito" class="block text-[11px] font-medium text-muted-foreground mb-1">Distrito</label>
+                      <label for="buscador-distrito" class="block text-xs font-medium text-muted-foreground mb-1">Distrito</label>
                       <div class="relative">
                         <input
                           id="buscador-distrito"
@@ -614,7 +568,7 @@ const INP_NORMAL = INPUT_BASE;
                     </div>
                   } @else {
                     <div class="md:col-span-4">
-                      <label for="ambito-distrito" class="block text-[11px] font-medium text-muted-foreground mb-1">Distrito</label>
+                      <label for="ambito-distrito" class="block text-xs font-medium text-muted-foreground mb-1">Distrito</label>
                       <select
                         id="ambito-distrito"
                         [value]="ambitoDistrito()"
@@ -649,11 +603,11 @@ const INP_NORMAL = INPUT_BASE;
                   <div class="mt-2 bg-card rounded-xl ring-1 ring-border shadow-sm overflow-hidden">
                     <table class="w-full text-left">
                       <thead class="bg-secondary">
-                        <tr class="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                          <th class="px-4 py-3 w-1/3 text-center">Región</th>
-                          <th class="px-4 py-3 w-1/3 text-center">Provincia</th>
-                          <th class="px-4 py-3 w-1/3 text-center">Distrito</th>
-                          <th class="px-4 py-3 w-12 text-center"></th>
+                        <tr class="label-ds">
+                          <th class="th-ds py-3 w-1/3 text-center">Región</th>
+                          <th class="th-ds py-3 w-1/3 text-center">Provincia</th>
+                          <th class="th-ds py-3 w-1/3 text-center">Distrito</th>
+                          <th class="th-ds py-3 w-12 text-center"></th>
                         </tr>
                       </thead>
                       <tbody class="divide-y divide-border">
@@ -664,10 +618,10 @@ const INP_NORMAL = INPUT_BASE;
                         }
                         @for (amb of ambitos(); track $index; let i = $index) {
                           <tr class="hover:bg-secondary/40 transition-colors">
-                            <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ amb.region }}</td>
-                            <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ amb.provincia }}</td>
-                            <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ amb.distrito }}</td>
-                            <td class="px-2 py-3 text-center">
+                            <td class="td-ds text-foreground/80 text-center">{{ amb.region }}</td>
+                            <td class="td-ds text-foreground/80 text-center">{{ amb.provincia }}</td>
+                            <td class="td-ds text-foreground/80 text-center">{{ amb.distrito }}</td>
+                            <td class="td-ds px-2 text-center">
                               @if (!esModoServicio()) {
                                 <button type="button" (click)="eliminarAmbito(i)" class="p-2 rounded-lg transition-all bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground" title="Eliminar ámbito">
                                   <lucide-angular [img]="Trash2Icon" class="size-3.5" />
@@ -685,17 +639,17 @@ const INP_NORMAL = INPUT_BASE;
                     <div class="space-y-3 pt-1">
                       <div class="flex items-center gap-2 border-b border-border pb-2 text-brand">
                         <lucide-angular [img]="TargetIcon" class="size-4" />
-                        <h3 class="text-[11px] font-semibold uppercase tracking-wider">Metas asignadas por ámbito territorial</h3>
+                        <h3 class="label-ds">Metas asignadas por ámbito territorial</h3>
                       </div>
                       <div class="bg-card rounded-xl ring-1 ring-border shadow-sm overflow-x-auto">
                         <table class="w-full min-w-[640px] text-left">
                           <thead class="bg-secondary">
-                            <tr class="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                              <th class="px-4 py-3 text-center">Región</th>
-                              <th class="px-4 py-3 text-center">Provincia</th>
-                              <th class="px-4 py-3 text-center">Distrito</th>
-                              <th class="px-4 py-3 text-center">Cantidad de Capacitaciones</th>
-                              <th class="px-4 py-3 text-center">Cantidad de Asistencia Técnica</th>
+                            <tr class="label-ds">
+                              <th class="th-ds py-3 text-center">Región</th>
+                              <th class="th-ds py-3 text-center">Provincia</th>
+                              <th class="th-ds py-3 text-center">Distrito</th>
+                              <th class="th-ds py-3 text-center">Cantidad de Capacitaciones</th>
+                              <th class="th-ds py-3 text-center">Cantidad de Asistencia Técnica</th>
                             </tr>
                           </thead>
                           <tbody class="divide-y divide-border">
@@ -703,10 +657,10 @@ const INP_NORMAL = INPUT_BASE;
                                  destruye su fila (formGroupName por índice no se re-vincula). -->
                             @for (grupo of metasAmbito.controls; track grupo; let i = $index) {
                               <tr [formGroup]="grupo" class="hover:bg-secondary/40 transition-colors">
-                                <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ ambitos()[i]?.region }}</td>
-                                <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ ambitos()[i]?.provincia }}</td>
-                                <td class="px-4 py-3 text-sm text-foreground/80 text-center">{{ ambitos()[i]?.distrito }}</td>
-                                <td class="px-4 py-2 text-center">
+                                <td class="td-ds text-foreground/80 text-center">{{ ambitos()[i]?.region }}</td>
+                                <td class="td-ds text-foreground/80 text-center">{{ ambitos()[i]?.provincia }}</td>
+                                <td class="td-ds text-foreground/80 text-center">{{ ambitos()[i]?.distrito }}</td>
+                                <td class="td-ds py-2 text-center">
                                   <input
                                     type="number" min="0" step="1" inputmode="numeric"
                                     formControlName="cantidadCapacitaciones"
@@ -715,7 +669,7 @@ const INP_NORMAL = INPUT_BASE;
                                     [class]="inpNormal + ' max-w-[110px] mx-auto text-center'"
                                   />
                                 </td>
-                                <td class="px-4 py-2 text-center">
+                                <td class="td-ds py-2 text-center">
                                   <input
                                     type="number" min="0" step="1" inputmode="numeric"
                                     formControlName="cantidadAsistenciaTecnica"
@@ -784,7 +738,7 @@ const INP_NORMAL = INPUT_BASE;
         >
           <div class="space-y-4 text-left" [formGroup]="form">
             <div>
-              <label for="mp-unidad" class="block text-[11px] font-medium text-muted-foreground mb-1">
+              <label for="mp-unidad" class="block text-xs font-medium text-muted-foreground mb-1">
                 Unidad Responsable <span class="text-destructive">*</span>
               </label>
               <select
@@ -806,7 +760,7 @@ const INP_NORMAL = INPUT_BASE;
             </div>
 
             <div>
-              <label for="mp-fuente" class="block text-[11px] font-medium text-muted-foreground mb-1">
+              <label for="mp-fuente" class="block text-xs font-medium text-muted-foreground mb-1">
                 Fuente de Financiamiento <span class="text-destructive">*</span>
               </label>
               <select
@@ -830,7 +784,7 @@ const INP_NORMAL = INPUT_BASE;
             <!-- Categoría presupuestal: solo fuera de la vista Jefe de Área (mismo criterio del formulario). -->
             @if (!modoJefeArea()) {
               <div>
-                <label for="mp-categoria-presup" class="block text-[11px] font-medium text-muted-foreground mb-1">
+                <label for="mp-categoria-presup" class="block text-xs font-medium text-muted-foreground mb-1">
                   Categoría presupuestal <span class="text-destructive">*</span>
                 </label>
                 <select
@@ -852,7 +806,7 @@ const INP_NORMAL = INPUT_BASE;
             }
 
             <div>
-              <label for="mp-categoria" class="block text-[11px] font-medium text-muted-foreground mb-1">
+              <label for="mp-categoria" class="block text-xs font-medium text-muted-foreground mb-1">
                 {{ modoJefeArea() ? 'Categoría' : 'Programa presupuestal' }} <span class="text-destructive">*</span>
               </label>
               <select
@@ -875,7 +829,7 @@ const INP_NORMAL = INPUT_BASE;
             </div>
 
             <div>
-              <label for="mp-unidad-func" class="block text-[11px] font-medium text-muted-foreground mb-1">
+              <label for="mp-unidad-func" class="block text-xs font-medium text-muted-foreground mb-1">
                 Unidad Funcional <span class="text-destructive">*</span>
               </label>
               <select
@@ -1015,7 +969,6 @@ export class UsuarioFormComponent implements OnInit {
     nroOrden: '',
     perfil: '' as Perfil | '',
     periodoTipo: '' as TipoPeriodoGestion | '',
-    periodoAnio: String(new Date().getFullYear()),
     periodoFechaIni: '',
     periodoFechaFin: '',
     metasAmbito: this.fb.array<MetaAmbitoForm>([]),
@@ -1265,14 +1218,12 @@ export class UsuarioFormComponent implements OnInit {
   /* ===== Periodo de Gestión del servicio ===== */
 
   readonly tiposPeriodo: TipoPeriodoGestion[] = ['Regular', 'Extraordinario'];
-  readonly mesesCatalogo = MESES_ES.map((nombre, i) => ({ numero: i + 1, nombre }));
   readonly formatearPeriodo = formatearPeriodo;
   readonly estadoPeriodo = estadoPeriodo;
 
   /** Periodo(s) del servicio en edición (máximo uno por servicio). */
   readonly periodos = signal<PeriodoGestion[]>([]);
   /** Meses marcados mientras se configura un periodo Regular. */
-  readonly mesesSeleccionados = signal<number[]>([]);
 
   /** La sección se habilita al elegir el Régimen Laboral. */
   readonly mostrarSeccionPeriodo = computed(() => {
@@ -1292,81 +1243,56 @@ export class UsuarioFormComponent implements OnInit {
       : REGIMENES_LABORALES;
   });
 
+
+  /** Día de alta en ISO: tope inferior del periodo Regular. */
+  readonly hoyISO = todayISO();
+
   /**
-   * Años seleccionables. En CAS Temporal / Locador los define la vigencia del
-   * contrato (puede cruzar de un año a otro); en el resto de regímenes, el año
-   * actual hacia atrás (nunca futuros).
+   * Fecha mínima seleccionable del periodo.
+   *
+   * Regular no puede empezar antes del día de creación del registro. En
+   * contratos temporales (CAS Temporal / Locador de Servicio (OS)) tampoco
+   * antes del inicio de la vigencia: el periodo debe caer dentro del contrato,
+   * que es la regla que antes imponía el cálculo automático de meses.
+   * Extraordinario conserva su comportamiento anterior (sin mínimo).
    */
-  readonly aniosGestion = computed(() => {
+  readonly periodoFechaMin = computed(() => {
     this.formTick();
-    const actual = anioGestionVigente();
+    if (this.form.controls.periodoTipo.value !== 'Regular') return '';
+    const inicioContrato = this.regimenTemporal() ? this.form.controls.fechaIni.value : '';
+    return inicioContrato && inicioContrato > this.hoyISO ? inicioContrato : this.hoyISO;
+  });
+
+  /**
+   * Fecha máxima seleccionable del periodo: el 31/12 del año de gestión y,
+   * en contratos temporales, el fin de la vigencia si es anterior.
+   */
+  readonly periodoFechaMax = computed(() => {
+    this.formTick();
+    const tope = this.fechaMaxVigencia;
+    if (this.form.controls.periodoTipo.value !== 'Regular') return tope;
+    const finContrato = this.regimenTemporal() ? this.form.controls.fechaFin.value : '';
+    return finContrato && finContrato < tope ? finContrato : tope;
+  });
+
+  /** Texto de ayuda bajo el rango, explicando el tope aplicado. */
+  readonly ayudaPeriodo = computed(() => {
+    this.formTick();
+    if (this.form.controls.periodoTipo.value !== 'Regular') return '';
     if (this.regimenTemporal()) {
-      // Nunca por encima del año de gestión (las fechas ya vienen acotadas).
-      const anios = aniosDeRango(
-        this.form.controls.fechaIni.value,
-        this.form.controls.fechaFin.value,
-      ).filter((a) => a <= actual);
-      if (anios.length) return anios;
+      const ini = this.form.controls.fechaIni.value;
+      const fin = this.form.controls.fechaFin.value;
+      if (!ini || !fin) {
+        return 'Registre la vigencia del contrato para acotar el periodo Regular.';
+      }
+      return `El periodo debe estar dentro de la vigencia del contrato y no puede iniciar antes de hoy.`;
     }
-    return Array.from({ length: 6 }, (_, i) => actual - i);
+    return `El periodo no puede iniciar antes de hoy ni superar el ${this.fechaMaxVigenciaTexto}.`;
   });
 
-  /** Meses activables según régimen y año de gestión (regla única del modelo). */
-  readonly mesesHabilitados = computed(() => {
-    this.formTick();
-    return this.calcularMesesActivables();
-  });
 
-  /** ¿Los meses se derivan automáticamente del contrato (CAS Temporal / OS)? */
-  readonly mesesAutomaticos = computed(() => {
-    this.formTick();
-    return (
-      this.regimenTemporal() &&
-      !!this.form.controls.fechaIni.value &&
-      !!this.form.controls.fechaFin.value
-    );
-  });
 
-  /** Regla de negocio única, compartida por la UI y la validación del alta. */
-  private calcularMesesActivables(anio = Number(this.form.controls.periodoAnio.value)): number[] {
-    return mesesActivablesPeriodoRegular({
-      anio,
-      regimen: this.form.controls.regimen.value,
-      fechaIni: this.form.controls.fechaIni.value,
-      fechaFin: this.form.controls.fechaFin.value,
-    });
-  }
 
-  esMesHabilitado(mes: number): boolean {
-    return this.mesesHabilitados().includes(mes);
-  }
-
-  toggleMes(mes: number, marcado: boolean): void {
-    // Defensa en profundidad: un mes bloqueado nunca entra a la selección.
-    if (marcado && !this.esMesHabilitado(mes)) return;
-    this.mesesSeleccionados.update((prev) =>
-      marcado ? [...prev, mes].sort((a, b) => a - b) : prev.filter((m) => m !== mes),
-    );
-  }
-
-  /** Al cambiar el año se descartan los meses que dejan de ser activables. */
-  onAnioGestionChange(): void {
-    this.formTick.update((t) => t + 1);
-    if (this.sincronizarMesesDesdeContrato()) return;
-    const habilitados = this.calcularMesesActivables();
-    this.mesesSeleccionados.update((prev) => prev.filter((m) => habilitados.includes(m)));
-  }
-
-  onTipoPeriodoChange(): void {
-    this.mesesSeleccionados.set([]);
-    this.form.patchValue({
-      periodoAnio: String(this.aniosGestion()[0] ?? new Date().getFullYear()),
-      periodoFechaIni: '',
-      periodoFechaFin: '',
-    });
-    this.formTick.update((t) => t + 1);
-    this.sincronizarMesesDesdeContrato();
-  }
 
   /**
    * CAS Temporal / Locador: al cambiar la Fecha de inicio o la Fecha fin se
@@ -1377,12 +1303,12 @@ export class UsuarioFormComponent implements OnInit {
   onFechasContratoChange(): void {
     this.formTick.update((t) => t + 1);
     if (this.rechazarFechasFueraDeAnioGestion()) return;
-    const anios = this.aniosGestion();
-    if (anios.length && !anios.includes(Number(this.form.controls.periodoAnio.value))) {
-      this.form.patchValue({ periodoAnio: String(anios[0]) });
-      this.formTick.update((t) => t + 1);
-    }
-    this.sincronizarMesesDesdeContrato();
+  }
+
+  /** Al cambiar de tipo de periodo se limpia el rango introducido. */
+  onTipoPeriodoChange(): void {
+    this.form.patchValue({ periodoFechaIni: '', periodoFechaFin: '' });
+    this.formTick.update((t) => t + 1);
   }
 
   /* ===== Tope de vigencia: 31 de diciembre del año de gestión ===== */
@@ -1407,7 +1333,6 @@ export class UsuarioFormComponent implements OnInit {
 
     if (excedeAnioGestion(fechaIni)) this.form.patchValue({ fechaIni: '' });
     if (excedeAnioGestion(fechaFin)) this.form.patchValue({ fechaFin: '' });
-    this.mesesSeleccionados.set([]);
     this.formTick.update((t) => t + 1);
     void this.modales.openError(
       'Vigencia fuera del año de gestión',
@@ -1417,17 +1342,6 @@ export class UsuarioFormComponent implements OnInit {
     return true;
   }
 
-  /**
-   * Marca automáticamente todos los meses comprendidos en la vigencia del
-   * contrato para el año de gestión activo. Devuelve `true` si la selección la
-   * gobierna el contrato (y por tanto no debe tocarse manualmente después).
-   */
-  private sincronizarMesesDesdeContrato(): boolean {
-    if (this.form.controls.periodoTipo.value !== 'Regular') return false;
-    if (!esRegimenTemporal(this.form.controls.regimen.value)) return false;
-    this.mesesSeleccionados.set(this.calcularMesesActivables());
-    return true;
-  }
 
   /** Alta del periodo del servicio (uno solo por servicio). */
   agregarPeriodo(): void {
@@ -1442,17 +1356,7 @@ export class UsuarioFormComponent implements OnInit {
     const v = this.form.getRawValue();
     const tipo = v.periodoTipo as TipoPeriodoGestion;
     if (tipo === 'Regular') {
-      const anio = Number(v.periodoAnio);
       const derivadoDelContrato = esRegimenTemporal(v.regimen);
-      // Ninguna vigencia puede superar el año de gestión, tampoco en contratos
-      // temporales: sus fechas ya quedan acotadas al 31/12 del año en curso.
-      if (anio > this.anioGestion) {
-        void this.modales.openError(
-          'Año de gestión no permitido',
-          `El Año de Gestión no puede ser mayor a ${this.anioGestion}, el año en curso del sistema.`,
-        );
-        return;
-      }
       if (derivadoDelContrato && (!v.fechaIni || !v.fechaFin)) {
         void this.modales.openError(
           'Vigencia del contrato requerida',
@@ -1460,27 +1364,54 @@ export class UsuarioFormComponent implements OnInit {
         );
         return;
       }
-      if (this.mesesSeleccionados().length === 0) {
-        void this.modales.openError('Meses requeridos', 'Seleccione al menos un mes para el periodo Regular.');
-        return;
-      }
-      // Validación de negocio (no solo visual): ningún mes bloqueado puede registrarse.
-      const habilitados = this.calcularMesesActivables(anio);
-      const bloqueados = this.mesesSeleccionados().filter((m) => !habilitados.includes(m));
-      if (bloqueados.length) {
-        void this.modales.openWarning(
-          'Meses no disponibles',
-          derivadoDelContrato
-            ? `Los siguientes meses quedan fuera de la vigencia del contrato: ` +
-                `${nombresDeMeses(bloqueados)}. Ajuste la Fecha de inicio o la Fecha fin.`
-            : `Los siguientes meses ya no pueden ser activados para el año de gestión ${anio}: ` +
-                `${nombresDeMeses(bloqueados)}. Seleccione únicamente meses disponibles.`,
-          { soloAceptar: true },
+      if (!v.periodoFechaIni || !v.periodoFechaFin) {
+        void this.modales.openError(
+          'Fechas requeridas',
+          'La Fecha Inicio y la Fecha Fin del periodo Regular son obligatorias.',
         );
         return;
       }
+      if (v.periodoFechaFin < v.periodoFechaIni) {
+        void this.modales.openError(
+          'Rango de fechas inválido',
+          'La Fecha Fin no puede ser menor a la Fecha Inicio del periodo.',
+        );
+        return;
+      }
+      // Los topes del calendario son solo una ayuda visual: se revalidan aquí
+      // porque el control de fecha admite escritura manual.
+      const min = this.periodoFechaMin();
+      const max = this.periodoFechaMax();
+      if (v.periodoFechaIni < min) {
+        void this.modales.openError(
+          'Fecha de inicio no permitida',
+          derivadoDelContrato && min !== this.hoyISO
+            ? `El periodo Regular no puede iniciar antes del ${isoToDDMMYYYY(min)}, inicio de la vigencia del contrato.`
+            : 'El periodo Regular no puede iniciar antes del día de creación del registro.',
+        );
+        return;
+      }
+      if (v.periodoFechaFin > max) {
+        void this.modales.openError(
+          'Vigencia no permitida',
+          derivadoDelContrato && max !== this.fechaMaxVigencia
+            ? `El periodo Regular no puede superar el ${isoToDDMMYYYY(max)}, fin de la vigencia del contrato.`
+            : `El periodo Regular no puede superar el ${this.fechaMaxVigenciaTexto}, ` +
+                `último día del año de gestión ${this.anioGestion}.`,
+        );
+        return;
+      }
+      const anio = Number(v.periodoFechaIni.slice(0, 4));
       this.periodos.set([
-        { tipo, anio, meses: [...this.mesesSeleccionados()] },
+        {
+          tipo,
+          anio,
+          // Los meses se siguen almacenando —derivados del rango— para no
+          // alterar cómo se muestra el periodo en la tabla y los listados.
+          meses: mesesDeRangoNumeros(v.periodoFechaIni, v.periodoFechaFin, anio),
+          fechaInicio: v.periodoFechaIni,
+          fechaFin: v.periodoFechaFin,
+        },
       ]);
     } else {
       if (!v.periodoFechaIni || !v.periodoFechaFin) {
@@ -1515,10 +1446,8 @@ export class UsuarioFormComponent implements OnInit {
         },
       ]);
     }
-    this.mesesSeleccionados.set([]);
     this.form.patchValue({
       periodoTipo: '',
-      periodoAnio: String(this.aniosGestion()[0] ?? new Date().getFullYear()),
       periodoFechaIni: '',
       periodoFechaFin: '',
     });
@@ -1530,10 +1459,8 @@ export class UsuarioFormComponent implements OnInit {
 
   onRegimenChange(): void {
     this.form.patchValue({ periodoTipo: '', periodoFechaIni: '', periodoFechaFin: '' });
-    this.mesesSeleccionados.set([]);
     this.formTick.update((t) => t + 1);
     this.form.patchValue({
-      periodoAnio: String(this.aniosGestion()[0] ?? new Date().getFullYear()),
     });
     this.formTick.update((t) => t + 1);
   }
@@ -1999,7 +1926,7 @@ export class UsuarioFormComponent implements OnInit {
       return;
     }
     if (!v.unidad) {
-      this.mostrarAlerta({ titulo: 'Unidad Responsable Vacía', mensaje: 'Debe definir la Unidad Responsable del MIDAGRI.' });
+      this.mostrarAlerta({ titulo: 'Unidad Responsable Vacía', mensaje: 'Debe definir la Unidad Responsable del SODEGA.' });
       return;
     }
     if (!this.validarPresupuesto(v)) return;

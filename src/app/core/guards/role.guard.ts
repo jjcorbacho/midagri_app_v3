@@ -20,6 +20,21 @@ interface FlagsPermisos {
 }
 
 /**
+ * Listados (bandejas) del módulo N1.
+ *
+ * Jefe de Área, Admin UO y Admin DZ pueden abrir un registro concreto
+ * (`/capacitaciones-n1/{id}`, al que llegan desde Seguimiento) pero no la
+ * bandeja de registro. Antes bastaba con denegar `/capacitaciones-n1`, porque
+ * el listado vivía en la raíz; al dividirse en dos vistas hijas hay que
+ * denegarlas explícitamente para no ampliar el acceso de esos perfiles.
+ */
+const BANDEJAS_N1 = ['/capacitaciones-n1/capacitaciones', '/capacitaciones-n1/asistencia-tecnica'];
+
+function esBandejaN1(path: string): boolean {
+  return BANDEJAS_N1.some((ruta) => path.startsWith(ruta));
+}
+
+/**
  * Matriz de acceso por perfil SODEGA.
  * Mapea los módulos existentes a la jerarquía de perfiles del prototipo base:
  *  - Técnico registra capacitaciones/AT → Admin DZ evalúa técnicos →
@@ -38,6 +53,7 @@ function isAllowed(path: string, perfil: Perfil, flags: FlagsPermisos): boolean 
     if (path.startsWith('/seguimiento/aprobacion')) return true;
     if (path.startsWith('/reportes')) return flags.puedeVerReportes;
     if (path.startsWith('/usuarios')) return true;
+    if (esBandejaN1(path)) return false;
     if (path.startsWith('/capacitaciones-n1/')) return true;
     return false;
   }
@@ -48,6 +64,7 @@ function isAllowed(path: string, perfil: Perfil, flags: FlagsPermisos): boolean 
     if (path.startsWith('/configuracion')) return true; // redirect interno → reglas
     if (path.startsWith('/usuarios')) return true;
     if (path.startsWith('/reportes')) return flags.puedeVerReportes;
+    if (esBandejaN1(path)) return false;
     if (path.startsWith('/capacitaciones-n1/')) return true;
     return false;
   }
@@ -55,6 +72,7 @@ function isAllowed(path: string, perfil: Perfil, flags: FlagsPermisos): boolean 
     if (path.startsWith('/seguimiento/revision')) return true;
     if (path.startsWith('/reportes')) return flags.puedeVerReportes;
     if (path.startsWith('/usuarios')) return true;
+    if (esBandejaN1(path)) return false;
     if (path.startsWith('/capacitaciones-n1/')) return true;
     return false;
   }

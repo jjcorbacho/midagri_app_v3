@@ -344,6 +344,18 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Label de formulario. 12 px (antes 10–11 px): legibilidad en pantallas
+   pequeñas de campo, fase 3 de docs/04-auditoria-ux-rediseno.md.
+   No fija `display` para no romper los labels en flex con icono. */
+@utility label-ds {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+
 /* ============================================================
    Transiciones y motion
    ============================================================ */
@@ -433,6 +445,7 @@
 
 /* Botón de icono cuadrado (acciones de tabla, toolbars) */
 @utility btn-icon {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -445,6 +458,21 @@
     color var(--motion-fast) var(--ease-out);
   &:hover:not(:disabled) { background-color: var(--color-secondary); color: var(--color-foreground); }
   &:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* Objetivo táctil ≥44 px (WCAG 2.5.5) en punteros gruesos —dedo, lápiz—
+     sin alterar la caja visual de 32 px ni, por tanto, la densidad de las
+     tablas. El área ampliada es un pseudo-elemento que no ocupa layout. */
+  @media (pointer: coarse) {
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 2.75rem;
+      height: 2.75rem;
+      transform: translate(-50%, -50%);
+    }
+  }
 }
 
 /* --- Superficies -------------------------------------------- */

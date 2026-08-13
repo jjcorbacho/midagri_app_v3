@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import {
   LucideAngularModule,
@@ -11,7 +11,7 @@ import { CursosService } from '../../../core/services/cursos.service';
 import { ParticipantesService } from '../../../core/services/participantes.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { ModalService } from '../../../core/services/modal.service';
-import { Curso, ESTADOS, EstadoCurso, canDeleteCurso } from '../../../core/models/curso.model';
+import { Curso, ESTADOS, EstadoCurso, TipoCurso, canDeleteCurso } from '../../../core/models/curso.model';
 import { Participante } from '../../../core/models/participante.model';
 import { EstadoBadgeComponent } from '../../../shared/components/estado-badge/estado-badge.component';
 import { KpiCardComponent } from '../../../shared/components/kpi-card/kpi-card.component';
@@ -70,18 +70,31 @@ const ICON_TONES: Record<string, string> = {
             }
           </div>
         </div>
-        <!-- 4 tarjetas en la vista general; 5 en "Estados y Progreso" (incluye Subsanados). -->
+        <!-- Vista general: 4 tarjetas en la bandeja combinada y 2 en las vistas
+             por tipo (el desglose Capacitaciones/Asistencias no aporta ahí).
+             "Estados y Progreso": 5 tarjetas (incluye Subsanados). -->
+        <!-- auto-rows-fr: todas las filas del grid miden lo mismo, de modo que
+             las tarjetas conservan la misma altura también cuando el grid se
+             parte en varias filas (md/lg). -->
         <div
-          class="grid gap-4 transition-all duration-300 animate-in fade-in-0"
-          [class]="kpiView() === 'general'
-            ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
-            : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'"
+          class="grid gap-4 auto-rows-fr transition-all duration-300 animate-in fade-in-0"
+          [class]="kpiGridClass()"
         >
           @if (kpiView() === 'general') {
-            <app-kpi-card label="Eventos Registrados" [value]="counts().registrados" [icon]="BookOpenIcon" tone="blue" />
-            <app-kpi-card label="Capacitaciones" [value]="counts().caps" [icon]="ClipboardCheckIcon" tone="teal" />
-            <app-kpi-card label="Asistencias Técnicas" [value]="counts().ast" [icon]="WrenchIcon" tone="emerald" />
-            <app-kpi-card label="Participantes Inscritos" [value]="counts().productores" [icon]="UsersIcon" tone="indigo" />
+            @if (tipoFijado()) {
+              <app-kpi-card
+                [label]="etiquetaEventos()"
+                [value]="counts().registrados"
+                [icon]="tipoVista() === 'capacitacion' ? ClipboardCheckIcon : WrenchIcon"
+                [tone]="tipoVista() === 'capacitacion' ? 'teal' : 'emerald'"
+              />
+              <app-kpi-card label="Participantes Inscritos" [value]="counts().productores" [icon]="UsersIcon" tone="indigo" />
+            } @else {
+              <app-kpi-card label="Eventos Registrados" [value]="counts().registrados" [icon]="BookOpenIcon" tone="blue" />
+              <app-kpi-card label="Capacitaciones" [value]="counts().caps" [icon]="ClipboardCheckIcon" tone="teal" />
+              <app-kpi-card label="Asistencias Técnicas" [value]="counts().ast" [icon]="WrenchIcon" tone="emerald" />
+              <app-kpi-card label="Participantes Inscritos" [value]="counts().productores" [icon]="UsersIcon" tone="indigo" />
+            }
           } @else {
             <app-kpi-card label="Pendiente de envío (registrado)" [value]="counts().pendientes" [icon]="FileEditIcon" tone="slate" />
             <app-kpi-card label="Enviados a Revisión (enviado)" [value]="counts().enviados" [icon]="SendHorizonalIcon" tone="blue" />
@@ -96,19 +109,17 @@ const ICON_TONES: Record<string, string> = {
       <div class="bg-card rounded-xl ring-1 ring-border shadow-sm overflow-hidden">
         <div class="p-6 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 class="text-h2 text-foreground">
-              Bandeja de Control de {{ areaService.currentArea() }}
-            </h2>
+            <h2 class="text-h2 text-foreground">Bandeja de Control</h2>
             <p class="text-sm text-muted-foreground mt-1 max-w-[70ch]">
-              Consulte e ingrese capacitaciones agrarias.
+              Consulte e ingrese al registro
             </p>
           </div>
+          <!-- Con la bandeja dividida por tipo, la acción de alta es única y
+               corresponde al tipo de la vista. -->
           <div class="flex flex-wrap gap-2">
-            <button (click)="nuevo('capacitacion')" class="btn-primary">
-              <lucide-angular [img]="PlusIcon" class="size-4" /> Registrar Capacitación
-            </button>
-            <button (click)="nuevo('asistencia')" class="btn-primary">
-              <lucide-angular [img]="PlusIcon" class="size-4" /> Registrar Asis. Técnica
+            <button (click)="nuevo(tipoVista())" class="btn-primary">
+              <lucide-angular [img]="PlusIcon" class="size-4" />
+              {{ tipoVista() === 'capacitacion' ? 'Registrar Capacitación' : 'Registrar Asis. Técnica' }}
             </button>
           </div>
         </div>
@@ -117,23 +128,37 @@ const ICON_TONES: Record<string, string> = {
         <div class="p-4 bg-secondary/40 border-b border-border space-y-3">
           <!-- Fila 1: indicadores por tipo + buscador por campo + exportación -->
           <div class="flex flex-col lg:flex-row gap-3 lg:items-center">
-            <div class="inline-flex p-1 bg-card ring-1 ring-border rounded-lg self-start shrink-0" role="tablist" aria-label="Filtrar por tipo">
-              @for (t of tabs; track t.k) {
-                <button
-                  role="tab"
-                  [attr.aria-selected]="tab() === t.k"
-                  (click)="setTab(t.k)"
-                  class="h-8 px-3 rounded-md text-xs font-bold transition-colors flex items-center gap-1.5"
-                  [class]="tab() === t.k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'"
-                >
-                  {{ t.label }}
-                  <span
-                    class="px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums"
-                    [class]="tab() === t.k ? 'bg-primary-foreground/25' : 'bg-secondary ring-1 ring-border'"
-                  >{{ conteoTipos()[t.k] }}</span>
-                </button>
-              }
-            </div>
+            <!-- El filtro por tipo solo aplica a la bandeja combinada; en las
+                 vistas por tipo el registro ya viene fijado por la ruta y se
+                 sustituye por el contador de la vista. -->
+            @if (tipoFijado()) {
+              <div class="inline-flex items-center gap-1.5 h-10 px-3 bg-card ring-1 ring-border rounded-lg self-start shrink-0">
+                <span class="text-xs font-bold text-foreground">
+                  {{ tipoVista() === 'capacitacion' ? 'Capacitaciones' : 'Asistencias Técnicas' }}
+                </span>
+                <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums bg-secondary ring-1 ring-border">
+                  {{ conteoTipos()[tipoVista()] }}
+                </span>
+              </div>
+            } @else {
+              <div class="inline-flex p-1 bg-card ring-1 ring-border rounded-lg self-start shrink-0" role="tablist" aria-label="Filtrar por tipo">
+                @for (t of tabs; track t.k) {
+                  <button
+                    role="tab"
+                    [attr.aria-selected]="tab() === t.k"
+                    (click)="setTab(t.k)"
+                    class="h-8 px-3 rounded-md text-xs font-bold transition-colors flex items-center gap-1.5"
+                    [class]="tab() === t.k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'"
+                  >
+                    {{ t.label }}
+                    <span
+                      class="px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums"
+                      [class]="tab() === t.k ? 'bg-primary-foreground/25' : 'bg-secondary ring-1 ring-border'"
+                    >{{ conteoTipos()[t.k] }}</span>
+                  </button>
+                }
+              </div>
+            }
 
             <select
               [value]="campoBusqueda()"
@@ -171,7 +196,7 @@ const ICON_TONES: Record<string, string> = {
           <!-- Fila 2: filtros uniformes y alineados -->
           <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
             <div>
-              <label for="filtro-estado" class="block text-[11px] font-medium text-muted-foreground mb-1">Estado</label>
+              <label for="filtro-estado" class="block text-xs font-medium text-muted-foreground mb-1">Estado</label>
               <select
                 id="filtro-estado"
                 [value]="estado()"
@@ -185,7 +210,7 @@ const ICON_TONES: Record<string, string> = {
               </select>
             </div>
             <div>
-              <label for="filtro-region" class="block text-[11px] font-medium text-muted-foreground mb-1">Región</label>
+              <label for="filtro-region" class="block text-xs font-medium text-muted-foreground mb-1">Región</label>
               <select
                 id="filtro-region"
                 [value]="fRegion()"
@@ -199,7 +224,7 @@ const ICON_TONES: Record<string, string> = {
               </select>
             </div>
             <div>
-              <label for="filtro-provincia" class="block text-[11px] font-medium text-muted-foreground mb-1">Provincia</label>
+              <label for="filtro-provincia" class="block text-xs font-medium text-muted-foreground mb-1">Provincia</label>
               <select
                 id="filtro-provincia"
                 [value]="fProvincia()"
@@ -214,7 +239,7 @@ const ICON_TONES: Record<string, string> = {
               </select>
             </div>
             <div>
-              <label for="filtro-distrito" class="block text-[11px] font-medium text-muted-foreground mb-1">Distrito</label>
+              <label for="filtro-distrito" class="block text-xs font-medium text-muted-foreground mb-1">Distrito</label>
               <select
                 id="filtro-distrito"
                 [value]="fDistrito()"
@@ -229,7 +254,7 @@ const ICON_TONES: Record<string, string> = {
               </select>
             </div>
             <div>
-              <label class="block text-[11px] font-medium text-muted-foreground mb-1">Rango de fechas</label>
+              <label class="block text-xs font-medium text-muted-foreground mb-1">Rango de fechas</label>
               <app-date-range-picker [desde]="fDesde()" [hasta]="fHasta()" (rangoChange)="setRangoFechas($event)" />
             </div>
           </div>
@@ -239,20 +264,20 @@ const ICON_TONES: Record<string, string> = {
         <div class="overflow-auto max-h-[60vh]">
           <table class="w-full text-left min-w-[1100px]">
             <thead class="bg-secondary sticky top-0 z-10 shadow-sm">
-              <tr class="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
-                <th class="px-4 py-3 text-center">Acciones</th>
-                <th class="px-4 py-3">Tipo / Tema</th>
-                <th class="px-4 py-3">Estado</th>
-                <th class="px-4 py-3">Fecha</th>
-                <th class="px-4 py-3 text-center">Horas</th>
-                <th class="px-4 py-3 text-center">Participantes</th>
-                <th class="px-4 py-3">Ubicación</th>
+              <tr class="text-muted-foreground label-ds">
+                <th class="th-ds py-3 text-center">Acciones</th>
+                <th class="th-ds py-3">Tipo / Tema</th>
+                <th class="th-ds py-3">Estado</th>
+                <th class="th-ds py-3">Fecha</th>
+                <th class="th-ds py-3 text-center">Horas</th>
+                <th class="th-ds py-3 text-center">Participantes</th>
+                <th class="th-ds py-3">Ubicación</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border">
               @for (c of pageRows(); track c.id) {
                 <tr class="hover:bg-secondary/40 transition-colors">
-                  <td class="px-4 py-4">
+                  <td class="td-ds py-4">
                     <div class="flex items-center justify-center gap-1 flex-wrap">
                       @if (tieneObs(c)) {
                         <button [title]="'Ver observaciones'" aria-label="Ver observaciones" (click)="verObservaciones(c)"
@@ -307,7 +332,7 @@ const ICON_TONES: Record<string, string> = {
                     </div>
                   </td>
 
-                  <td class="px-4 py-4">
+                  <td class="td-ds py-4">
                     <div class="mb-1">
                       <span
                         class="text-[9px] px-1.5 py-0.5 font-bold uppercase rounded-sm"
@@ -317,34 +342,34 @@ const ICON_TONES: Record<string, string> = {
                     </div>
                     <p class="text-sm font-semibold text-foreground leading-tight max-w-sm">{{ c.nombreTema }}</p>
                   </td>
-                  <td class="px-4 py-4 whitespace-nowrap"><app-estado-badge [estado]="c.estado" /></td>
-                  <td class="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground font-medium">{{ c.fecha }}</td>
-                  <td class="px-4 py-4 text-center text-sm font-bold text-foreground/80 tabular-nums">{{ c.horas }} h</td>
-                  <td class="px-4 py-4 text-center">
+                  <td class="td-ds py-4 whitespace-nowrap"><app-estado-badge [estado]="c.estado" /></td>
+                  <td class="td-ds py-4 whitespace-nowrap text-muted-foreground font-medium">{{ c.fecha }}</td>
+                  <td class="td-ds py-4 text-center font-bold text-foreground/80 tabular-nums">{{ c.horas }} h</td>
+                  <td class="td-ds py-4 text-center">
                     <button
                       type="button"
                       (click)="toggleExpand(c.id)"
-                      [disabled]="(c.participantes ?? 0) === 0"
+                      [disabled]="totalDe(c) === 0"
                       class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ring-1 text-xs font-bold tabular-nums transition-colors"
                       [class]="participantesBtnCls(c)"
                       [attr.aria-expanded]="isExpanded(c)"
                       [attr.aria-label]="showCount(c) + ' participante(s)'"
                     >
                       <lucide-angular [img]="UsersIcon" class="size-3.5" />
-                      <span>{{ showCount(c) }}{{ queryActive() && matchesDe(c.id).length > 0 ? ' / ' + (c.participantes ?? 0) : '' }}</span>
-                      @if ((c.participantes ?? 0) > 0) {
+                      <span>{{ showCount(c) }}{{ queryActive() && matchesDe(c.id).length > 0 ? ' / ' + totalDe(c) : '' }}</span>
+                      @if (totalDe(c) > 0) {
                         <lucide-angular [img]="isExpanded(c) ? ChevronUpIcon : ChevronDownIcon" class="size-3.5" />
                       }
                     </button>
                   </td>
-                  <td class="px-4 py-4">
+                  <td class="td-ds py-4">
                     <div class="flex items-start text-xs text-muted-foreground">
                       <lucide-angular [img]="MapPinIcon" class="size-3 mr-1 mt-0.5 text-muted-foreground/70 shrink-0" />
                       <span>{{ c.region }} / {{ c.provincia }} / {{ c.distrito }}</span>
                     </div>
                   </td>
                 </tr>
-                @if (isExpanded(c) && (c.participantes ?? 0) > 0) {
+                @if (isExpanded(c) && totalDe(c) > 0) {
                   <tr class="bg-secondary/20">
                     <td colspan="7" class="px-0 py-0">
                       <div class="thin-scroll max-h-[120px] overflow-y-auto">
@@ -399,7 +424,8 @@ const ICON_TONES: Record<string, string> = {
             <select
               [value]="pageSize()"
               (change)="setPageSize($event)"
-              class="px-2 py-1 ring-1 ring-border rounded text-xs font-medium bg-card"
+              aria-label="Registros por página"
+              class="px-2 py-1 ring-1 ring-border rounded text-xs font-medium bg-background hover:ring-muted-foreground/30 focus:ring-2 focus:ring-ring focus:outline-none transition-[box-shadow,background-color] duration-150"
             >
               @for (n of pageSizes; track n) {
                 <option [value]="n">{{ n }}</option>
@@ -469,6 +495,26 @@ export class BandejaComponent {
   readonly estados = ESTADOS;
   readonly pageSizes = [5, 10, 30, 50];
 
+  /**
+   * Tipo de registro fijado por la ruta (`data.tipo`), enlazado por
+   * `withComponentInputBinding()`. Vacío en la bandeja combinada.
+   */
+  readonly tipo = input<TipoCurso | undefined>();
+  readonly tipoFijado = computed(() => !!this.tipo());
+  readonly tipoVista = computed<TipoCurso>(() => this.tipo() ?? 'capacitacion');
+
+  /** Rótulo del contador principal en las vistas por tipo. */
+  readonly etiquetaEventos = computed(() =>
+    this.tipoVista() === 'capacitacion' ? 'Capacitaciones Registradas' : 'Asistencias Técnicas Registradas',
+  );
+
+  readonly kpiGridClass = computed(() => {
+    if (this.kpiView() === 'estados') return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5';
+    return this.tipoFijado()
+      ? 'grid-cols-1 md:grid-cols-2'
+      : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4';
+  });
+
   readonly tab = signal<Tab>('todos');
   readonly kpiView = signal<'general' | 'estados'>('general');
   readonly q = signal('');
@@ -500,14 +546,20 @@ export class BandejaComponent {
   readonly expanded = signal<Set<string>>(new Set());
 
   readonly counts = computed(() => {
-    const delArea = this.cursosService.cursos().filter((c) => c.area === this.areaService.currentArea());
+    const tipoRuta = this.tipo();
+    // Los indicadores se acotan al tipo de la vista: en una bandeja de
+    // Capacitaciones no deben computarse asistencias técnicas, ni al revés.
+    const delArea = this.cursosService
+      .cursos()
+      .filter((c) => c.area === this.areaService.currentArea())
+      .filter((c) => !tipoRuta || c.tipo === tipoRuta);
     const caps = delArea.filter((c) => c.tipo === 'capacitacion').length;
     const ast = delArea.filter((c) => c.tipo === 'asistencia').length;
     return {
       registrados: caps + ast,
       caps,
       ast,
-      productores: delArea.reduce((acc, c) => acc + (c.participantes || 0), 0),
+      productores: delArea.reduce((acc, c) => acc + this.participantesService.totalDe(c.id), 0),
       pendientes: delArea.filter((c) => c.estado === 'Registrado').length,
       enviados: delArea.filter((c) => c.estado === 'Enviado' || c.estado === 'Enviado-Subsanado').length,
       observados: delArea.filter((c) => c.estado === 'Observado').length,
@@ -534,7 +586,11 @@ export class BandejaComponent {
 
   readonly filtered = computed(() => {
     let base = this.cursosService.cursos().filter((c) => c.area === this.areaService.currentArea());
-    if (this.tab() !== 'todos') base = base.filter((c) => c.tipo === this.tab());
+    // El tipo de la ruta manda; el filtro por pestañas solo actúa en la
+    // bandeja combinada.
+    const tipoRuta = this.tipo();
+    if (tipoRuta) base = base.filter((c) => c.tipo === tipoRuta);
+    else if (this.tab() !== 'todos') base = base.filter((c) => c.tipo === this.tab());
     if (this.estado() !== 'TODOS') base = base.filter((c) => c.estado === this.estado());
     if (this.fRegion()) base = base.filter((c) => c.region === this.fRegion());
     if (this.fProvincia()) base = base.filter((c) => c.provincia === this.fProvincia());
@@ -602,8 +658,17 @@ export class BandejaComponent {
     return filtraParticipantes ? this.matchesDe(c.id) : this.participantesService.participantesDe(c.id);
   }
 
+  /**
+   * Total de participantes del registro. Se deriva de `ParticipantesService`
+   * (fuente de verdad) y no del contador denormalizado `Curso.participantes`,
+   * para que la columna coincida siempre con la lista del Paso 2.
+   */
+  totalDe(c: Curso): number {
+    return this.participantesService.totalDe(c.id);
+  }
+
   showCount(c: Curso): number {
-    return this.queryActive() ? this.matchesDe(c.id).length : (c.participantes ?? 0);
+    return this.queryActive() ? this.matchesDe(c.id).length : this.totalDe(c);
   }
 
   esMatch(c: Curso, p: Participante): boolean {
@@ -642,11 +707,11 @@ export class BandejaComponent {
   }
 
   deleteBlocked(c: Curso): boolean {
-    return (c.participantes ?? 0) > 0 || c.estado !== 'Registrado';
+    return this.totalDe(c) > 0 || c.estado !== 'Registrado';
   }
 
   participantesBtnCls(c: Curso): string {
-    const total = c.participantes ?? 0;
+    const total = this.totalDe(c);
     if (total === 0) return 'ring-border text-muted-foreground/60 cursor-not-allowed';
     return this.isExpanded(c)
       ? 'bg-brand text-brand-foreground ring-brand'
@@ -710,7 +775,7 @@ export class BandejaComponent {
   }
 
   abrirSustento(c: Curso): void {
-    if ((c.participantes ?? 0) < 1) {
+    if (this.totalDe(c) < 1) {
       this.toast.warning(
         'Agrega al menos un participante',
         'Debes registrar mínimo un participante antes de subir el archivo de sustento.',
@@ -753,7 +818,7 @@ export class BandejaComponent {
       { titulo: 'Fecha', valor: (c) => c.fecha },
       { titulo: 'Hora', valor: (c) => c.hora },
       { titulo: 'Horas', valor: (c) => c.horas },
-      { titulo: 'Participantes', valor: (c) => c.participantes },
+      { titulo: 'Participantes', valor: (c) => this.totalDe(c) },
       { titulo: 'Región', valor: (c) => c.region },
       { titulo: 'Provincia', valor: (c) => c.provincia },
       { titulo: 'Distrito', valor: (c) => c.distrito },

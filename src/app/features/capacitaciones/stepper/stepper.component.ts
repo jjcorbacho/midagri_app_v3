@@ -11,7 +11,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   LucideAngularModule,
   ArrowLeft, Check, ChevronRight, AlertTriangle, Trash2,
-  UploadCloud, FileText, Send, Lock, Plus, X,
+  UploadCloud, FileText, Send, Lock, Plus, X, Search,
 } from 'lucide-angular';
 import { AreaService } from '../../../core/services/area.service';
 import { CursosService } from '../../../core/services/cursos.service';
@@ -20,6 +20,7 @@ import { ToastService } from '../../../core/services/toast.service';
 import { getArea } from '../../../core/constants/areas.const';
 import { Curso, TipoCurso, isLocked } from '../../../core/models/curso.model';
 import { isoToFechaCorta } from '../../../shared/utils/fecha.util';
+import { normalizarBusqueda } from '../../../shared/utils/texto.util';
 import { EstadoBadgeComponent } from '../../../shared/components/estado-badge/estado-badge.component';
 import { CursoFormComponent, CursoFormState } from '../curso-form/curso-form.component';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
@@ -44,7 +45,7 @@ type Paso = 1 | 2 | 3;
   template: `
     <section class="p-6 lg:p-8 max-w-[1200px] mx-auto space-y-5 animate-page-in">
       <div class="flex items-center gap-2 text-xs text-muted-foreground">
-        <a routerLink="/capacitaciones-n1" class="hover:text-brand flex items-center gap-1">
+        <a [routerLink]="rutaBandeja()" class="hover:text-brand flex items-center gap-1">
           <lucide-angular [img]="ArrowLeftIcon" class="size-3" /> Bandeja N1
         </a>
         <span>/</span>
@@ -59,16 +60,16 @@ type Paso = 1 | 2 | 3;
       <!-- Stepper bar -->
       <div class="bg-card ring-1 ring-border rounded-xl p-4 flex items-center justify-between">
         @for (s of steps; track s.n; let i = $index) {
-          <div class="flex items-center flex-1">
+          <div class="flex items-center flex-1 min-w-0">
             <button
               type="button"
               [disabled]="!clickable(s.n)"
               (click)="clickable(s.n) && paso.set(s.n)"
-              class="flex items-center gap-2"
+              class="flex items-center gap-2 min-w-0"
               [class]="clickable(s.n) ? 'cursor-pointer' : 'cursor-default'"
             >
               <span
-                class="size-8 rounded-full flex items-center justify-center text-xs font-bold ring-2 transition-colors"
+                class="size-8 shrink-0 rounded-full flex items-center justify-center text-xs font-bold ring-2 transition-colors"
                 [class]="paso() === s.n
                   ? 'bg-brand text-brand-foreground ring-brand'
                   : paso() > s.n
@@ -81,8 +82,11 @@ type Paso = 1 | 2 | 3;
                   {{ s.n }}
                 }
               </span>
+              <!-- Las 3 etiquetas completas no caben a 375 px y desbordaban el
+                   layout: en móvil se ocultan y el paso activo se rotula
+                   debajo de la barra (ver bloque sm:hidden siguiente). -->
               <span
-                class="text-xs font-semibold uppercase tracking-wide"
+                class="hidden sm:inline text-xs font-semibold uppercase tracking-wide truncate"
                 [class]="paso() === s.n ? 'text-brand' : paso() > s.n ? 'text-success' : 'text-muted-foreground'"
               >Paso {{ s.n }}: {{ s.label }}</span>
             </button>
@@ -92,6 +96,11 @@ type Paso = 1 | 2 | 3;
           </div>
         }
       </div>
+
+      <!-- Rótulo del paso activo en móvil (las etiquetas inline se ocultan). -->
+      <p class="sm:hidden -mt-2 text-xs font-semibold uppercase tracking-wide text-brand">
+        Paso {{ paso() }} de {{ steps.length }}: {{ steps[paso() - 1].label }}
+      </p>
 
       @if (bloqueado()) {
         <div class="rounded-lg bg-warning-soft ring-1 ring-warning/30 p-3 text-xs text-warning-foreground flex items-center gap-2">
@@ -219,31 +228,66 @@ type Paso = 1 | 2 | 3;
           }
 
           <div class="bg-card rounded-xl ring-1 ring-border overflow-hidden">
-              <div class="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
+              <div class="px-5 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h2 class="text-sm font-bold uppercase tracking-wider">Participantes registrados</h2>
-                  <p class="text-xs text-muted-foreground">Total: {{ participantes().length }}</p>
+                  <p class="text-xs text-muted-foreground">
+                    @if (filtroParticipantes()) {
+                      {{ participantesFiltrados().length }} de {{ participantes().length }}
+                    } @else {
+                      Total: {{ participantes().length }}
+                    }
+                  </p>
                 </div>
-                @if (!bloqueado() && !showForm()) {
-                  <button
-                    type="button"
-                    (click)="showForm.set(true)"
-                    class="btn-primary h-8"
-                  >
-                    <lucide-angular [img]="PlusIcon" class="size-4" /> Nuevo participante
-                  </button>
-                }
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+                  @if (participantes().length > 0) {
+                    <div class="relative w-full sm:w-auto">
+                      <lucide-angular
+                        [img]="SearchIcon"
+                        class="size-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                      />
+                      <input
+                        type="search"
+                        [value]="filtroParticipantes()"
+                        (input)="filtroParticipantes.set($any($event.target).value)"
+                        placeholder="Buscar por DNI, apellidos o nombres…"
+                        aria-label="Buscar participantes de este registro"
+        class="h-8 w-full sm:w-64 bg-background ring-1 ring-border rounded-lg pl-8 pr-8 text-sm placeholder:text-muted-foreground/60 hover:ring-muted-foreground/30 focus:ring-2 focus:ring-ring focus:outline-none transition-[box-shadow,background-color] duration-150 [&::-webkit-search-cancel-button]:appearance-none"
+                      />
+                      @if (filtroParticipantes()) {
+                        <button
+                          type="button"
+                          (click)="filtroParticipantes.set('')"
+                          aria-label="Limpiar búsqueda"
+                          title="Limpiar búsqueda"
+                          class="absolute right-1 top-1/2 -translate-y-1/2 btn-icon size-6"
+                        >
+                          <lucide-angular [img]="XIcon" class="size-3.5" />
+                        </button>
+                      }
+                    </div>
+                  }
+                  @if (!bloqueado() && !showForm()) {
+                    <button
+                      type="button"
+                      (click)="showForm.set(true)"
+                      class="btn-primary h-8 w-full sm:w-auto shrink-0 justify-center"
+                    >
+                      <lucide-angular [img]="PlusIcon" class="size-4" /> Nuevo participante
+                    </button>
+                  }
+                </div>
               </div>
               <div class="overflow-auto max-h-[40vh]">
                 <table class="w-full text-sm">
                   <thead class="bg-secondary/60 sticky top-0 z-10">
-                    <tr class="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
-                      <th class="px-3 py-2 text-left">DNI</th>
-                      <th class="px-3 py-2 text-left">Apellidos y Nombres</th>
-                      <th class="px-3 py-2 text-left">Tipo</th>
-                      <th class="px-3 py-2 text-left">Actividad</th>
+                    <tr class="text-muted-foreground label-ds">
+                      <th class="th-ds px-3 py-2 text-left">DNI</th>
+                      <th class="th-ds px-3 py-2 text-left">Apellidos y Nombres</th>
+                      <th class="th-ds px-3 py-2 text-left">Tipo</th>
+                      <th class="th-ds px-3 py-2 text-left">Actividad</th>
                       @if (!bloqueado()) {
-                        <th class="px-3 py-2 text-center w-16">—</th>
+                        <th class="th-ds px-3 py-2 text-center w-16">—</th>
                       }
                     </tr>
                   </thead>
@@ -256,19 +300,25 @@ type Paso = 1 | 2 | 3;
                             : 'Aún no hay participantes. Haz clic en "Nuevo participante" para agregar.' }}
                         </td>
                       </tr>
+                    } @else if (participantesFiltrados().length === 0) {
+                      <tr>
+                        <td colspan="5" class="px-6 py-10 text-center italic text-muted-foreground">
+                          Sin coincidencias en los participantes de este registro.
+                        </td>
+                      </tr>
                     }
-                    @for (p of participantes(); track p.id) {
+                    @for (p of participantesFiltrados(); track p.id) {
                       <tr class="hover:bg-secondary/40">
-                        <td class="px-3 py-2 font-mono text-xs">{{ p.dni }}</td>
-                        <td class="px-3 py-2 font-medium">{{ p.apellidos }}, {{ p.nombres }}</td>
-                        <td class="px-3 py-2">
+                        <td class="td-ds px-3 py-2 font-mono text-xs">{{ p.dni }}</td>
+                        <td class="td-ds px-3 py-2 font-medium">{{ p.apellidos }}, {{ p.nombres }}</td>
+                        <td class="td-ds px-3 py-2">
                           <span class="text-[10px] px-1.5 py-0.5 font-bold uppercase rounded-sm bg-muted text-foreground">
                             {{ p.tipoParticipante }}
                           </span>
                         </td>
-                        <td class="px-3 py-2 text-muted-foreground">{{ p.primActividad }}</td>
+                        <td class="td-ds px-3 py-2 text-muted-foreground">{{ p.primActividad }}</td>
                         @if (!bloqueado()) {
-                          <td class="px-3 py-2">
+                          <td class="td-ds px-3 py-2">
                             <div class="flex justify-center">
                               <button
                                 (click)="eliminarParticipante(p.id)"
@@ -289,17 +339,17 @@ type Paso = 1 | 2 | 3;
               <!-- La declaración jurada vive en el formulario de participante
                    (tras "4. Información adicional"); si el formulario está
                    cerrado, el modal de "Continuar al Paso 3" la solicita. -->
-              <div class="px-5 py-3 border-t border-border bg-secondary/30 flex items-center justify-between gap-2">
+              <div class="px-5 py-3 border-t border-border bg-secondary/30 flex flex-wrap items-center justify-between gap-2">
                 <button
                   (click)="paso.set(1)"
-                  class="btn-secondary h-8"
+                  class="btn-secondary h-8 flex-1 sm:flex-none justify-center"
                 >
                   <lucide-angular [img]="ArrowLeftIcon" class="size-4" /> Volver al Paso 1
                 </button>
                 <button
                   (click)="continuarAPaso3()"
                   [disabled]="participantes().length === 0 && !bloqueado()"
-                  class="btn-primary h-8"
+                  class="btn-primary h-8 flex-1 sm:flex-none justify-center"
                 >
                   Continuar al Paso 3 <lucide-angular [img]="ChevronRightIcon" class="size-4" />
                 </button>
@@ -502,6 +552,7 @@ export class StepperComponent implements OnInit {
   readonly LockIcon = Lock;
   readonly PlusIcon = Plus;
   readonly XIcon = X;
+  readonly SearchIcon = Search;
   readonly maxMb = MAX_MB;
 
   readonly steps: { n: Paso; label: string }[] = [
@@ -550,6 +601,25 @@ export class StepperComponent implements OnInit {
     this.participantesService.participantes();
     return id ? this.participantesService.participantesDe(id) : [];
   });
+
+  /** Búsqueda en vivo sobre los participantes del registro activo (Paso 2). */
+  readonly filtroParticipantes = signal('');
+
+  readonly participantesFiltrados = computed(() => {
+    const q = normalizarBusqueda(this.filtroParticipantes());
+    const lista = this.participantes();
+    if (!q) return lista;
+    return lista.filter((p) =>
+      normalizarBusqueda(`${p.dni} ${p.apellidos} ${p.nombres}`).includes(q),
+    );
+  });
+
+  /** Bandeja de origen según el tipo del registro (las vistas están separadas). */
+  readonly rutaBandeja = computed(() =>
+    this.tipo() === 'asistencia'
+      ? '/capacitaciones-n1/asistencia-tecnica'
+      : '/capacitaciones-n1/capacitaciones',
+  );
 
   readonly isEdit = computed(() => this.mode === 'editar' && !!this.cursoActivo());
 
@@ -620,7 +690,7 @@ export class StepperComponent implements OnInit {
   }
 
   volverABandeja(): void {
-    this.router.navigate(['/capacitaciones-n1']);
+    this.router.navigate([this.rutaBandeja()]);
   }
 
   /* ===== Paso 1 ===== */

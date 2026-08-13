@@ -33,7 +33,7 @@ let siguienteId = 0;
   template: `
     <div class="relative" (focusout)="onFocusOut($event)">
       @if (label()) {
-        <label [for]="inputId" class="block text-[11px] font-medium text-muted-foreground mb-1">
+        <label [for]="inputId" class="block text-xs font-medium text-muted-foreground mb-1">
           {{ label() }}
           @if (requerido()) {
             <span class="text-destructive">*</span>

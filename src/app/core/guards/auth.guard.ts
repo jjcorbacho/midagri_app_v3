@@ -11,7 +11,7 @@ export const authGuard: CanActivateFn = () => {
   const router = inject(Router);
   if (auth.user()) return true;
   console.warn(
-    '[DIAGNÓSTICO MIDAGRI] Estado de sesión: no existe una sesión activa. Redirigiendo a /auth.',
+    '[DIAGNÓSTICO SODEGA] Estado de sesión: no existe una sesión activa. Redirigiendo a /auth.',
   );
   return router.createUrlTree(['/auth']);
 };

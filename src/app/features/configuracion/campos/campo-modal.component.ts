@@ -97,7 +97,13 @@ export type CampoModalResult = Omit<CampoPersonalizado, 'id' | 'area' | 'formula
             <div class="bg-surface-2 border border-border rounded-lg p-3">
               <label class="block text-xs font-semibold text-foreground mb-2">Vista previa del calendario</label>
               <div class="flex justify-center">
-                <input type="date" [value]="hoy" class="bg-card border border-border rounded px-3 py-2 text-sm" />
+                <input
+                  type="date"
+                  [value]="hoy"
+                  disabled
+                  aria-label="Vista previa del calendario"
+                  class="bg-card border border-border rounded px-3 py-2 text-sm"
+                />
               </div>
               <p class="text-[11px] text-muted-foreground mt-2 text-center">Por defecto se resalta la fecha actual.</p>
             </div>
