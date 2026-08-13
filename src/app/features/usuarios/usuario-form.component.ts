@@ -913,11 +913,11 @@ export class UsuarioFormComponent implements OnInit {
   /* Catálogos reactivos: base del proyecto ⊕ opciones de Administración de Listas */
   readonly profesiones = computed(() => this.listasAdmin.opcionesFormulario('Profesión - Especialidad', PROFESIONES));
   readonly fuentes = computed(() => this.listasAdmin.opcionesFormulario('Fuente de Financiamiento', FUENTES_FINANCIAMIENTO));
-  readonly categorias = computed(() => this.listasAdmin.opcionesFormulario('Categoría Presupuestal', CATEGORIAS_PRESUPUESTALES));
+  readonly categorias = computed(() => this.listasAdmin.opcionesFormulario('Tipo presupuestal', CATEGORIAS_PRESUPUESTALES));
   readonly programas = computed(() =>
     this.modoJefeArea()
       ? [...CATEGORIAS_PRESUPUESTALES_JEFE_AREA]
-      : this.listasAdmin.opcionesFormulario('Programas Presupuestales', PROGRAMAS_MAESTROS),
+      : this.listasAdmin.opcionesFormulario('Categoría', PROGRAMAS_MAESTROS),
   );
   readonly unidadesResponsables = computed(() => this.listasAdmin.opcionesFormulario('Unidad Responsable', UNIDADES_RESPONSABLES));
   readonly sexos = computed(() => this.listasAdmin.opcionesFormulario('Sexo', ['Masculino', 'Femenino']));

@@ -20,11 +20,11 @@ const SEXOS = ['Masculino', 'Femenino'];
 
 /** Listas maestras precargadas (semilla del prototipo). */
 export const LISTAS_ADMIN_INICIALES: ListaAdmin[] = [
-  { nombre: 'Categoría Presupuestal', opciones: opcionesDesdeTextos(CATEGORIAS_PRESUPUESTALES) },
+  { nombre: 'Tipo presupuestal', opciones: opcionesDesdeTextos(CATEGORIAS_PRESUPUESTALES) },
   { nombre: 'Estado Civil', opciones: opcionesDesdeTextos(ESTADOS_CIVILES) },
   { nombre: 'Fuente de Financiamiento', opciones: opcionesDesdeTextos(FUENTES_FINANCIAMIENTO) },
   { nombre: 'Unidad Funcional', opciones: opcionesDesdeTextos(UNIDADES_FUNCIONALES_MAESTRAS.slice(0, 30)) },
-  { nombre: 'Programas Presupuestales', opciones: opcionesDesdeTextos(PROGRAMAS_MAESTROS) },
+  { nombre: 'Categoría', opciones: opcionesDesdeTextos(PROGRAMAS_MAESTROS) },
   { nombre: 'Unidad Responsable', opciones: opcionesDesdeTextos(UNIDADES_RESPONSABLES) },
   { nombre: 'Perfil Autorizado', opciones: opcionesDesdeTextos(PERFILES) },
   { nombre: 'Sexo', opciones: opcionesDesdeTextos(SEXOS) },
@@ -43,8 +43,10 @@ export const CATALOGOS_SISTEMA_REGISTRADOS: CatalogoSistema[] = [
   { nombre: 'Perfil Autorizado', alias: ['perfil autorizado', 'perfil', 'perfiles'], opciones: [...PERFILES] },
   { nombre: 'Unidad Responsable', alias: ['unidad responsable', 'responsable', 'unidad'], opciones: [...UNIDADES_RESPONSABLES] },
   { nombre: 'Fuente de Financiamiento', alias: ['fuente de financiamiento', 'fuente financiamiento', 'fuente de financ.', 'fuente financ.'], opciones: [...FUENTES_FINANCIAMIENTO] },
-  { nombre: 'Categoría Presupuestal', alias: ['categoria presupuestal', 'categoría presupuestal', 'categoria presup.', 'categoría presup.'], opciones: [...CATEGORIAS_PRESUPUESTALES] },
-  { nombre: 'Programas Presupuestales', alias: ['programas presupuestales', 'programa presupuestal', 'programa presup.', 'programa presup'], opciones: [...PROGRAMAS_MAESTROS] },
+  // Los nombres anteriores se conservan como alias para que "Agregar lista"
+  // siga reconociendo lo que el usuario escriba con la denominación antigua.
+  { nombre: 'Tipo presupuestal', alias: ['tipo presupuestal', 'tipo presup.', 'categoria presupuestal', 'categoría presupuestal', 'categoria presup.', 'categoría presup.'], opciones: [...CATEGORIAS_PRESUPUESTALES] },
+  { nombre: 'Categoría', alias: ['categoria', 'categoría', 'programas presupuestales', 'programa presupuestal', 'programa presup.', 'programa presup'], opciones: [...PROGRAMAS_MAESTROS] },
   { nombre: 'Unidad Funcional', alias: ['unidad funcional', 'unidad funcional opas', 'opas', 'unidad funcional (opas)'], opciones: [...UNIDADES_FUNCIONALES_MAESTRAS] },
   { nombre: 'Región', alias: ['region', 'región'], opciones: Object.keys(UBIGEO_SODEGA) },
   { nombre: 'Registrar', alias: ['registrar', 'opciones de registrar'], opciones: ['Capacitación', 'Asistencia Técnica', 'Aprobación Capacitación', 'Aprobación Asistencia Técnica'] },

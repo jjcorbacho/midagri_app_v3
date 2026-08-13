@@ -14,6 +14,17 @@ import { normalizarNombreCatalogo } from '../../shared/utils/texto.util';
 
 const STORAGE_KEY = 'sodega_listas_admin_db_v1';
 
+/**
+ * Renombres de catálogos aplicados al restaurar la base local: el campo del
+ * formulario de usuarios pasó a llamarse "Categoría" (antes "Programa
+ * presupuestal") y "Tipo presupuestal" (antes "Categoría presup."), y sus
+ * listas administrables se alinearon con esos nombres.
+ */
+const RENOMBRES_LISTAS: { desde: string[]; hasta: string }[] = [
+  { desde: ['Categoría Presupuestal'], hasta: 'Tipo presupuestal' },
+  { desde: ['Programas Presupuestales'], hasta: 'Categoría' },
+];
+
 /** Opciones oficialmente retiradas de la lista Unidad Responsable (depuración del prototipo). */
 const UNIDAD_RESPONSABLE_OPCIONES_RETIRADAS = [
   'PESCS CUI N° 230593 CONSTRUCCION SISTEMA DE IRRIGACION NUEVO OCCORO',
@@ -90,6 +101,22 @@ export class ListasAdminService {
   esListaUnidadFuncional(nombre: string): boolean {
     const n = normalizarNombreCatalogo(nombre);
     return n === normalizarNombreCatalogo('Unidad Funcional') || n === normalizarNombreCatalogo('Unidad Funcional (OPAS)');
+  }
+
+  /**
+   * Nombre vigente de una lista guardada con una denominación anterior.
+   *
+   * Sin esto, una base local previa conservaría el nombre viejo y
+   * `opcionesFormulario()` no encontraría la lista: caería al catálogo base y
+   * las opciones que el área hubiera agregado o deshabilitado dejarían de
+   * aplicarse al formulario sin ningún aviso.
+   */
+  private nombreListaMigrado(nombre: string): string {
+    const n = normalizarNombreCatalogo(nombre);
+    for (const { desde, hasta } of RENOMBRES_LISTAS) {
+      if (desde.some((viejo) => normalizarNombreCatalogo(viejo) === n)) return hasta;
+    }
+    return nombre;
   }
 
   /**
@@ -290,7 +317,9 @@ export class ListasAdminService {
       if (!Array.isArray(guardadas) || guardadas.length === 0) return LISTAS_ADMIN_INICIALES;
       // Normaliza opciones antiguas y aplica las migraciones de nombres (SODEGA v3.1.2).
       return guardadas.map((l) => {
-        const nombre = this.esListaUnidadFuncional(l.nombre) ? 'Unidad Funcional' : l.nombre;
+        const nombre = this.esListaUnidadFuncional(l.nombre)
+          ? 'Unidad Funcional'
+          : this.nombreListaMigrado(l.nombre);
         const esPerfilAutorizado =
           normalizarNombreCatalogo(nombre) === normalizarNombreCatalogo('Perfil Autorizado');
         const opciones = (l.opciones ?? [])
