@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import {
   LucideAngularModule,
@@ -86,7 +94,7 @@ const ICON_TONES: Record<string, string> = {
               class="px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors"
               [class]="tab() === 'TODOS' ? 'bg-brand text-brand-foreground border-brand' : 'bg-card text-muted-foreground border-border hover:text-foreground'"
             >Todos ({{ counts()['TODOS'] }})</button>
-            @for (e of estadosVisiblesEnBandeja(); track e) {
+            @for (e of pestanasEstado(); track e) {
               <button
                 (click)="tab.set(e)"
                 class="px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors"
@@ -435,6 +443,27 @@ export class SeguimientoPanelComponent {
     );
     return out;
   });
+
+  /**
+   * Pestañas realmente ofrecidas: solo los estados con registros. Con nueve
+   * estados posibles, mostrar los vacíos llenaba la botonera de pastillas en
+   * cero —hasta media pantalla en móvil— sin aportar nada.
+   */
+  readonly pestanasEstado = computed(() =>
+    this.estadosVisiblesEnBandeja().filter((estado) => (this.counts()[estado] ?? 0) > 0),
+  );
+
+  constructor() {
+    // Si la pestaña activa se queda sin registros deja de ofrecerse (p. ej. al
+    // aprobar el último enviado); se vuelve a "Todos" para no dejar al usuario
+    // en un filtro invisible con la tabla vacía.
+    effect(() => {
+      const activa = this.tab();
+      if (activa !== 'TODOS' && !this.pestanasEstado().includes(activa)) {
+        this.tab.set('TODOS');
+      }
+    });
+  }
 
   readonly queryActive = computed(() => this.q().trim().length > 0);
   private readonly qLower = computed(() => this.q().trim().toLowerCase());

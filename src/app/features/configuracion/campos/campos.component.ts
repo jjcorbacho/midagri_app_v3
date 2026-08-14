@@ -349,16 +349,21 @@ export class CamposComponent {
    * El límite sale de las cinco primeras filas realmente renderizadas, no de
    * una altura fija: así el corte cae siempre en la quinta fila aunque los
    * nombres largos ocupen dos líneas o cambie el ancho de la pantalla.
+   *
+   * Se suma la cabecera porque es `sticky` dentro del mismo contenedor y ocupa
+   * espacio visible; sin ese sumando solo se verían cuatro filas y media.
    */
   private medirAltoGrilla(): void {
-    const filas = Array.from(this.cuerpoGrilla()?.nativeElement.rows ?? []);
+    const cuerpo = this.cuerpoGrilla()?.nativeElement;
+    const filas = Array.from(cuerpo?.rows ?? []);
     if (filas.length <= FILAS_VISIBLES) {
       this.altoMaximoGrilla.set(null);
       return;
     }
+    const cabecera = cuerpo?.previousElementSibling?.getBoundingClientRect().height ?? 0;
     const alto = filas
       .slice(0, FILAS_VISIBLES)
-      .reduce((total, fila) => total + fila.getBoundingClientRect().height, 0);
+      .reduce((total, fila) => total + fila.getBoundingClientRect().height, cabecera);
     this.altoMaximoGrilla.set(Math.round(alto));
   }
 
