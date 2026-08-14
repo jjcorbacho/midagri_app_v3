@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { Router, RouterLink, NavigationEnd } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
@@ -154,9 +162,29 @@ const COLLAPSE_KEY = 'midagri.sidebar.collapsed';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, LucideAngularModule],
   template: `
+    <!-- Fondo del menú desplegado: al tocarlo se cierra, como en cualquier
+         panel lateral. Solo cuenta por debajo de md, donde el menú se
+         superpone; en escritorio queda oculto (md:hidden). -->
+    @if (!collapsed()) {
+      <div
+        class="md:hidden fixed inset-0 z-30 bg-foreground/50"
+        (click)="cerrarEnMovil()"
+        aria-hidden="true"
+      ></div>
+    }
+
+    <!--
+      El posicionamiento se resuelve con variantes de breakpoint, no con una
+      señal de ancho: por debajo de md el menú desplegado se superpone (fixed) y
+      deja el ancho completo al contenido; desde md sigue empujando como hasta
+      ahora (sticky). Las dos variantes se excluyen por media query, así que
+      nunca compiten entre sí.
+    -->
     <aside
-      class="flex-shrink-0 bg-sidebar text-sidebar-foreground flex flex-col py-3 z-30 sticky top-0 h-screen transition-[width] duration-200"
-      [class]="collapsed() ? 'w-16 items-center' : 'w-60'"
+      class="flex-shrink-0 bg-sidebar text-sidebar-foreground flex flex-col py-3 h-screen transition-[width] duration-200"
+      [class]="collapsed()
+        ? 'sticky top-0 z-30 w-16 items-center'
+        : 'w-60 max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:shadow-2xl md:sticky md:top-0 md:z-30'"
     >
       <div class="flex items-center mb-3 w-full" [class]="collapsed() ? 'justify-center' : 'justify-between px-3'">
         <a
@@ -257,6 +285,16 @@ export class SidebarComponent {
 
   readonly collapsed = signal(this.restoreCollapsed());
   private readonly openGroups = signal<Set<string>>(new Set());
+
+  /**
+   * ¿Pantalla estrecha? Es el breakpoint `md` de Tailwind, el mismo con el que
+   * el menú pasa a superponerse. Se consulta en el momento —no se guarda en una
+   * señal— porque solo hace falta al navegar y así no depende de recibir el
+   * evento `change`, que algunos entornos embebidos no emiten.
+   */
+  private esMovil(): boolean {
+    return window.matchMedia('(max-width: 767px)').matches;
+  }
 
   readonly pathname = toSignal(
     this.router.events.pipe(
@@ -403,6 +441,21 @@ export class SidebarComponent {
         if (dentro) this.openGroup(item.to);
       }
     });
+
+    // En móvil el menú tapa el contenido, así que se repliega al navegar. La
+    // única dependencia es la ruta: leer el estado de forma reactiva volvería
+    // a cerrarlo en cuanto el usuario lo abriese.
+    effect(() => {
+      this.pathname();
+      untracked(() => {
+        if (this.esMovil() && !this.collapsed()) this.cerrarEnMovil();
+      });
+    });
+  }
+
+  /** Repliega el menú superpuesto (fondo, navegación o botón). */
+  cerrarEnMovil(): void {
+    this.aplicarColapso(true);
   }
 
   private restoreCollapsed(): boolean {
@@ -414,11 +467,13 @@ export class SidebarComponent {
   }
 
   toggle(): void {
-    this.collapsed.update((c) => {
-      const next = !c;
-      try { sessionStorage.setItem(COLLAPSE_KEY, next ? '1' : '0'); } catch { /* noop */ }
-      return next;
-    });
+    this.aplicarColapso(!this.collapsed());
+  }
+
+  /** Cambia el estado del menú y lo recuerda en el dispositivo. */
+  private aplicarColapso(next: boolean): void {
+    this.collapsed.set(next);
+    try { sessionStorage.setItem(COLLAPSE_KEY, next ? '1' : '0'); } catch { /* noop */ }
   }
 
   isGroupOpen(key: string): boolean {
