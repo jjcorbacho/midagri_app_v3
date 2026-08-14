@@ -32,20 +32,25 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule, RouterLink, ConfiguracionTabsComponent, RegistroConfiguracionComponent],
   template: `
-    <div class="min-h-full bg-muted/30 py-6 lg:py-8 px-4 lg:px-8 animate-page-in">
-      <!-- Navegación entre las dos vistas de configuración (pestaña activa por ruta). -->
-      <div class="max-w-6xl mx-auto mb-4">
-        <app-configuracion-tabs />
-      </div>
+    <!-- El fondo va a sangre completa y el encuadre en el contenedor interior,
+         con el mismo par (p-6 lg:p-8 + max-w-7xl) sobre el mismo elemento que
+         usan campos y estructura. Repartir padding y ancho entre dos elementos
+         desplazaba las pestañas 32px al cambiar de vista. -->
+    <div class="min-h-full bg-muted/30 animate-page-in">
+      <div class="p-6 lg:p-8 max-w-7xl mx-auto">
+        <!-- Navegación entre las dos vistas de configuración (pestaña activa por ruta). -->
+        <div class="mb-4">
+          <app-configuracion-tabs />
+        </div>
 
-      <!-- Mismo bloque que la estructura de formulario: qué registro se está
-           configurando. Va sobre la tabla de reglas para dar contexto antes de
-           tocar los aforos y criterios. -->
-      <div class="max-w-6xl mx-auto mb-4">
-        <app-registro-configuracion />
-      </div>
+        <!-- Mismo bloque que la estructura de formulario: qué registro se está
+             configurando. Va sobre la tabla de reglas para dar contexto antes de
+             tocar los aforos y criterios. -->
+        <div class="mb-4">
+          <app-registro-configuracion />
+        </div>
 
-      <div class="max-w-6xl mx-auto bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
+        <div class="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
 
         <!-- Header -->
         <header class="px-6 py-4 border-b border-border bg-card flex justify-between items-center gap-3">
@@ -566,6 +571,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
         </div>
       </div>
     </div>
+  </div>
   `,
 })
 export class ReglasComponent {
