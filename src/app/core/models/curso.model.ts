@@ -35,9 +35,20 @@ export function esObservado(estado: EstadoCurso): boolean {
   return estado.startsWith('Observado por ');
 }
 
-/** Instancia aprobada por algún perfil evaluador. */
+/** Instancia aprobada por algún perfil evaluador (incluida la del DZ). */
 export function esAprobado(estado: EstadoCurso): boolean {
   return estado.startsWith('Aprobado por ');
+}
+
+/**
+ * Aprobación que cierra el recorrido del registro.
+ *
+ * La del Administrador DZ es un paso intermedio —el registro sigue camino
+ * hacia la Unidad Ejecutora o la Jefatura de Área—, así que no cuenta como
+ * aprobado para los indicadores, igual que no lo hacía el antiguo "Validado".
+ */
+export function esAprobacionFinal(estado: EstadoCurso): boolean {
+  return estado === 'Aprobado por UE' || estado === 'Aprobado por JA';
 }
 
 /** Registro remitido por el técnico y pendiente de evaluación. */

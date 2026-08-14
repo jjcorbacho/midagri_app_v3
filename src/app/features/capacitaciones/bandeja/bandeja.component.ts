@@ -16,6 +16,7 @@ import {
   EstadoCurso,
   TipoCurso,
   canDeleteCurso,
+  esAprobacionFinal,
   esAprobado,
   esEnviado,
   esObservado,
@@ -584,7 +585,10 @@ export class BandejaComponent {
          además dentro de "Enviados a Revisión" — el cálculo de las demás
          tarjetas se mantiene intacto por requerimiento. */
       subsanados: delArea.filter((c) => c.estado === 'Enviado-subsanado').length,
-      aprobados: delArea.filter((c) => esAprobado(c.estado)).length,
+      /* Solo la aprobación que cierra el recorrido (UE o JA). La del DZ es un
+         paso intermedio y no debe inflar el indicador, igual que el antiguo
+         "Validado" tampoco contaba aquí. */
+      aprobados: delArea.filter((c) => esAprobacionFinal(c.estado)).length,
     };
   });
 
