@@ -58,7 +58,17 @@ export const TECNICOS_DEMO_REASIGNACION: UsuarioSodega[] = [
     regimen: 'Régimen CAS Temporal',
     fechaIni: '2025-02-01',
     fechaFin: '2025-07-23',
-    periodosGestion: [{ tipo: 'Regular', anio: 2025 }],
+    // El periodo cabe en la vigencia del contrato, como exige el formulario:
+    // se guardan el rango y los meses que abarca, igual que al registrarlo.
+    periodosGestion: [
+      {
+        tipo: 'Regular',
+        anio: 2025,
+        meses: [2, 3, 4, 5, 6, 7],
+        fechaInicio: '2025-02-01',
+        fechaFin: '2025-07-23',
+      },
+    ],
   },
   {
     ...TECNICO_DEMO_BASE,
@@ -72,7 +82,16 @@ export const TECNICOS_DEMO_REASIGNACION: UsuarioSodega[] = [
     celular: '922222222',
     userGen: 'lramos',
     correo: 'lramos@midagri.gob.pe',
-    periodosGestion: [{ tipo: 'Regular', anio: 2026 }],
+    // Régimen CAS (permanente): el periodo abarca todo el año de gestión.
+    periodosGestion: [
+      {
+        tipo: 'Regular',
+        anio: 2026,
+        meses: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+        fechaInicio: '2026-01-01',
+        fechaFin: '2026-12-31',
+      },
+    ],
   },
 ];
 
