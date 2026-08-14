@@ -4,7 +4,7 @@ import {
   LucideAngularModule,
   Plus, Search, BookOpen, ClipboardCheck, Wrench, Users, UserPlus, Pencil,
   Trash2, Download, AlertTriangle, MapPin, UploadCloud, ChevronDown, ChevronUp,
-  FileEdit, SendHorizonal, AlertOctagon, BadgeCheck, FileText, FileSpreadsheet, FileCheck,
+  FileEdit, SendHorizonal, AlertOctagon, BadgeCheck, ShieldCheck, FileText, FileSpreadsheet, FileCheck,
 } from 'lucide-angular';
 import { AreaService } from '../../../core/services/area.service';
 import { CursosService } from '../../../core/services/cursos.service';
@@ -110,6 +110,9 @@ const ICON_TONES: Record<string, string> = {
             <app-kpi-card label="Enviados a Revisión (enviado)" [value]="counts().enviados" [icon]="SendHorizonalIcon" tone="blue" />
             <app-kpi-card label="Observados" [value]="counts().observados" [icon]="AlertOctagonIcon" tone="amber" />
             <app-kpi-card label="Subsanados" [value]="counts().subsanados" [icon]="FileCheckIcon" tone="subsanado" />
+            <!-- Paso intermedio: el tono indigo es el mismo token que el badge
+                 del estado "Aprobado por DZ". -->
+            <app-kpi-card label="Aprobado por DZ" [value]="counts().aprobadosDZ" [icon]="ShieldCheckIcon" tone="indigo" />
             <app-kpi-card label="Aprobado" [value]="counts().aprobados" [icon]="BadgeCheckIcon" tone="emerald" />
           }
         </div>
@@ -493,6 +496,7 @@ export class BandejaComponent {
   readonly FileEditIcon = FileEdit; readonly SendHorizonalIcon = SendHorizonal; readonly AlertOctagonIcon = AlertOctagon;
   readonly BadgeCheckIcon = BadgeCheck; readonly FileTextIcon = FileText;
   readonly FileSpreadsheetIcon = FileSpreadsheet; readonly FileCheckIcon = FileCheck;
+  readonly ShieldCheckIcon = ShieldCheck;
 
   readonly tabs: { k: Tab; label: string }[] = [
     { k: 'todos', label: 'Todos' },
@@ -526,7 +530,7 @@ export class BandejaComponent {
   );
 
   readonly kpiGridClass = computed(() => {
-    if (this.kpiView() === 'estados') return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5';
+    if (this.kpiView() === 'estados') return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6';
     return this.tipoFijado()
       ? 'grid-cols-1 md:grid-cols-2'
       : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4';
@@ -585,9 +589,10 @@ export class BandejaComponent {
          además dentro de "Enviados a Revisión" — el cálculo de las demás
          tarjetas se mantiene intacto por requerimiento. */
       subsanados: delArea.filter((c) => c.estado === 'Enviado-subsanado').length,
-      /* Solo la aprobación que cierra el recorrido (UE o JA). La del DZ es un
-         paso intermedio y no debe inflar el indicador, igual que el antiguo
-         "Validado" tampoco contaba aquí. */
+      /* Aprobación intermedia del Administrador DZ: se cuenta aparte para que
+         no infle el cierre y para que el paso no quede sin representar. */
+      aprobadosDZ: delArea.filter((c) => c.estado === 'Aprobado por DZ').length,
+      /* Solo la aprobación que cierra el recorrido (UE o JA). */
       aprobados: delArea.filter((c) => esAprobacionFinal(c.estado)).length,
     };
   });
