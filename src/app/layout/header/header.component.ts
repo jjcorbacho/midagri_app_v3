@@ -23,7 +23,6 @@ const MOSTRAR_SELECTOR_AREA = false;
       <div class="flex items-center gap-6">
         <div class="flex flex-col justify-center leading-tight min-w-0">
           <span class="text-[10px] uppercase tracking-wider font-semibold text-brand">SODEGA</span>
-          <span class="text-sm font-medium text-muted-foreground">Sistema de Capacitaciones</span>
           <!-- Periodo de gestión del usuario autenticado (visible en toda la app). -->
           @if (periodoTexto(); as periodo) {
             <span

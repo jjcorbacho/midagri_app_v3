@@ -1259,8 +1259,10 @@ export class UsuarioFormComponent implements OnInit {
    */
   readonly periodoFechaMin = computed(() => {
     this.formTick();
-    if (this.form.controls.periodoTipo.value !== 'Regular') return '';
-    const inicioContrato = this.regimenTemporal() ? this.form.controls.fechaIni.value : '';
+    // La vigencia del contrato acota los dos tipos de periodo (Regular y
+    // Extraordinario) en CAS Temporal y Locador de Servicio (OS).
+    const inicioContrato = this.inicioContrato();
+    if (this.form.controls.periodoTipo.value !== 'Regular') return inicioContrato;
     return inicioContrato && inicioContrato > this.hoyISO ? inicioContrato : this.hoyISO;
   });
 
@@ -1271,25 +1273,93 @@ export class UsuarioFormComponent implements OnInit {
   readonly periodoFechaMax = computed(() => {
     this.formTick();
     const tope = this.fechaMaxVigencia;
-    if (this.form.controls.periodoTipo.value !== 'Regular') return tope;
-    const finContrato = this.regimenTemporal() ? this.form.controls.fechaFin.value : '';
+    const finContrato = this.finContrato();
     return finContrato && finContrato < tope ? finContrato : tope;
   });
+
+  /**
+   * ¿Algún periodo registrado se sale de la vigencia contractual?
+   * Solo aplica a CAS Temporal y Locador de Servicio (OS); los demás regímenes
+   * no tienen contrato acotado y devuelven siempre `false`.
+   */
+  private periodoFueraDeContrato(): boolean {
+    if (!this.regimenTemporal()) return false;
+    const ini = this.inicioContrato();
+    const fin = this.finContrato();
+    if (!ini || !fin) return true;
+    return this.periodos().some((p) => this.fueraDeVigencia(p, ini, fin));
+  }
+
+  /** Un periodo sin fechas registradas no se puede contrastar: no se rechaza. */
+  private fueraDeVigencia(
+    periodo: { fechaInicio?: string; fechaFin?: string },
+    ini: string,
+    fin: string,
+  ): boolean {
+    const desde = periodo.fechaInicio ?? '';
+    const hasta = periodo.fechaFin ?? '';
+    if (!desde || !hasta) return false;
+    return desde < ini || hasta > fin;
+  }
+
+  /** Inicio de la vigencia contractual, solo en regímenes temporales. */
+  private inicioContrato(): string {
+    return this.regimenTemporal() ? this.form.controls.fechaIni.value : '';
+  }
+
+  /** Fin de la vigencia contractual, solo en regímenes temporales. */
+  private finContrato(): string {
+    return this.regimenTemporal() ? this.form.controls.fechaFin.value : '';
+  }
 
   /** Texto de ayuda bajo el rango, explicando el tope aplicado. */
   readonly ayudaPeriodo = computed(() => {
     this.formTick();
-    if (this.form.controls.periodoTipo.value !== 'Regular') return '';
+    const tipo = this.form.controls.periodoTipo.value;
+    if (!tipo) return '';
     if (this.regimenTemporal()) {
-      const ini = this.form.controls.fechaIni.value;
-      const fin = this.form.controls.fechaFin.value;
+      const ini = this.inicioContrato();
+      const fin = this.finContrato();
       if (!ini || !fin) {
-        return 'Registre la vigencia del contrato para acotar el periodo Regular.';
+        return `Registre la vigencia del contrato para acotar el periodo ${tipo}.`;
       }
-      return `El periodo debe estar dentro de la vigencia del contrato y no puede iniciar antes de hoy.`;
+      const rango = `${isoToDDMMYYYY(ini)} al ${isoToDDMMYYYY(fin)}`;
+      return tipo === 'Regular'
+        ? `El periodo debe estar dentro de la vigencia del contrato (${rango}) y no puede iniciar antes de hoy.`
+        : `El periodo debe estar dentro de la vigencia del contrato (${rango}).`;
     }
+    if (tipo !== 'Regular') return '';
     return `El periodo no puede iniciar antes de hoy ni superar el ${this.fechaMaxVigenciaTexto}.`;
   });
+
+  /**
+   * Valida el rango contra la vigencia contractual (CAS Temporal / Locador).
+   * Devuelve `true` si hubo rechazo, tras avisar con el modal estándar.
+   * Se aplica a los dos tipos de periodo y también en el guardado, de modo que
+   * manipular los `min`/`max` del control no permite colar fechas fuera.
+   */
+  private rechazarPeriodoFueraDeContrato(tipo: string, desde: string, hasta: string): boolean {
+    if (!this.regimenTemporal()) return false;
+    const ini = this.inicioContrato();
+    const fin = this.finContrato();
+    if (!ini || !fin) {
+      void this.modales.openError(
+        'Vigencia del contrato requerida',
+        `Registre la Fecha de inicio y la Fecha fin del contrato antes de agregar el periodo ${tipo}.`,
+      );
+      return true;
+    }
+    if (desde < ini || hasta > fin) {
+      void this.modales.openError(
+        'Periodo fuera de la vigencia del contrato',
+        `El período seleccionado no puede superar la vigencia del contrato ` +
+          `(${isoToDDMMYYYY(ini)} al ${isoToDDMMYYYY(fin)}). ` +
+          'La fecha del período debe encontrarse dentro de la vigencia del contrato.',
+      );
+      return true;
+    }
+    return false;
+  }
 
 
 
@@ -1304,6 +1374,41 @@ export class UsuarioFormComponent implements OnInit {
   onFechasContratoChange(): void {
     this.formTick.update((t) => t + 1);
     if (this.rechazarFechasFueraDeAnioGestion()) return;
+    this.sincronizarPeriodoConContrato();
+  }
+
+  /**
+   * Recalcula el periodo cuando cambia la vigencia del contrato: el rango que
+   * se está capturando se limpia si ya no cabe, y un periodo ya agregado que
+   * quede fuera se retira avisando, de modo que no sobreviva información
+   * anterior al nuevo contrato.
+   */
+  private sincronizarPeriodoConContrato(): void {
+    if (!this.regimenTemporal()) return;
+    const ini = this.inicioContrato();
+    const fin = this.finContrato();
+    // Rango a medio editar (aún no se ha corregido la otra fecha): se espera a
+    // que la vigencia sea coherente para no avisar sobre un rango imposible.
+    if (!ini || !fin || ini > fin) return;
+
+    const { periodoFechaIni, periodoFechaFin } = this.form.getRawValue();
+    if (
+      (periodoFechaIni && (periodoFechaIni < ini || periodoFechaIni > fin)) ||
+      (periodoFechaFin && (periodoFechaFin < ini || periodoFechaFin > fin))
+    ) {
+      this.form.patchValue({ periodoFechaIni: '', periodoFechaFin: '' });
+      this.formTick.update((t) => t + 1);
+    }
+
+    const fuera = this.periodos().filter((p) => this.fueraDeVigencia(p, ini, fin));
+    if (!fuera.length) return;
+    this.periodos.set(this.periodos().filter((p) => !fuera.includes(p)));
+    void this.modales.openWarning(
+      'Periodo fuera de la nueva vigencia',
+      `El periodo registrado quedaba fuera de la vigencia del contrato ` +
+        `(${isoToDDMMYYYY(ini)} al ${isoToDDMMYYYY(fin)}) y se retiró. Regístrelo nuevamente.`,
+      { soloAceptar: true },
+    );
   }
 
   /** Al cambiar de tipo de periodo se limpia el rango introducido. */
@@ -1402,6 +1507,7 @@ export class UsuarioFormComponent implements OnInit {
         );
         return;
       }
+      if (this.rechazarPeriodoFueraDeContrato(tipo, v.periodoFechaIni, v.periodoFechaFin)) return;
       const anio = Number(v.periodoFechaIni.slice(0, 4));
       this.periodos.set([
         {
@@ -1438,6 +1544,8 @@ export class UsuarioFormComponent implements OnInit {
         );
         return;
       }
+      // En CAS Temporal y Locador (OS) el rango debe caber en el contrato.
+      if (this.rechazarPeriodoFueraDeContrato(tipo, v.periodoFechaIni, v.periodoFechaFin)) return;
       this.periodos.set([
         {
           tipo,
@@ -1461,9 +1569,9 @@ export class UsuarioFormComponent implements OnInit {
   onRegimenChange(): void {
     this.form.patchValue({ periodoTipo: '', periodoFechaIni: '', periodoFechaFin: '' });
     this.formTick.update((t) => t + 1);
-    this.form.patchValue({
-    });
-    this.formTick.update((t) => t + 1);
+    // Al pasar a un régimen temporal, el periodo ya registrado debe caber en la
+    // vigencia del nuevo contrato.
+    this.sincronizarPeriodoConContrato();
   }
 
   readonly esLocador = computed(() => {
@@ -2075,6 +2183,18 @@ export class UsuarioFormComponent implements OnInit {
       this.mostrarAlerta({
         titulo: 'Periodo de Gestión Requerido',
         mensaje: 'Debe registrar el periodo del servicio con el botón "Agregar Periodo" antes de guardar.',
+      });
+      return;
+    }
+
+    // Último control antes de persistir: aunque el periodo se agregó válido, el
+    // contrato pudo cambiar después. Nada fuera de la vigencia llega a guardarse.
+    if (this.periodoFueraDeContrato()) {
+      this.mostrarAlerta({
+        titulo: 'Periodo fuera de la vigencia del contrato',
+        mensaje:
+          'El período seleccionado no puede superar la vigencia del contrato. ' +
+          'Corrija el periodo o las fechas del contrato antes de guardar.',
       });
       return;
     }

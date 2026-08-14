@@ -1,28 +1,44 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  afterRenderEffect,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import {
   LucideAngularModule,
-  ChevronRight, Plus, Trash2, LayoutGrid, Info,
+  ChevronRight, Plus, LayoutGrid, Info, Save, Search,
 } from 'lucide-angular';
 import { AuthService } from '../../../core/services/auth.service';
 import { ModalService } from '../../../core/services/modal.service';
 import { ToastService } from '../../../core/services/toast.service';
 import {
   ConfiguracionFlujoService,
-  RegistroConfiguracion,
+  esSeleccionValida,
   unidadesFuncionalesDe,
 } from '../../../core/services/configuracion-flujo.service';
 import { FORMULARIOS } from '../../../core/constants/campos-base.const';
 import { TEMATICAS } from '../../../core/constants/catalogos.const';
 import { UNIDADES_RESPONSABLES } from '../../../core/constants/sodega.const';
 import { FormularioKey } from '../../../core/models/campo.model';
+import { normalizarBusqueda } from '../../../shared/utils/texto.util';
+
+/** Filas visibles antes de que la grilla empiece a desplazarse. */
+const FILAS_VISIBLES = 5;
 
 /**
  * Etapa 1 del flujo de Configuración: alta y selección del registro.
  *
  * El "registro" es el par (oficina responsable, formulario) — la misma unidad
- * sobre la que ya operaban `CamposService` y `ReglasService`. Al seleccionarlo
- * se habilita "Seguir con estructura de formulario", que lleva a la etapa 2.
+ * sobre la que ya operaban `CamposService` y `ReglasService`. "Guardar" deja
+ * la grilla registrada sin salir de la vista y, al seleccionar un registro, se
+ * habilita "Seguir", que lleva a la etapa 2.
  * La administración de campos vive ahora en `EstructuraFormularioComponent`.
  */
 @Component({
@@ -147,26 +163,50 @@ import { FormularioKey } from '../../../core/models/campo.model';
               <lucide-angular [img]="LayoutGridIcon" class="size-4 text-brand" />
               Grilla de configuración
             </h2>
-            <span class="text-xs text-muted-foreground">{{ configuraciones().length }} registros</span>
+            <span class="text-xs text-muted-foreground">
+              @if (hayBusqueda()) {
+                {{ configuracionesFiltradas().length }} de {{ configuraciones().length }} registros
+              } @else {
+                {{ configuraciones().length }} registros
+              }
+            </span>
           </div>
 
-          <div class="rounded-xl ring-1 ring-border overflow-x-auto">
+          <!-- Buscador global sobre las cuatro dimensiones del registro. -->
+          <div class="relative mb-3 max-w-md">
+            <lucide-angular
+              [img]="SearchIcon"
+              class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground"
+            />
+            <input
+              type="search"
+              [value]="busqueda()"
+              (input)="busqueda.set($any($event.target).value)"
+              placeholder="Buscar configuración..."
+              aria-label="Buscar configuración por unidad responsable, unidad funcional, formulario o temática"
+              class="w-full pl-10 pr-4 py-2 bg-background ring-1 ring-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
+            />
+          </div>
+
+          <!-- El scroll vive en este contenedor (no en la página) y su alto es
+               el de las 5 primeras filas realmente renderizadas. -->
+          <div
+            #contenedorGrilla
+            class="rounded-xl ring-1 ring-border overflow-x-auto overflow-y-auto"
+            [style.maxHeight.px]="altoMaximoGrilla()"
+          >
             <table class="w-full">
-              <thead class="bg-secondary/60">
-                <tr>
+              <thead class="sticky top-0 z-10 bg-card">
+                <tr class="bg-secondary/60">
                   <th scope="col" class="th-ds text-center w-28">Seleccionar</th>
                   <th scope="col" class="th-ds">Unidad Responsable</th>
                   <th scope="col" class="th-ds">Unidad Funcional</th>
                   <th scope="col" class="th-ds">Formulario</th>
                   <th scope="col" class="th-ds">Temática</th>
-                  <th scope="col" class="th-ds text-center w-20">Estado</th>
-                  @if (isAdmin()) {
-                    <th scope="col" class="th-ds text-center w-16">—</th>
-                  }
                 </tr>
               </thead>
-              <tbody class="divide-y divide-border">
-                @for (c of configuraciones(); track c.id) {
+              <tbody #cuerpoGrilla class="divide-y divide-border">
+                @for (c of configuracionesFiltradas(); track c.id) {
                   <tr
                     class="tr-hover cursor-pointer"
                     [class]="flujo.seleccionId() === c.id ? 'bg-brand-soft/50' : ''"
@@ -186,33 +226,15 @@ import { FormularioKey } from '../../../core/models/campo.model';
                     <td class="td-ds">{{ c.unidadFuncional }}</td>
                     <td class="td-ds">{{ flujo.labelFormulario(c.formulario) }}</td>
                     <td class="td-ds">{{ c.tematica }}</td>
-                    <td class="td-ds text-center">
-                      @if (guardadaId() === c.id) {
-                        <span class="bg-state-aprobado-soft text-state-aprobado-foreground text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
-                          Guardada
-                        </span>
-                      } @else {
-                        <span class="text-xs text-muted-foreground">—</span>
-                      }
-                    </td>
-                    @if (isAdmin()) {
-                      <td class="td-ds text-center">
-                        <button
-                          type="button"
-                          (click)="$event.stopPropagation(); quitar(c)"
-                          class="btn-icon text-destructive hover:text-destructive"
-                          title="Quitar de la grilla"
-                          aria-label="Quitar configuración de la grilla"
-                        >
-                          <lucide-angular [img]="Trash2Icon" class="size-4" />
-                        </button>
-                      </td>
-                    }
                   </tr>
                 } @empty {
                   <tr>
-                    <td [attr.colspan]="isAdmin() ? 7 : 6" class="px-6 py-10 text-center italic text-muted-foreground">
-                      No existen configuraciones. Complete los cuatro campos y pulse Agregar.
+                    <td colspan="5" class="px-6 py-10 text-center italic text-muted-foreground">
+                      @if (hayBusqueda()) {
+                        Ninguna configuración coincide con «{{ busqueda() }}».
+                      } @else {
+                        No existen configuraciones. Complete los cuatro campos y pulse Agregar.
+                      }
                     </td>
                   </tr>
                 }
@@ -227,15 +249,26 @@ import { FormularioKey } from '../../../core/models/campo.model';
             <lucide-angular [img]="InfoIcon" class="size-4" />
             Seleccione un registro de la grilla para continuar.
           </div>
-          <!-- Solo se habilita con un registro seleccionado (etapa 1 → 2). -->
-          <button
-            (click)="seguirAEstructura()"
-            [disabled]="!flujo.haySeleccion()"
-            class="btn-primary px-6 justify-center"
-          >
-            Seguir con estructura de formulario
-            <lucide-angular [img]="ChevronRightIcon" class="size-4" />
-          </button>
+          <div class="flex items-center gap-3 flex-wrap">
+            <!-- Guarda la grilla y permanece en la vista. -->
+            <button
+              (click)="guardar()"
+              [disabled]="configuraciones().length === 0"
+              class="btn-primary px-6 justify-center"
+            >
+              <lucide-angular [img]="SaveIcon" class="size-4" />
+              Guardar
+            </button>
+            <!-- Solo se habilita con un registro seleccionado (etapa 1 → 2). -->
+            <button
+              (click)="seguirAEstructura()"
+              [disabled]="!flujo.haySeleccion()"
+              class="btn-secondary px-6 justify-center"
+            >
+              Seguir
+              <lucide-angular [img]="ChevronRightIcon" class="size-4" />
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -250,9 +283,10 @@ export class CamposComponent {
 
   readonly ChevronRightIcon = ChevronRight;
   readonly PlusIcon = Plus;
-  readonly Trash2Icon = Trash2;
   readonly LayoutGridIcon = LayoutGrid;
   readonly InfoIcon = Info;
+  readonly SaveIcon = Save;
+  readonly SearchIcon = Search;
 
   readonly unidadesResponsables = UNIDADES_RESPONSABLES;
   readonly formularios = FORMULARIOS;
@@ -261,10 +295,72 @@ export class CamposComponent {
   readonly isAdmin = computed(() => this.auth.isAdministrador());
   readonly configuraciones = this.flujo.configuraciones;
 
-  /** Id del registro cuya estructura ya se guardó (para el badge de la grilla). */
-  readonly guardadaId = computed(() =>
-    this.flujo.estructuraGuardada() ? this.flujo.seleccionId() : null,
-  );
+  /* ===== Buscador de la grilla ===== */
+
+  readonly busqueda = signal('');
+  readonly hayBusqueda = computed(() => normalizarBusqueda(this.busqueda()).length > 0);
+
+  /**
+   * Filtrado en vivo sobre las cuatro dimensiones visibles del registro
+   * (del formulario se busca su etiqueta, que es lo que ve el usuario).
+   * Deriva de `configuraciones()` sin mutarla: los datos guardados no cambian.
+   */
+  readonly configuracionesFiltradas = computed(() => {
+    const texto = normalizarBusqueda(this.busqueda());
+    const todas = this.configuraciones();
+    if (!texto) return todas;
+    return todas.filter((c) =>
+      [c.unidadResponsable, c.unidadFuncional, this.flujo.labelFormulario(c.formulario), c.tematica]
+        .some((valor) => normalizarBusqueda(valor ?? '').includes(texto)),
+    );
+  });
+
+  /* ===== Alto de la grilla (scroll a partir de la quinta fila) ===== */
+
+  private readonly contenedorGrilla = viewChild<ElementRef<HTMLElement>>('contenedorGrilla');
+  private readonly cuerpoGrilla = viewChild<ElementRef<HTMLTableSectionElement>>('cuerpoGrilla');
+  /** Ancho útil de la grilla: al cambiar, los textos largos ocupan más líneas. */
+  private readonly anchoGrilla = signal(0);
+  /** Alto máximo del contenedor de filas; `null` = sin scroll (hasta 5 filas). */
+  readonly altoMaximoGrilla = signal<number | null>(null);
+
+  constructor() {
+    // El observador va sobre el contenedor, no sobre el <tbody>: las cajas
+    // internas de tabla no reportan cambios de tamaño de forma fiable.
+    const observador = new ResizeObserver(([entrada]) =>
+      this.anchoGrilla.set(Math.round(entrada.contentRect.width)),
+    );
+    effect(() => {
+      const contenedor = this.contenedorGrilla()?.nativeElement;
+      observador.disconnect();
+      if (contenedor) observador.observe(contenedor);
+    });
+    // Medición después del render y con dependencias explícitas: se rehace al
+    // cambiar las filas visibles (alta o búsqueda) y al cambiar el ancho.
+    afterRenderEffect(() => {
+      this.configuracionesFiltradas();
+      this.anchoGrilla();
+      this.medirAltoGrilla();
+    });
+    inject(DestroyRef).onDestroy(() => observador.disconnect());
+  }
+
+  /**
+   * El límite sale de las cinco primeras filas realmente renderizadas, no de
+   * una altura fija: así el corte cae siempre en la quinta fila aunque los
+   * nombres largos ocupen dos líneas o cambie el ancho de la pantalla.
+   */
+  private medirAltoGrilla(): void {
+    const filas = Array.from(this.cuerpoGrilla()?.nativeElement.rows ?? []);
+    if (filas.length <= FILAS_VISIBLES) {
+      this.altoMaximoGrilla.set(null);
+      return;
+    }
+    const alto = filas
+      .slice(0, FILAS_VISIBLES)
+      .reduce((total, fila) => total + fila.getBoundingClientRect().height, 0);
+    this.altoMaximoGrilla.set(Math.round(alto));
+  }
 
   readonly unidadResponsableSel = signal('');
   readonly unidadFuncionalSel = signal('');
@@ -276,12 +372,19 @@ export class CamposComponent {
     this.unidadResponsableSel() ? unidadesFuncionalesDe(this.unidadResponsableSel()) : [],
   );
 
+  /**
+   * Alta habilitada solo con las cuatro dimensiones resueltas: ninguna vacía y
+   * ninguna con "No aplica" (ese marcador aparece en Unidad Funcional cuando la
+   * unidad responsable no tiene unidades propias). Del formulario se valida
+   * también la etiqueta, que es el texto que ve el usuario.
+   */
   readonly puedeAgregar = computed(
     () =>
-      !!this.unidadResponsableSel() &&
-      !!this.unidadFuncionalSel() &&
-      !!this.formularioSel() &&
-      !!this.tematicaSel(),
+      esSeleccionValida(this.unidadResponsableSel()) &&
+      esSeleccionValida(this.unidadFuncionalSel()) &&
+      esSeleccionValida(this.formularioSel()) &&
+      esSeleccionValida(this.flujo.labelFormulario(this.formularioSel() as FormularioKey)) &&
+      esSeleccionValida(this.tematicaSel()),
   );
 
   /**
@@ -294,16 +397,28 @@ export class CamposComponent {
     this.unidadFuncionalSel.set('');
   }
 
+  /**
+   * Alta del registro. Doble barrera: el botón está deshabilitado si la
+   * selección no es válida y, además, se revalida aquí y en el servicio, de
+   * modo que una llamada directa tampoco pueda ensuciar la grilla.
+   */
   agregar(): void {
-    if (!this.puedeAgregar()) return;
-    const agregada = this.flujo.agregar(
+    if (!this.puedeAgregar()) {
+      this.avisarSeleccionInvalida();
+      return;
+    }
+    const resultado = this.flujo.agregar(
       this.unidadResponsableSel(),
       this.unidadFuncionalSel(),
       this.formularioSel() as FormularioKey,
       this.tematicaSel(),
     );
-    if (agregada) {
+    if (resultado === 'ok') {
       this.toast.success('Configuración agregada a la grilla.');
+      return;
+    }
+    if (resultado === 'invalida') {
+      this.avisarSeleccionInvalida();
       return;
     }
     void this.modales.openWarning(
@@ -313,14 +428,37 @@ export class CamposComponent {
     );
   }
 
-  async quitar(c: RegistroConfiguracion): Promise<void> {
-    const ok = await this.modales.openConfirm(
-      'Quitar configuración',
-      `¿Desea quitar «${c.unidadResponsable} — ${this.flujo.labelFormulario(c.formulario)}» de la grilla? Los campos y reglas ya configurados no se eliminan.`,
+  /** Aviso único de selección incompleta o con "No aplica". */
+  private avisarSeleccionInvalida(): void {
+    void this.modales.openWarning(
+      'No se puede agregar la configuración',
+      'Debe seleccionar una Unidad Responsable, Unidad Funcional, Formulario y Temática. Ninguno puede tener el valor «No aplica».',
+      { soloAceptar: true },
     );
-    if (ok) this.flujo.quitar(c.id);
   }
 
+  /**
+   * Guarda la configuración de esta etapa y mantiene al usuario en la vista.
+   * Reutiliza el almacén del flujo (no hay una segunda fuente de datos) y da
+   * el feedback con el sistema de avisos ya usado en esta pantalla.
+   */
+  guardar(): void {
+    if (this.flujo.guardarConfiguraciones()) {
+      this.toast.success('Configuración guardada', 'La grilla quedó registrada.');
+      return;
+    }
+    void this.modales.openWarning(
+      'Nada que guardar',
+      'Agregue al menos una configuración a la grilla antes de guardar.',
+      { soloAceptar: true },
+    );
+  }
+
+  /**
+   * Avanza a la etapa 2. No guarda por su cuenta: la grilla y la selección ya
+   * se persisten al agregarlas o seleccionarlas, así que navegar no puede
+   * perder información.
+   */
   seguirAEstructura(): void {
     if (!this.flujo.haySeleccion()) return;
     void this.router.navigate(['/configuracion/estructura-formulario']);

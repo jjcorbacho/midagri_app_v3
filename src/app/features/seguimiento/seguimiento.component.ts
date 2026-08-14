@@ -13,13 +13,26 @@ interface ConfigModo {
   icono: typeof ClipboardCheck;
   title: string;
   subtitle: string;
-  estadoAprobar: EstadoCurso;
   labelAprobar: string;
   rol: 'ADMIN_DZ' | 'ADMIN_UE';
   rolLabel: string;
 }
 
-const ESTADOS_ENTRADA: EstadoCurso[] = ['Enviado', 'Enviado-Subsanado', 'Observado', 'Validado', 'Aprobado'];
+/**
+ * Estados que llegan a la bandeja de seguimiento. El estado que produce cada
+ * acción ya no depende del modo sino del perfil (lo resuelve
+ * `EstadoPermisosService` dentro del panel, según el cuadro oficial).
+ */
+const ESTADOS_ENTRADA: EstadoCurso[] = [
+  'Enviado',
+  'Enviado-subsanado',
+  'Observado por DZ',
+  'Observado por UE',
+  'Observado por JA',
+  'Aprobado por DZ',
+  'Aprobado por UE',
+  'Aprobado por JA',
+];
 
 /** Configuración por modo (idéntica a las antiguas vistas Revisión / Aprobación). */
 const CONFIGS: Record<ModoSeguimiento, ConfigModo> = {
@@ -28,9 +41,8 @@ const CONFIGS: Record<ModoSeguimiento, ConfigModo> = {
     tab: 'Revisión',
     icono: ClipboardCheck,
     title: 'Seguimiento y revisión',
-    subtitle: 'Validar registros enviados u observar con un comentario.',
-    estadoAprobar: 'Validado',
-    labelAprobar: 'Validar',
+    subtitle: 'Aprobar registros enviados u observarlos con un comentario.',
+    labelAprobar: 'Aprobar',
     rol: 'ADMIN_DZ',
     rolLabel: 'ADMINISTRADOR DZ_CAP_ASIT.',
   },
@@ -39,8 +51,7 @@ const CONFIGS: Record<ModoSeguimiento, ConfigModo> = {
     tab: 'Aprobación',
     icono: ShieldCheck,
     title: 'Seguimiento y aprobación',
-    subtitle: 'Aprobar registros ya validados o devolverlos con observaciones.',
-    estadoAprobar: 'Aprobado',
+    subtitle: 'Aprobar registros ya revisados o devolverlos con observaciones.',
     labelAprobar: 'Aprobar',
     rol: 'ADMIN_UE',
     rolLabel: 'ADMINISTRADOR UNIDAD ORGANIZACIONAL',
@@ -86,7 +97,6 @@ const CONFIGS: Record<ModoSeguimiento, ConfigModo> = {
         [title]="cfg.title"
         [subtitle]="cfg.subtitle"
         [estadosEntrada]="estados"
-        [estadoAprobar]="cfg.estadoAprobar"
         [labelAprobar]="cfg.labelAprobar"
         [rol]="cfg.rol"
         [rolLabel]="cfg.rolLabel"

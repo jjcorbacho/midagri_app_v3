@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import {
   LucideAngularModule,
   GraduationCap,
+  Wrench,
   ClipboardCheck,
   ShieldCheck,
   FileText,
@@ -13,6 +14,7 @@ import {
 import type { LucideIconData } from 'lucide-angular';
 import { AuthService } from '../../core/services/auth.service';
 import { AreaService } from '../../core/services/area.service';
+import { perfilAccedeASeguimiento } from '../../core/models/usuario-sodega.model';
 
 interface DashboardItem {
   to: string;
@@ -22,14 +24,30 @@ interface DashboardItem {
   accent: string;
 }
 
+/**
+ * Tarjetas de registro: una por tipo de actividad. Cada una entra directamente
+ * a su bandeja, igual que los submenús del menú lateral, en lugar de la antigua
+ * tarjeta combinada que obligaba a elegir el tipo después de entrar.
+ */
+const ITEM_REG_CAPACITACIONES: DashboardItem = {
+  to: '/capacitaciones-n1/capacitaciones',
+  label: 'Registro de Capacitaciones',
+  description: 'Registro y gestión de capacitaciones: eventos, participantes y sustentos.',
+  icon: GraduationCap,
+  accent: 'bg-brand/10 text-brand',
+};
+
+const ITEM_REG_ASISTENCIA: DashboardItem = {
+  to: '/capacitaciones-n1/asistencia-tecnica',
+  label: 'Registro de Asistencia Técnica',
+  description: 'Registro y gestión de asistencias técnicas: intervenciones, participantes y sustentos.',
+  icon: Wrench,
+  accent: 'bg-state-subsanado-soft text-state-subsanado-foreground',
+};
+
 const BASE_ITEMS: DashboardItem[] = [
-  {
-    to: '/capacitaciones-n1',
-    label: 'Capacitaciones / Asist. Técnica N1',
-    description: 'Registro y gestión de eventos, participantes, sustentos y estados.',
-    icon: GraduationCap,
-    accent: 'bg-brand/10 text-brand',
-  },
+  ITEM_REG_CAPACITACIONES,
+  ITEM_REG_ASISTENCIA,
   {
     to: '/seguimiento/revision',
     label: 'Seguimiento y revisión',
@@ -67,15 +85,7 @@ const BASE_ITEMS: DashboardItem[] = [
   },
 ];
 
-const TECNICO1_ITEMS: DashboardItem[] = [
-  {
-    to: '/capacitaciones-n1',
-    label: 'Capacitaciones / Asist. Técnica N1',
-    description: 'Registro de capacitaciones y asistencias técnicas de nivel 1.',
-    icon: GraduationCap,
-    accent: 'bg-brand/10 text-brand',
-  },
-];
+const TECNICO1_ITEMS: DashboardItem[] = [ITEM_REG_CAPACITACIONES, ITEM_REG_ASISTENCIA];
 
 @Component({
   selector: 'app-dashboard',
@@ -149,6 +159,10 @@ export class DashboardComponent {
       );
     }
     if (this.auth.isTecnico1()) return TECNICO1_ITEMS;
-    return BASE_ITEMS;
+    // Administrador General y perfiles personalizados: si el perfil no accede a
+    // Seguimiento, tampoco se ofrecen sus tarjetas (la ruta está cerrada).
+    return BASE_ITEMS.filter(
+      (i) => !i.to.startsWith('/seguimiento') || perfilAccedeASeguimiento(this.auth.perfil() ?? ''),
+    );
   });
 }

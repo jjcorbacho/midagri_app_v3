@@ -5,7 +5,7 @@
 // Lógica de generación migrada 1:1 del prototipo original.
 // ============================================================
 
-import { Curso, EstadoCurso } from '../models/curso.model';
+import { Curso, EstadoCurso, esObservado } from '../models/curso.model';
 import { CampoPersonalizado } from '../models/campo.model';
 import { Participante, ProductorBD } from '../models/participante.model';
 import { UsuarioSodega } from '../models/usuario-sodega.model';
@@ -104,17 +104,17 @@ const cursoDemoReasignacion = (
 
 export const CURSOS_DEMO_REASIGNACION: Curso[] = [
   // Origen: Marcos Torres Quispe — 5 Capacitaciones + 3 Asistencias Técnicas
-  cursoDemoReasignacion(1, 'Marcos Torres Quispe', 'capacitacion', 'Sanidad animal en camélidos sudamericanos', 'Aprobado'),
-  cursoDemoReasignacion(2, 'Marcos Torres Quispe', 'capacitacion', 'Manejo de pastos altoandinos', 'Validado'),
+  cursoDemoReasignacion(1, 'Marcos Torres Quispe', 'capacitacion', 'Sanidad animal en camélidos sudamericanos', 'Aprobado por UE'),
+  cursoDemoReasignacion(2, 'Marcos Torres Quispe', 'capacitacion', 'Manejo de pastos altoandinos', 'Aprobado por DZ'),
   cursoDemoReasignacion(3, 'Marcos Torres Quispe', 'capacitacion', 'Mejoramiento genético de ganado vacuno', 'Enviado'),
   cursoDemoReasignacion(4, 'Marcos Torres Quispe', 'capacitacion', 'Elaboración de derivados lácteos', 'Registrado'),
-  cursoDemoReasignacion(5, 'Marcos Torres Quispe', 'capacitacion', 'Buenas prácticas pecuarias', 'Observado'),
-  cursoDemoReasignacion(6, 'Marcos Torres Quispe', 'asistencia', 'Vacunación de ganado vacuno', 'Aprobado'),
+  cursoDemoReasignacion(5, 'Marcos Torres Quispe', 'capacitacion', 'Buenas prácticas pecuarias', 'Observado por DZ'),
+  cursoDemoReasignacion(6, 'Marcos Torres Quispe', 'asistencia', 'Vacunación de ganado vacuno', 'Aprobado por UE'),
   cursoDemoReasignacion(7, 'Marcos Torres Quispe', 'asistencia', 'Dosificación antiparasitaria en ovinos', 'Enviado'),
   cursoDemoReasignacion(8, 'Marcos Torres Quispe', 'asistencia', 'Manejo sanitario de cuyes', 'Registrado'),
   // Destino: Lucia Ramos Perez — 2 Capacitaciones + 1 Asistencia Técnica
-  cursoDemoReasignacion(9, 'Lucia Ramos Perez', 'capacitacion', 'Buenas prácticas de ordeño', 'Aprobado'),
-  cursoDemoReasignacion(10, 'Lucia Ramos Perez', 'capacitacion', 'Conservación de forrajes', 'Validado'),
+  cursoDemoReasignacion(9, 'Lucia Ramos Perez', 'capacitacion', 'Buenas prácticas de ordeño', 'Aprobado por UE'),
+  cursoDemoReasignacion(10, 'Lucia Ramos Perez', 'capacitacion', 'Conservación de forrajes', 'Aprobado por DZ'),
   cursoDemoReasignacion(11, 'Lucia Ramos Perez', 'asistencia', 'Diagnóstico de mastitis bovina', 'Registrado'),
 ];
 
@@ -174,7 +174,7 @@ export const CURSOS_INICIALES: Curso[] = [
     id: '4',
     codigo: 'AST-2024-014',
     nombreTema: 'Control orgánico de plagas en café',
-    estado: 'Observado',
+    estado: 'Observado por DZ',
     fecha: '22 May 2024',
     hora: '07:30',
     horas: 6,
@@ -198,7 +198,7 @@ export const CURSOS_INICIALES: Curso[] = [
     id: '5',
     codigo: 'AST-2024-021',
     nombreTema: 'Asistencia técnica en sanidad bovina',
-    estado: 'Aprobado',
+    estado: 'Aprobado por UE',
     fecha: '25 May 2024',
     hora: '14:00',
     horas: 4,
@@ -215,7 +215,7 @@ export const CURSOS_INICIALES: Curso[] = [
     id: '6',
     codigo: 'CAP-2024-009',
     nombreTema: 'Buenas prácticas agrícolas en quinua',
-    estado: 'Validado',
+    estado: 'Aprobado por DZ',
     fecha: '29 May 2024',
     hora: '09:00',
     horas: 10,
@@ -329,7 +329,7 @@ const fechaNacSeed = (p: number, i: number): string =>
     'AT en compostaje y biofertilizantes',
     'AT en manejo reproductivo bovino',
   ];
-  const estadosSeed: EstadoCurso[] = ['Registrado', 'Enviado', 'Enviado-Subsanado', 'Validado', 'Observado', 'Aprobado'];
+  const estadosSeed: EstadoCurso[] = ['Registrado', 'Enviado', 'Enviado-subsanado', 'Aprobado por DZ', 'Observado por DZ', 'Aprobado por UE'];
   const nombresPool = NOMBRES_POOL.slice(0, 12);
   const actividades = ACTIVIDADES_POOL.slice(0, 6);
   const tipos = TIPOS_PARTICIPANTE;
@@ -351,7 +351,7 @@ const fechaNacSeed = (p: number, i: number): string =>
       const cursoId = `s${cursoSeq++}`;
       const codigo = `${esCap ? 'CAP' : 'AST'}-${a.area}-${String(100 + i).padStart(3, '0')}`;
 
-      const necesitaHistorial = estado === 'Observado';
+      const necesitaHistorial = esObservado(estado);
       CURSOS_INICIALES.push({
         id: cursoId,
         codigo,
@@ -419,7 +419,7 @@ const fechaNacSeed = (p: number, i: number): string =>
     'AT en cosecha tecnificada de arroz', 'AT en sanidad de cuyes',
     'AT en manejo de invernaderos', 'AT en preparación de bioles',
   ];
-  const estadosSeed2: EstadoCurso[] = ['Registrado', 'Enviado', 'Enviado-Subsanado', 'Validado', 'Observado', 'Aprobado'];
+  const estadosSeed2: EstadoCurso[] = ['Registrado', 'Enviado', 'Enviado-subsanado', 'Aprobado por DZ', 'Observado por DZ', 'Aprobado por UE'];
   const nombresPool2 = NOMBRES_POOL;
   const actividades2 = ACTIVIDADES_POOL;
   const tipos2 = TIPOS_PARTICIPANTE;
@@ -442,7 +442,7 @@ const fechaNacSeed = (p: number, i: number): string =>
       const fecha = `${String(dia).padStart(2, '0')} ${meses[(ai + i) % 12]} 2024`;
       const cursoId = `x${cursoSeq++}`;
       const codigo = `${esCap ? 'CAP' : 'AST'}-${a.area}-${String(200 + i).padStart(3, '0')}`;
-      const necesitaHistorial = estado === 'Observado';
+      const necesitaHistorial = esObservado(estado);
 
       CURSOS_INICIALES.push({
         id: cursoId,

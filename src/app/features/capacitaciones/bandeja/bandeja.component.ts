@@ -11,7 +11,16 @@ import { CursosService } from '../../../core/services/cursos.service';
 import { ParticipantesService } from '../../../core/services/participantes.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { ModalService } from '../../../core/services/modal.service';
-import { Curso, ESTADOS, EstadoCurso, TipoCurso, canDeleteCurso } from '../../../core/models/curso.model';
+import {
+  Curso,
+  EstadoCurso,
+  TipoCurso,
+  canDeleteCurso,
+  esAprobado,
+  esEnviado,
+  esObservado,
+} from '../../../core/models/curso.model';
+import { EstadoPermisosService } from '../../../core/services/estado-permisos.service';
 import { Participante } from '../../../core/models/participante.model';
 import { EstadoBadgeComponent } from '../../../shared/components/estado-badge/estado-badge.component';
 import { KpiCardComponent } from '../../../shared/components/kpi-card/kpi-card.component';
@@ -204,7 +213,7 @@ const ICON_TONES: Record<string, string> = {
                 class="w-full px-3 py-2 bg-card ring-1 ring-border rounded-lg text-sm font-medium"
               >
                 <option value="TODOS">Todos</option>
-                @for (e of estados; track e) {
+                @for (e of estados(); track e) {
                   <option [value]="e">{{ e }}</option>
                 }
               </select>
@@ -316,7 +325,7 @@ const ICON_TONES: Record<string, string> = {
                           <lucide-angular [img]="Trash2Icon" class="size-4" />
                         </button>
                         <button
-                          [title]="c.estado === 'Observado' ? 'Reemplazar sustento y reenviar' : 'Adjuntar sustento'"
+                          [title]="editable(c) ? 'Reemplazar sustento y reenviar' : 'Adjuntar sustento'"
                           aria-label="Adjuntar sustento"
                           (click)="abrirSustento(c)"
                           class="p-2 rounded-lg transition-all" [class]="tone('dark')">
@@ -470,6 +479,7 @@ export class BandejaComponent {
   private readonly modales = inject(ModalService);
   private readonly cursosService = inject(CursosService);
   private readonly participantesService = inject(ParticipantesService);
+  private readonly estadoPermisos = inject(EstadoPermisosService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
 
@@ -492,7 +502,13 @@ export class BandejaComponent {
     { k: 'general' as const, label: 'Vista general' },
     { k: 'estados' as const, label: 'Estados y Progreso' },
   ];
-  readonly estados = ESTADOS;
+  /**
+   * Opciones del filtro por estado: solo las que el cuadro oficial autoriza a
+   * visualizar al perfil en sesión (columna VISUALIZA, más los estados que él
+   * mismo realiza). Los registros del listado no se ocultan: el filtrado por
+   * perfil aplica a la elección de estados, no a la bandeja propia.
+   */
+  readonly estados = this.estadoPermisos.estadosVisibles;
   readonly pageSizes = [5, 10, 30, 50];
 
   /**
@@ -561,13 +577,14 @@ export class BandejaComponent {
       ast,
       productores: delArea.reduce((acc, c) => acc + this.participantesService.totalDe(c.id), 0),
       pendientes: delArea.filter((c) => c.estado === 'Registrado').length,
-      enviados: delArea.filter((c) => c.estado === 'Enviado' || c.estado === 'Enviado-Subsanado').length,
-      observados: delArea.filter((c) => c.estado === 'Observado').length,
+      enviados: delArea.filter((c) => esEnviado(c.estado)).length,
+      // Agrupan las tres variantes por perfil (DZ / UE / JA).
+      observados: delArea.filter((c) => esObservado(c.estado)).length,
       /* Registros observados que ya fueron corregidos y reenviados. Se cuentan
          además dentro de "Enviados a Revisión" — el cálculo de las demás
          tarjetas se mantiene intacto por requerimiento. */
-      subsanados: delArea.filter((c) => c.estado === 'Enviado-Subsanado').length,
-      aprobados: delArea.filter((c) => c.estado === 'Aprobado').length,
+      subsanados: delArea.filter((c) => c.estado === 'Enviado-subsanado').length,
+      aprobados: delArea.filter((c) => esAprobado(c.estado)).length,
     };
   });
 
@@ -690,16 +707,11 @@ export class BandejaComponent {
   }
 
   editable(c: Curso): boolean {
-    return c.estado === 'Registrado' || c.estado === 'Observado';
+    return c.estado === 'Registrado' || esObservado(c.estado);
   }
 
   bloqueado(c: Curso): boolean {
-    return (
-      c.estado === 'Enviado' ||
-      c.estado === 'Enviado-Subsanado' ||
-      c.estado === 'Validado' ||
-      c.estado === 'Aprobado'
-    );
+    return esEnviado(c.estado) || esAprobado(c.estado);
   }
 
   tieneObs(c: Curso): boolean {

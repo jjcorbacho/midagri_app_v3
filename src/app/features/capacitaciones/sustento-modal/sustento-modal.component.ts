@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { LucideAngularModule, UploadCloud, FileText, Trash2 } from 'lucide-angular';
-import { Curso } from '../../../core/models/curso.model';
+import { Curso, nextEstadoOnSend } from '../../../core/models/curso.model';
 import { ParticipantesService } from '../../../core/services/participantes.service';
 import { CursosService } from '../../../core/services/cursos.service';
+import { EstadoPermisosService } from '../../../core/services/estado-permisos.service';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 
 const MAX_MB = 15;
@@ -137,6 +138,7 @@ const MAX_MB = 15;
 export class SustentoModalComponent {
   private readonly participantesService = inject(ParticipantesService);
   private readonly cursosService = inject(CursosService);
+  private readonly estadoPermisos = inject(EstadoPermisosService);
 
   readonly curso = input.required<Curso>();
   readonly closed = output<void>();
@@ -181,8 +183,12 @@ export class SustentoModalComponent {
   enviar(): void {
     const f = this.file();
     if (!f || !this.declaro()) return;
+    // Un registro observado se reenvía como subsanado; el estado resultante
+    // debe estar autorizado por el cuadro de estados para el perfil en sesión.
+    const nuevoEstado = nextEstadoOnSend(this.curso());
+    if (!this.estadoPermisos.sesionPuedeRealizar(nuevoEstado)) return;
     // TODO(backend): subir el PDF con multipart/form-data antes de cambiar el estado.
-    this.cursosService.update(this.curso().id, { estado: 'Enviado', fotoSustento: f.name });
+    this.cursosService.update(this.curso().id, { estado: nuevoEstado, fotoSustento: f.name });
     this.closed.emit();
   }
 }

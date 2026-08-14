@@ -6,9 +6,27 @@ import {
   UNIDADES_FUNCIONALES_POR_UNIDAD_RESPONSABLE,
 } from '../constants/sodega.const';
 import { FormularioKey } from '../models/campo.model';
+import { normalizarNombreCatalogo } from '../../shared/utils/texto.util';
 
 /** Valor mostrado cuando la unidad responsable no tiene unidades funcionales. */
 export const UNIDAD_FUNCIONAL_NO_APLICA = 'No aplica';
+
+/**
+ * ¿El valor elegido en un selector del alta es utilizable?
+ *
+ * Rechaza el vacío (nada seleccionado) y "No aplica": ese marcador señala que
+ * la dimensión no existe para la unidad elegida, así que una configuración que
+ * lo incluya no identifica un registro real y no puede entrar a la grilla.
+ * La comparación es tolerante a tildes, mayúsculas y espacios.
+ */
+export function esSeleccionValida(valor: string | null | undefined): boolean {
+  const texto = (valor ?? '').trim();
+  if (!texto) return false;
+  return normalizarNombreCatalogo(texto) !== normalizarNombreCatalogo(UNIDAD_FUNCIONAL_NO_APLICA);
+}
+
+/** Resultado del alta en la grilla, para que la vista elija el aviso. */
+export type ResultadoAlta = 'ok' | 'duplicada' | 'invalida';
 
 /**
  * Registro que se está configurando en el flujo de tres etapas.
@@ -96,38 +114,35 @@ export class ConfiguracionFlujoService {
   }
 
   /**
-   * Añade una configuración a la grilla. Devuelve `false` si ya existía,
-   * para que la vista muestre el aviso con el sistema de modales existente.
+   * Añade una configuración a la grilla.
+   *
+   * Revalida las cuatro dimensiones aquí —no solo en la vista— para que una
+   * llamada directa al método tampoco pueda meter en la grilla un registro
+   * incompleto o con "No aplica". Devuelve el motivo para que la vista muestre
+   * el aviso con el sistema de modales existente.
    */
   agregar(
     unidadResponsable: string,
     unidadFuncional: string,
     formulario: FormularioKey,
     tematica: string,
-  ): boolean {
+  ): ResultadoAlta {
+    const valores = [unidadResponsable, unidadFuncional, formulario, tematica];
+    if (!valores.every(esSeleccionValida)) return 'invalida';
+    if (!esSeleccionValida(this.labelFormulario(formulario))) return 'invalida';
+
     const id = idRegistro(unidadResponsable, unidadFuncional, formulario, tematica);
-    if (this._configuraciones().some((c) => c.id === id)) return false;
+    if (this._configuraciones().some((c) => c.id === id)) return 'duplicada';
     this._configuraciones.update((prev) => [
       ...prev,
       { id, unidadResponsable, unidadFuncional, formulario, tematica },
     ]);
     this.persistir();
-    return true;
+    return 'ok';
   }
 
   seleccionar(id: string | null): void {
     this._seleccionId.set(id && this._configuraciones().some((c) => c.id === id) ? id : null);
-    this.persistir();
-  }
-
-  quitar(id: string): void {
-    this._configuraciones.update((prev) => prev.filter((c) => c.id !== id));
-    if (this._seleccionId() === id) this._seleccionId.set(null);
-    this._guardadas.update((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
     this.persistir();
   }
 
@@ -141,6 +156,20 @@ export class ConfiguracionFlujoService {
     if (!r) return;
     this._guardadas.update((prev) => new Set(prev).add(r.id));
     this.persistir();
+  }
+
+  /**
+   * Guardado explícito de la etapa 1 (botón "Guardar" de `/configuracion/campos`).
+   *
+   * La grilla y la selección ya se persisten en cada alta para no perder
+   * trabajo, así que esto reescribe el mismo estado en el mismo almacén: no
+   * añade una segunda fuente de datos, solo da al usuario un punto de guardado
+   * confirmable. Devuelve `false` cuando no hay nada que guardar.
+   */
+  guardarConfiguraciones(): boolean {
+    if (this._configuraciones().length === 0) return false;
+    this.persistir();
+    return true;
   }
 
   /**

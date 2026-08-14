@@ -18,7 +18,14 @@ import { CursosService } from '../../../core/services/cursos.service';
 import { ParticipantesService } from '../../../core/services/participantes.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { getArea } from '../../../core/constants/areas.const';
-import { Curso, TipoCurso, isLocked } from '../../../core/models/curso.model';
+import {
+  Curso,
+  TipoCurso,
+  esObservado,
+  isLocked,
+  nextEstadoOnSend,
+} from '../../../core/models/curso.model';
+import { EstadoPermisosService } from '../../../core/services/estado-permisos.service';
 import { isoToFechaCorta } from '../../../shared/utils/fecha.util';
 import { normalizarBusqueda } from '../../../shared/utils/texto.util';
 import { EstadoBadgeComponent } from '../../../shared/components/estado-badge/estado-badge.component';
@@ -112,7 +119,7 @@ type Paso = 1 | 2 | 3;
       <!-- ============ Paso 1 ============ -->
       @if (paso() === 1) {
         <div class="space-y-4">
-          @if (cursoActivo()?.estado === 'Observado' && observaciones().length > 0) {
+          @if (cursoObservado() && observaciones().length > 0) {
             <div class="rounded-xl ring-1 ring-destructive/25 bg-destructive/5 p-4">
               <div class="flex items-center gap-2 text-destructive font-semibold text-sm mb-2">
                 <lucide-angular [img]="AlertTriangleIcon" class="size-4" />
@@ -540,6 +547,7 @@ export class StepperComponent implements OnInit {
   private readonly cursosService = inject(CursosService);
   private readonly participantesService = inject(ParticipantesService);
   private readonly toast = inject(ToastService);
+  private readonly estadoPermisos = inject(EstadoPermisosService);
 
   readonly ArrowLeftIcon = ArrowLeft;
   readonly CheckIcon = Check;
@@ -587,6 +595,12 @@ export class StepperComponent implements OnInit {
     const id = this.createdId();
     if (!id) return undefined;
     return this.cursosService.cursos().find((c) => c.id === id);
+  });
+
+  /** El registro volvió observado (por DZ, UE o JA) y toca subsanarlo. */
+  readonly cursoObservado = computed(() => {
+    const curso = this.cursoActivo();
+    return !!curso && esObservado(curso.estado);
   });
 
   readonly tipo = computed<TipoCurso>(() => this.cursoActivo()?.tipo ?? this.tipoInit);
@@ -798,7 +812,13 @@ export class StepperComponent implements OnInit {
       return;
     }
     const fileName = this.file()?.name ?? this.existingName() ?? 'sustento.pdf';
-    const nuevoEstado = curso.estado === 'Observado' ? 'Enviado-Subsanado' : 'Enviado';
+    // El estado de envío lo decide el ciclo de vida del registro (subsanación
+    // si venía observado) y debe estar autorizado por el cuadro de estados.
+    const nuevoEstado = nextEstadoOnSend(curso);
+    if (!this.estadoPermisos.sesionPuedeRealizar(nuevoEstado)) {
+      this.toast.error(`Su perfil no puede registrar el estado "${nuevoEstado}".`);
+      return;
+    }
     // TODO(backend): subir el PDF (multipart) y luego PATCH /cursos/{id}/estado.
     this.cursosService.update(curso.id, { estado: nuevoEstado, fotoSustento: fileName });
     this.toast.success('Registro enviado correctamente');

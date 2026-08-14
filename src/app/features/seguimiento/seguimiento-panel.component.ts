@@ -9,6 +9,7 @@ import { AreaService } from '../../core/services/area.service';
 import { CursosService } from '../../core/services/cursos.service';
 import { ModalService } from '../../core/services/modal.service';
 import { ParticipantesService } from '../../core/services/participantes.service';
+import { EstadoPermisosService } from '../../core/services/estado-permisos.service';
 import { Curso, EstadoCurso } from '../../core/models/curso.model';
 import { Participante } from '../../core/models/participante.model';
 import { EstadoBadgeComponent } from '../../shared/components/estado-badge/estado-badge.component';
@@ -16,8 +17,11 @@ import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { exportarTablaExcel } from '../../shared/utils/excel.util';
 import { isoToDDMMYYYY, todayDDMMYYYY, todayISO } from '../../shared/utils/fecha.util';
 
-const ACCIONABLES_DZ: EstadoCurso[] = ['Enviado', 'Enviado-Subsanado'];
-const ACCIONABLES_UE: EstadoCurso[] = ['Enviado', 'Enviado-Subsanado', 'Validado'];
+// Sobre qué estados actúa cada eslabón del flujo: el DZ evalúa lo que envía el
+// técnico y el UE/JA evalúa además lo que el DZ ya aprobó. Es lógica de flujo;
+// el estado que se produce al actuar lo decide la matriz del perfil.
+const ACCIONABLES_DZ: EstadoCurso[] = ['Enviado', 'Enviado-subsanado'];
+const ACCIONABLES_UE: EstadoCurso[] = ['Enviado', 'Enviado-subsanado', 'Aprobado por DZ'];
 
 const ICON_TONES: Record<string, string> = {
   blue: 'bg-state-validado-soft text-state-validado-foreground hover:bg-state-validado hover:text-primary-foreground',
@@ -44,23 +48,31 @@ const ICON_TONES: Record<string, string> = {
           </div>
           <p class="text-sm text-muted-foreground max-w-[80ch]">{{ subtitle() }}</p>
         </div>
+        <!-- Cada acción existe solo si el cuadro de estados autoriza al perfil
+             en sesión a producir el estado correspondiente. -->
         <div class="flex gap-2">
-          <button
-            (click)="confirmarValidacionSeleccion()"
-            [disabled]="sel().size === 0"
-            class="btn-primary"
-          >
-            <lucide-angular [img]="CheckCircle2Icon" class="size-4" />
-            {{ labelAprobar() }} seleccionados ({{ sel().size }})
-          </button>
-          <button
-            (click)="observarOpen.set(true)"
-            [disabled]="sel().size === 0"
-            class="btn-danger"
-          >
-            <lucide-angular [img]="MessageSquareWarningIcon" class="size-4" />
-            Observar
-          </button>
+          @if (estadoAprobar(); as estadoAprobado) {
+            <button
+              (click)="confirmarValidacionSeleccion()"
+              [disabled]="sel().size === 0"
+              class="btn-primary"
+              [title]="'Marcar como ' + estadoAprobado"
+            >
+              <lucide-angular [img]="CheckCircle2Icon" class="size-4" />
+              {{ labelAprobar() }} seleccionados ({{ sel().size }})
+            </button>
+          }
+          @if (estadoObservar(); as estadoObservado) {
+            <button
+              (click)="observarOpen.set(true)"
+              [disabled]="sel().size === 0"
+              class="btn-danger"
+              [title]="'Marcar como ' + estadoObservado"
+            >
+              <lucide-angular [img]="MessageSquareWarningIcon" class="size-4" />
+              Observar
+            </button>
+          }
         </div>
       </header>
 
@@ -74,7 +86,7 @@ const ICON_TONES: Record<string, string> = {
               class="px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors"
               [class]="tab() === 'TODOS' ? 'bg-brand text-brand-foreground border-brand' : 'bg-card text-muted-foreground border-border hover:text-foreground'"
             >Todos ({{ counts()['TODOS'] }})</button>
-            @for (e of estadosEntrada(); track e) {
+            @for (e of estadosVisiblesEnBandeja(); track e) {
               <button
                 (click)="tab.set(e)"
                 class="px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors"
@@ -339,12 +351,12 @@ export class SeguimientoPanelComponent {
   private readonly cursosService = inject(CursosService);
   private readonly modales = inject(ModalService);
   private readonly participantesService = inject(ParticipantesService);
+  private readonly estadoPermisos = inject(EstadoPermisosService);
   private readonly router = inject(Router);
 
   readonly title = input.required<string>();
   readonly subtitle = input.required<string>();
   readonly estadosEntrada = input.required<EstadoCurso[]>();
-  readonly estadoAprobar = input.required<EstadoCurso>();
   readonly labelAprobar = input.required<string>();
   readonly rol = input<'ADMIN_DZ' | 'ADMIN_UE'>('ADMIN_DZ');
   /** Etiqueta visible del perfil (los códigos DZ/UE controlan los estados accionables). */
@@ -384,16 +396,43 @@ export class SeguimientoPanelComponent {
     this.rol() === 'ADMIN_UE' ? ACCIONABLES_UE : ACCIONABLES_DZ,
   );
 
+  /**
+   * Estados que produce el perfil en sesión al aprobar u observar, según el
+   * cuadro oficial. `null` = el cuadro no le autoriza esa acción, y entonces
+   * el botón correspondiente no se ofrece.
+   */
+  readonly estadoAprobar = this.estadoPermisos.estadoAprobarSesion;
+  readonly estadoObservar = this.estadoPermisos.estadoObservarSesion;
+
+  /**
+   * Estados que este perfil ve en la bandeja: los que le toca evaluar (flujo)
+   * más los que el cuadro le autoriza a visualizar. Sin la primera parte, un
+   * evaluador no vería los registros que debe atender; sin la segunda, vería
+   * estados que el cuadro no le asigna.
+   */
+  readonly estadosVisiblesEnBandeja = computed(() =>
+    this.estadosEntrada().filter(
+      (estado) =>
+        this.accionables().includes(estado) || this.estadoPermisos.sesionPuedeVisualizar(estado),
+    ),
+  );
+
   readonly inbox = computed(() =>
     this.cursosService
       .cursos()
-      .filter((c) => this.estadosEntrada().includes(c.estado) && c.area === this.areaService.currentArea()),
+      .filter(
+        (c) =>
+          this.estadosVisiblesEnBandeja().includes(c.estado) &&
+          c.area === this.areaService.currentArea(),
+      ),
   );
 
   readonly counts = computed(() => {
     const inbox = this.inbox();
     const out: Record<string, number> = { TODOS: inbox.length };
-    this.estadosEntrada().forEach((e) => (out[e] = inbox.filter((c) => c.estado === e).length));
+    this.estadosVisiblesEnBandeja().forEach(
+      (e) => (out[e] = inbox.filter((c) => c.estado === e).length),
+    );
     return out;
   });
 
@@ -508,13 +547,14 @@ export class SeguimientoPanelComponent {
 
   /** Confirmación mediante el sistema unificado de modales. */
   confirmarValidacionSeleccion(): void {
+    const estado = this.estadoAprobar();
     const n = this.sel().size;
-    if (!n) return;
+    if (!n || !estado) return;
     void this.modales
       .openConfirm(
-        'Confirmar validación',
+        'Confirmar aprobación',
         `¿Está seguro de ${this.labelAprobar().toLowerCase()} ${n} registro(s)? ` +
-          `Esta acción cambiará el estado de todos los registros seleccionados a "${this.estadoAprobar()}".`,
+          `Esta acción cambiará el estado de todos los registros seleccionados a "${estado}".`,
       )
       .then((ok) => {
         if (ok) this.confirmarValidar();
@@ -522,18 +562,24 @@ export class SeguimientoPanelComponent {
   }
 
   confirmarValidar(): void {
-    this.sel().forEach((id) => this.cursosService.updateEstado(id, this.estadoAprobar()));
+    // Se revalida contra el cuadro: el estado no se aplica si el perfil no lo
+    // tiene autorizado, aunque se llegue aquí por otra vía.
+    const estado = this.estadoAprobar();
+    if (!estado || !this.estadoPermisos.sesionPuedeRealizar(estado)) return;
+    this.sel().forEach((id) => this.cursosService.updateEstado(id, estado));
     this.sel.set(new Set());
   }
 
   confirmarObservar(): void {
+    const estado = this.estadoObservar();
+    if (!estado || !this.estadoPermisos.sesionPuedeRealizar(estado)) return;
     if (!this.observarTexto().trim()) {
       void this.modales.openError('Observación incompleta', 'Ingrese una descripción para la observación.');
       return;
     }
     const fechaTxt = this.fechaObservacionTexto();
     const texto = `${this.observarTexto().trim()}  ·  Fecha: ${fechaTxt}`;
-    this.sel().forEach((id) => this.cursosService.updateEstado(id, 'Observado', texto));
+    this.sel().forEach((id) => this.cursosService.updateEstado(id, estado, texto));
     this.sel.set(new Set());
     this.observarTexto.set('');
     this.observarFecha.set(todayISO());

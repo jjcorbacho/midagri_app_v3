@@ -11,7 +11,7 @@ const TONE_MAP: Record<KpiTone, string> = {
   indigo: 'bg-state-validado-soft text-state-validado',
   slate: 'bg-muted text-muted-foreground',
   amber: 'bg-warning-soft text-warning-foreground',
-  /* Mismo token que el badge del estado "Enviado-Subsanado" (app-estado-badge). */
+  /* Mismo token que el badge del estado "Enviado-subsanado" (app-estado-badge). */
   subsanado: 'bg-state-subsanado-soft text-state-subsanado-foreground',
 };
 

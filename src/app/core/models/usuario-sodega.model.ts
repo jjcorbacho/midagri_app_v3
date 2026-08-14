@@ -27,6 +27,17 @@ export const PERFILES: PerfilConocido[] = [
   'Técnico Capacitación y Asistencia Técnica',
 ];
 
+/**
+ * Seguimiento (revisión / aprobación) no corresponde al Administrador General:
+ * su rol es configurar y administrar, no evaluar registros de las áreas.
+ *
+ * Es la regla de negocio única que consultan el menú lateral, el `roleGuard` y
+ * las tarjetas del inicio, para que visibilidad y acceso no puedan divergir.
+ */
+export function perfilAccedeASeguimiento(perfil: Perfil | ''): boolean {
+  return !!perfil && perfil !== 'Administrador General';
+}
+
 export type RegimenLaboral =
   | 'Decreto Legislativo 728'
   | 'Decreto Legislativo 276'

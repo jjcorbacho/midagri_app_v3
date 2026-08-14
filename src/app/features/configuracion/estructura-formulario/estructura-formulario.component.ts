@@ -16,6 +16,7 @@ import { ToastService } from '../../../core/services/toast.service';
 import { AREAS } from '../../../core/constants/areas.const';
 import { CAMPOS_BASE, FORMULARIOS } from '../../../core/constants/campos-base.const';
 import { CampoBase, CampoPersonalizado, CampoTipo, FormularioKey } from '../../../core/models/campo.model';
+import { ConfiguracionTabsComponent } from '../configuracion-tabs.component';
 import { CampoPreviewComponent } from '../campos/campo-preview.component';
 import { CampoModalComponent, CampoModalResult, TIPOS_CAMPO } from '../campos/campo-modal.component';
 import { OpcionesModalComponent } from '../campos/opciones-modal.component';
@@ -43,9 +44,12 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
 @Component({
   selector: 'app-estructura-formulario',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, RouterLink, LucideAngularModule, CampoPreviewComponent, CampoModalComponent, OpcionesModalComponent],
+  imports: [NgTemplateOutlet, RouterLink, LucideAngularModule, ConfiguracionTabsComponent, CampoPreviewComponent, CampoModalComponent, OpcionesModalComponent],
   template: `
     <section class="p-6 lg:p-8 max-w-7xl mx-auto animate-page-in">
+      <!-- Navegación entre las dos vistas de configuración (pestaña activa por ruta). -->
+      <app-configuracion-tabs class="block mb-4" />
+
       <div class="bg-card rounded-xl shadow-xl border border-border overflow-hidden flex flex-col">
         <!-- Header -->
         <header class="p-6 border-b border-border">

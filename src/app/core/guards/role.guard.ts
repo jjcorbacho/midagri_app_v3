@@ -2,7 +2,12 @@ import { inject } from '@angular/core';
 import { CanActivateChildFn, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { PermisosMenuService } from '../services/permisos-menu.service';
-import { PERFILES, Perfil, PerfilConocido } from '../models/usuario-sodega.model';
+import {
+  PERFILES,
+  Perfil,
+  PerfilConocido,
+  perfilAccedeASeguimiento,
+} from '../models/usuario-sodega.model';
 import {
   GRUPO_REGISTRAR,
   GRUPO_VISUALIZAR,
@@ -44,6 +49,10 @@ function esBandejaN1(path: string): boolean {
  *    usuario (grupos Registrar/Visualizar de la matriz permisos.xlsx).
  */
 function isAllowed(path: string, perfil: Perfil, flags: FlagsPermisos): boolean {
+  // Seguimiento se evalúa antes que cualquier perfil: es una restricción por
+  // rol, no por permisos, y por eso alcanza también al Administrador General
+  // cuando escribe la URL directamente.
+  if (path.startsWith('/seguimiento') && !perfilAccedeASeguimiento(perfil)) return false;
   if (perfil === 'Administrador General') return true;
   if (path.startsWith('/perfil') || path.startsWith('/dashboard')) return true;
 

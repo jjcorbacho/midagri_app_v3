@@ -22,6 +22,7 @@ import {
 import type { LucideIconData } from 'lucide-angular';
 import { AuthService } from '../../core/services/auth.service';
 import { PermisosMenuService } from '../../core/services/permisos-menu.service';
+import { perfilAccedeASeguimiento } from '../../core/models/usuario-sodega.model';
 import {
   GRUPO_REGISTRAR,
   GRUPO_VISUALIZAR,
@@ -52,22 +53,43 @@ interface NavItem {
   icon: LucideIconData;
   matchPrefix?: string[];
   children?: NavChild[];
+  /**
+   * Grupos cuyo botón principal, además de desplegar los submenús, navega a
+   * `to`. Solo lo usa Configuración: su entrada sigue llevando a la etapa 1
+   * (`/configuracion/campos`) mientras los submenús exponen las dos pestañas.
+   */
+  navegable?: boolean;
 }
 
 const CHILD_REG_CAPACITACIONES: NavChild = {
   to: '/capacitaciones-n1/capacitaciones',
-  label: 'Registro de Capacitaciones',
+  label: 'Capacitaciones',
   icon: GraduationCap,
 };
 const CHILD_REG_ASISTENCIA: NavChild = {
   to: '/capacitaciones-n1/asistencia-tecnica',
-  label: 'Registro de Asist. Técnica',
+  label: 'Asist. Técnica',
   icon: Wrench,
 };
 const CHILD_USUARIOS: NavChild = { to: '/usuarios', label: 'Gestión de Usuarios', icon: UsersRound };
 const CHILD_LISTAS: NavChild = { to: '/administracion/listas', label: 'Listas', icon: ListChecks };
-const CHILD_CONFIG_CAMPOS: NavChild = { to: '/configuracion/campos', label: 'Configuración Campos', icon: Sliders };
-const CHILD_CONFIG_REGLAS: NavChild = { to: '/configuracion/reglas', label: 'Configuración Reglas', icon: Wrench };
+/** Etapa 1 del flujo: destino de entrada del grupo Configuración. */
+const CONFIG_ENTRADA_CAMPOS = '/configuracion/campos';
+const CONFIG_ENTRADA_REGLAS = '/configuracion/reglas';
+
+// Los submenús son las dos pestañas del flujo, no la etapa 1: "Configuración
+// de Campos" abre la estructura del formulario y "Configuración de reglas" el
+// configurador de reglas, igual que la barra de pestañas de esas vistas.
+const CHILD_CONFIG_CAMPOS: NavChild = {
+  to: '/configuracion/estructura-formulario',
+  label: 'Configuración de Campos',
+  icon: Sliders,
+};
+const CHILD_CONFIG_REGLAS: NavChild = {
+  to: '/configuracion/reglas',
+  label: 'Configuración de reglas',
+  icon: Wrench,
+};
 
 /**
  * Grupo Registro (Capacitaciones + Asistencia Técnica, según permisos).
@@ -96,20 +118,21 @@ function grupoAdministracion(children: NavChild[]): NavItem {
 }
 
 /**
- * Entrada única "Configuración" (sin viñetas).
+ * Grupo "Configuración" con las dos etapas del flujo como submenús.
  *
- * Campos y Reglas dejaron de ser dos destinos independientes: son las etapas
- * de un mismo flujo (campos → estructura → reglas), así que el menú expone un
- * solo botón. Los permisos se siguen respetando: `children` solo se usa para
- * decidir el destino de entrada — campos si el usuario lo tiene, y si no,
- * reglas — y el grupo no se construye cuando la lista llega vacía.
+ * El botón principal sigue llevando a la etapa 1 (`entrada`, normalmente
+ * `/configuracion/campos`) y además despliega los submenús, que son los mismos
+ * destinos que ofrecen las pestañas de las vistas. Los permisos se respetan:
+ * el grupo no se construye cuando `children` llega vacío.
  */
-function grupoConfiguracion(children: NavChild[]): NavItem {
+function grupoConfiguracion(children: NavChild[], entrada: string): NavItem {
   return {
-    to: children[0]?.to ?? '/configuracion',
+    to: entrada,
     label: 'Configuración',
     icon: Settings,
     matchPrefix: ['/configuracion'],
+    navegable: true,
+    children,
   };
 }
 
@@ -120,12 +143,7 @@ const NAV_FULL: NavItem[] = [
   { to: '/seguimiento/revision', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] },
   { to: '/reportes', label: 'Reportes', icon: FileText },
   grupoAdministracion([CHILD_USUARIOS, CHILD_LISTAS]),
-  {
-    to: '/configuracion',
-    label: 'Configuración',
-    icon: Settings,
-    matchPrefix: ['/configuracion'],
-  },
+  grupoConfiguracion([CHILD_CONFIG_CAMPOS, CHILD_CONFIG_REGLAS], CONFIG_ENTRADA_CAMPOS),
 ];
 
 const COLLAPSE_KEY = 'midagri.sidebar.collapsed';
@@ -164,7 +182,7 @@ const COLLAPSE_KEY = 'midagri.sidebar.collapsed';
           @if (item.children?.length && !collapsed()) {
             <div class="flex flex-col">
               <button
-                (click)="toggleGroup(item.to)"
+                (click)="onGroupClick(item)"
                 class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors w-full text-left"
                 [class]="isActive(item) ? 'bg-brand text-brand-foreground' : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-foreground/10'"
               >
@@ -285,7 +303,7 @@ export class SidebarComponent {
       const admin = this.childrenAdministracion();
       if (admin.length) items.push(grupoAdministracion(admin));
       const config = this.childrenConfiguracion();
-      if (config.length) items.push(grupoConfiguracion(config));
+      if (config.length) items.push(grupoConfiguracion(config, this.entradaConfiguracion()));
       return items;
     }
     if (this.auth.isTecnico1()) {
@@ -302,10 +320,14 @@ export class SidebarComponent {
       if (registro.length) items.push(grupoRegistro(registro));
       // Entrada única "Seguimiento": abre revisión si el permiso lo cubre;
       // de lo contrario, aprobación. La botonera interna alterna los modos.
-      if (this.registra(PERMISO_SEGUIMIENTO_REVISION)) {
-        items.push({ to: '/seguimiento/revision', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] });
-      } else if (this.registra(PERMISO_SEGUIMIENTO_APROBACION)) {
-        items.push({ to: '/seguimiento/aprobacion', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] });
+      // El Administrador General queda fuera por regla de perfil, con permisos
+      // o sin ellos (misma condición que aplica el roleGuard a la ruta).
+      if (this.veSeguimiento()) {
+        if (this.registra(PERMISO_SEGUIMIENTO_REVISION)) {
+          items.push({ to: '/seguimiento/revision', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] });
+        } else if (this.registra(PERMISO_SEGUIMIENTO_APROBACION)) {
+          items.push({ to: '/seguimiento/aprobacion', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] });
+        }
       }
       if (this.puedeVerReportes()) {
         items.push({ to: '/reportes', label: 'Reportes', icon: FileText });
@@ -313,7 +335,7 @@ export class SidebarComponent {
       const admin = this.childrenAdministracion();
       if (admin.length) items.push(grupoAdministracion(admin));
       const config = this.childrenConfiguracion();
-      if (config.length) items.push(grupoConfiguracion(config));
+      if (config.length) items.push(grupoConfiguracion(config, this.entradaConfiguracion()));
       return items;
     }
     return NAV_FULL;
@@ -323,6 +345,11 @@ export class SidebarComponent {
 
   private registra(permiso: string): boolean {
     return this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, permiso);
+  }
+
+  /** ¿El perfil en sesión tiene Seguimiento entre sus módulos? */
+  private veSeguimiento(): boolean {
+    return perfilAccedeASeguimiento(this.auth.perfil() ?? '');
   }
 
   private puedeVerReportes(): boolean {
@@ -354,6 +381,15 @@ export class SidebarComponent {
     if (this.registra(PERMISO_CONFIG_CAMPOS)) children.push(CHILD_CONFIG_CAMPOS);
     if (this.registra(PERMISO_CONFIG_REGLAS)) children.push(CHILD_CONFIG_REGLAS);
     return children;
+  }
+
+  /**
+   * Destino del botón principal de Configuración: la etapa 1 del flujo cuando
+   * el usuario tiene el permiso de campos y, si no, reglas — el mismo criterio
+   * de entrada que se aplicaba antes de separar los submenús.
+   */
+  private entradaConfiguracion(): string {
+    return this.registra(PERMISO_CONFIG_CAMPOS) ? CONFIG_ENTRADA_CAMPOS : CONFIG_ENTRADA_REGLAS;
   }
 
   constructor() {
@@ -388,6 +424,16 @@ export class SidebarComponent {
 
   isGroupOpen(key: string): boolean {
     return this.openGroups().has(key);
+  }
+
+  /**
+   * Click en la cabecera de un grupo: despliega/pliega sus submenús y, en los
+   * grupos navegables (Configuración), abre además su ruta de entrada. Tras
+   * navegar, el `effect` de rutas vuelve a desplegar el grupo activo.
+   */
+  onGroupClick(item: NavItem): void {
+    this.toggleGroup(item.to);
+    if (item.navegable) void this.router.navigate([item.to]);
   }
 
   toggleGroup(key: string): void {
