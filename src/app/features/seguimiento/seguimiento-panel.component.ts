@@ -47,18 +47,21 @@ const ICON_TONES: Record<string, string> = {
       <!-- Header -->
       <header class="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <div class="flex items-center gap-2 mb-1">
-            <lucide-angular [img]="ClipboardListIcon" class="size-5 text-brand" />
+          <!-- En pantallas estrechas la etiqueta del perfil baja bajo el
+               título en lugar de empujar la cabecera fuera del ancho. -->
+          <div class="flex items-center flex-wrap gap-2 mb-1">
+            <lucide-angular [img]="ClipboardListIcon" class="size-5 text-brand shrink-0" />
             <h1 class="text-h1">{{ title() }}</h1>
-            <span class="px-2.5 py-1 bg-secondary text-muted-foreground font-semibold text-[11px] rounded-md ml-1 tracking-widest">
+            <span class="px-2.5 py-1 bg-secondary text-muted-foreground font-semibold text-[11px] rounded-md tracking-widest">
               {{ rolLabel() || rol() }}
             </span>
           </div>
           <p class="text-sm text-muted-foreground max-w-[80ch]">{{ subtitle() }}</p>
         </div>
         <!-- Cada acción existe solo si el cuadro de estados autoriza al perfil
-             en sesión a producir el estado correspondiente. -->
-        <div class="flex gap-2">
+             en sesión a producir el estado correspondiente. Los botones
+             envuelven para no desbordar el ancho en móvil. -->
+        <div class="flex flex-wrap gap-2 shrink-0">
           @if (estadoAprobar(); as estadoAprobado) {
             <button
               (click)="confirmarValidacionSeleccion()"

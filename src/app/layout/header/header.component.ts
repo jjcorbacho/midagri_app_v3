@@ -20,7 +20,9 @@ const MOSTRAR_SELECTOR_AREA = false;
   imports: [LucideAngularModule, ModalComponent],
   template: `
     <header class="h-16 bg-card/95 backdrop-blur border-b border-border flex items-center justify-between px-6 sticky top-0 z-20">
-      <div class="flex items-center gap-6">
+      <!-- min-w-0: sin él el bloque del periodo no puede encogerse y empuja el
+           menú de usuario fuera del ancho en pantallas estrechas. -->
+      <div class="flex items-center gap-6 min-w-0">
         <div class="flex flex-col justify-center leading-tight min-w-0">
           <span class="text-[10px] uppercase tracking-wider font-semibold text-brand">SODEGA</span>
           <!-- Periodo de gestión del usuario autenticado (visible en toda la app). -->
@@ -30,7 +32,7 @@ const MOSTRAR_SELECTOR_AREA = false;
               [title]="'Periodo: ' + periodo"
             >
               <lucide-angular [img]="CalendarRangeIcon" class="size-3 shrink-0" />
-              <span class="truncate max-w-[220px] sm:max-w-[420px] lg:max-w-[560px]">
+              <span class="truncate max-w-full sm:max-w-[420px] lg:max-w-[560px]">
                 Periodo: {{ periodo }}
               </span>
             </span>
