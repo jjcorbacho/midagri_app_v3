@@ -45,6 +45,8 @@ interface NavChild {
   to: string;
   label: string;
   icon: LucideIconData;
+  /** Rutas adicionales que también marcan activo el submenú. */
+  matchPrefix?: string[];
 }
 
 interface NavItem {
@@ -77,19 +79,19 @@ const CHILD_LISTAS: NavChild = { to: '/administracion/listas', label: 'Listas', 
 const CONFIG_ENTRADA_CAMPOS = '/configuracion/campos';
 const CONFIG_ENTRADA_REGLAS = '/configuracion/reglas';
 
-// Los submenús son las dos pestañas del flujo, no la etapa 1: "Configuración
-// de Campos" abre la estructura del formulario y "Configuración de reglas" el
-// configurador de reglas, igual que la barra de pestañas de esas vistas.
-const CHILD_CONFIG_CAMPOS: NavChild = {
-  to: '/configuracion/estructura-formulario',
-  label: 'Configuración de Campos',
-  icon: Sliders,
-};
-const CHILD_CONFIG_REGLAS: NavChild = {
-  to: '/configuracion/reglas',
-  label: 'Configuración de reglas',
-  icon: Wrench,
-};
+/**
+ * Submenú único de Configuración: campos y reglas son etapas de un mismo flujo
+ * y se recorren con las pestañas de las vistas, así que el menú expone una sola
+ * entrada que abre la etapa 1. Se marca activa en cualquier ruta del flujo.
+ */
+function childConfiguracion(entrada: string): NavChild {
+  return {
+    to: entrada,
+    label: 'Configuración de campos y reglas',
+    icon: Sliders,
+    matchPrefix: ['/configuracion'],
+  };
+}
 
 /**
  * Grupo Registro (Capacitaciones + Asistencia Técnica, según permisos).
@@ -118,21 +120,20 @@ function grupoAdministracion(children: NavChild[]): NavItem {
 }
 
 /**
- * Grupo "Configuración" con las dos etapas del flujo como submenús.
+ * Grupo "Configuración" con una única entrada al flujo.
  *
- * El botón principal sigue llevando a la etapa 1 (`entrada`, normalmente
- * `/configuracion/campos`) y además despliega los submenús, que son los mismos
- * destinos que ofrecen las pestañas de las vistas. Los permisos se respetan:
- * el grupo no se construye cuando `children` llega vacío.
+ * Tanto el botón principal como su submenú abren la etapa 1 (`entrada`,
+ * normalmente `/configuracion/campos`); dentro de la experiencia, las pestañas
+ * de las vistas llevan a la estructura del formulario y a las reglas.
  */
-function grupoConfiguracion(children: NavChild[], entrada: string): NavItem {
+function grupoConfiguracion(entrada: string): NavItem {
   return {
     to: entrada,
     label: 'Configuración',
     icon: Settings,
     matchPrefix: ['/configuracion'],
     navegable: true,
-    children,
+    children: [childConfiguracion(entrada)],
   };
 }
 
@@ -143,7 +144,7 @@ const NAV_FULL: NavItem[] = [
   { to: '/seguimiento/revision', label: 'Seguimiento', icon: ClipboardCheck, matchPrefix: ['/seguimiento'] },
   { to: '/reportes', label: 'Reportes', icon: FileText },
   grupoAdministracion([CHILD_USUARIOS, CHILD_LISTAS]),
-  grupoConfiguracion([CHILD_CONFIG_CAMPOS, CHILD_CONFIG_REGLAS], CONFIG_ENTRADA_CAMPOS),
+  grupoConfiguracion(CONFIG_ENTRADA_CAMPOS),
 ];
 
 const COLLAPSE_KEY = 'midagri.sidebar.collapsed';
@@ -302,8 +303,7 @@ export class SidebarComponent {
       }
       const admin = this.childrenAdministracion();
       if (admin.length) items.push(grupoAdministracion(admin));
-      const config = this.childrenConfiguracion();
-      if (config.length) items.push(grupoConfiguracion(config, this.entradaConfiguracion()));
+      if (this.puedeConfigurar()) items.push(grupoConfiguracion(this.entradaConfiguracion()));
       return items;
     }
     if (this.auth.isTecnico1()) {
@@ -334,8 +334,7 @@ export class SidebarComponent {
       }
       const admin = this.childrenAdministracion();
       if (admin.length) items.push(grupoAdministracion(admin));
-      const config = this.childrenConfiguracion();
-      if (config.length) items.push(grupoConfiguracion(config, this.entradaConfiguracion()));
+      if (this.puedeConfigurar()) items.push(grupoConfiguracion(this.entradaConfiguracion()));
       return items;
     }
     return NAV_FULL;
@@ -375,12 +374,12 @@ export class SidebarComponent {
     return children;
   }
 
-  /** Hijos del grupo Configuración según los permisos del registro activo. */
-  private childrenConfiguracion(): NavChild[] {
-    const children: NavChild[] = [];
-    if (this.registra(PERMISO_CONFIG_CAMPOS)) children.push(CHILD_CONFIG_CAMPOS);
-    if (this.registra(PERMISO_CONFIG_REGLAS)) children.push(CHILD_CONFIG_REGLAS);
-    return children;
+  /**
+   * ¿Se ofrece el grupo Configuración? Basta con cualquiera de los dos permisos
+   * del flujo: la entrada es única, pero sigue cubriendo campos y reglas.
+   */
+  private puedeConfigurar(): boolean {
+    return this.registra(PERMISO_CONFIG_CAMPOS) || this.registra(PERMISO_CONFIG_REGLAS);
   }
 
   /**
@@ -461,7 +460,9 @@ export class SidebarComponent {
   }
 
   isChildActive(sub: NavChild): boolean {
-    return this.pathname().startsWith(sub.to);
+    const path = this.pathname();
+    if (path.startsWith(sub.to)) return true;
+    return sub.matchPrefix?.some((p) => path.startsWith(p)) ?? false;
   }
 
   logout(): void {

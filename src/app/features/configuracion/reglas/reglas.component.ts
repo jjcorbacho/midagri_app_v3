@@ -12,6 +12,7 @@ import { ToastService } from '../../../core/services/toast.service';
 import { AreaConfig, CriterioExito, MetaGeneral, PeriodoMedicion } from '../../../core/models/area-config.model';
 import { getArea } from '../../../core/constants/areas.const';
 import { ConfiguracionTabsComponent } from '../configuracion-tabs.component';
+import { RegistroConfiguracionComponent } from '../registro-configuracion.component';
 
 /** Título de la sección de meta global (modificable a futuro sin tocar el template). */
 const TITULO_META_GENERAL = 'Meta General';
@@ -29,12 +30,19 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
 @Component({
   selector: 'app-reglas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LucideAngularModule, RouterLink, ConfiguracionTabsComponent],
+  imports: [LucideAngularModule, RouterLink, ConfiguracionTabsComponent, RegistroConfiguracionComponent],
   template: `
     <div class="min-h-full bg-muted/30 py-6 lg:py-8 px-4 lg:px-8 animate-page-in">
       <!-- Navegación entre las dos vistas de configuración (pestaña activa por ruta). -->
       <div class="max-w-6xl mx-auto mb-4">
         <app-configuracion-tabs />
+      </div>
+
+      <!-- Mismo bloque que la estructura de formulario: qué registro se está
+           configurando. Va sobre la tabla de reglas para dar contexto antes de
+           tocar los aforos y criterios. -->
+      <div class="max-w-6xl mx-auto mb-4">
+        <app-registro-configuracion />
       </div>
 
       <div class="max-w-6xl mx-auto bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">

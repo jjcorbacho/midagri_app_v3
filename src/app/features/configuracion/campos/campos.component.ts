@@ -61,7 +61,7 @@ const FILAS_VISIBLES = 5;
                   [class]="isAdmin() ? 'bg-state-aprobado-soft text-state-aprobado-foreground' : 'bg-state-enviado-soft text-state-enviado-foreground'"
                 >{{ isAdmin() ? 'ADMINISTRADOR GENERAL' : 'ADMIN. UNIDAD ORGANIZACIONAL' }}</span>
               </div>
-              <h1 class="text-h1 text-foreground">Configuración de Formularios</h1>
+              <h1 class="text-h1 text-foreground">Configuración de Formulario y Reglas</h1>
               <p class="text-sm text-muted-foreground mt-1">
                 Agregue una configuración y selecciónela para administrar la estructura del formulario.
               </p>

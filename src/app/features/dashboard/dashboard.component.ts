@@ -5,6 +5,7 @@ import {
   GraduationCap,
   Wrench,
   ClipboardCheck,
+  ListChecks,
   ShieldCheck,
   FileText,
   Settings,
@@ -13,8 +14,9 @@ import {
 } from 'lucide-angular';
 import type { LucideIconData } from 'lucide-angular';
 import { AuthService } from '../../core/services/auth.service';
-import { AreaService } from '../../core/services/area.service';
+import { PermisosMenuService } from '../../core/services/permisos-menu.service';
 import { perfilAccedeASeguimiento } from '../../core/models/usuario-sodega.model';
+import { GRUPO_REGISTRAR, PERMISO_LISTAS } from '../../core/constants/permisos-menu.const';
 
 interface DashboardItem {
   to: string;
@@ -31,7 +33,7 @@ interface DashboardItem {
  */
 const ITEM_REG_CAPACITACIONES: DashboardItem = {
   to: '/capacitaciones-n1/capacitaciones',
-  label: 'Registro de Capacitaciones',
+  label: 'Capacitaciones',
   description: 'Registro y gestión de capacitaciones: eventos, participantes y sustentos.',
   icon: GraduationCap,
   accent: 'bg-brand/10 text-brand',
@@ -39,7 +41,7 @@ const ITEM_REG_CAPACITACIONES: DashboardItem = {
 
 const ITEM_REG_ASISTENCIA: DashboardItem = {
   to: '/capacitaciones-n1/asistencia-tecnica',
-  label: 'Registro de Asistencia Técnica',
+  label: 'Asistencia Técnica',
   description: 'Registro y gestión de asistencias técnicas: intervenciones, participantes y sustentos.',
   icon: Wrench,
   accent: 'bg-state-subsanado-soft text-state-subsanado-foreground',
@@ -77,6 +79,13 @@ const BASE_ITEMS: DashboardItem[] = [
     accent: 'bg-brand-accent-soft text-brand-accent',
   },
   {
+    to: '/administracion/listas',
+    label: 'Listas',
+    description: 'Catálogos maestros y opciones de lista utilizados por los formularios.',
+    icon: ListChecks,
+    accent: 'bg-state-registrado-soft text-state-registrado-foreground',
+  },
+  {
     to: '/configuracion',
     label: 'Configuración',
     description: 'Gestión de campos dinámicos y reglas de negocio por área.',
@@ -94,10 +103,7 @@ const TECNICO1_ITEMS: DashboardItem[] = [ITEM_REG_CAPACITACIONES, ITEM_REG_ASIST
   template: `
     <section class="p-6 lg:p-8 max-w-7xl mx-auto animate-page-in">
       <header class="mb-8">
-        <div class="text-caption">
-          Área activa · {{ areaService.currentArea() }}
-        </div>
-        <h1 class="mt-1 text-h1 text-foreground">
+        <h1 class="text-h1 text-foreground">
           Bienvenido, {{ auth.user()?.nombre }} {{ auth.user()?.apellido }}
         </h1>
         <p class="mt-1 text-sm text-muted-foreground">
@@ -138,7 +144,7 @@ const TECNICO1_ITEMS: DashboardItem[] = [ITEM_REG_CAPACITACIONES, ITEM_REG_ASIST
 })
 export class DashboardComponent {
   readonly auth = inject(AuthService);
-  readonly areaService = inject(AreaService);
+  private readonly permisosMenu = inject(PermisosMenuService);
   readonly ChevronRightIcon = ChevronRight;
 
   /** Tarjetas por perfil SODEGA. */
@@ -159,10 +165,20 @@ export class DashboardComponent {
       );
     }
     if (this.auth.isTecnico1()) return TECNICO1_ITEMS;
-    // Administrador General y perfiles personalizados: si el perfil no accede a
-    // Seguimiento, tampoco se ofrecen sus tarjetas (la ruta está cerrada).
-    return BASE_ITEMS.filter(
-      (i) => !i.to.startsWith('/seguimiento') || perfilAccedeASeguimiento(this.auth.perfil() ?? ''),
-    );
+    // Administrador General y perfiles personalizados. Dos exclusiones:
+    // Seguimiento, si el perfil no accede (la ruta está cerrada), y Listas,
+    // que se rige por el mismo permiso de menú que su entrada del lateral.
+    return BASE_ITEMS.filter((i) => {
+      if (i.to.startsWith('/seguimiento')) {
+        return perfilAccedeASeguimiento(this.auth.perfil() ?? '');
+      }
+      if (i.to.startsWith('/administracion/listas')) return this.puedeVerListas();
+      return true;
+    });
   });
+
+  /** Mismo permiso que gobierna la entrada "Listas" del menú lateral. */
+  private puedeVerListas(): boolean {
+    return this.permisosMenu.sesionTiene(GRUPO_REGISTRAR, PERMISO_LISTAS);
+  }
 }

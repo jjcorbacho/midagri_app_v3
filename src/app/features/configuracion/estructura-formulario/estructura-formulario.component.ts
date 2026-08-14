@@ -17,6 +17,7 @@ import { AREAS } from '../../../core/constants/areas.const';
 import { CAMPOS_BASE, FORMULARIOS } from '../../../core/constants/campos-base.const';
 import { CampoBase, CampoPersonalizado, CampoTipo, FormularioKey } from '../../../core/models/campo.model';
 import { ConfiguracionTabsComponent } from '../configuracion-tabs.component';
+import { RegistroConfiguracionComponent } from '../registro-configuracion.component';
 import { CampoPreviewComponent } from '../campos/campo-preview.component';
 import { CampoModalComponent, CampoModalResult, TIPOS_CAMPO } from '../campos/campo-modal.component';
 import { OpcionesModalComponent } from '../campos/opciones-modal.component';
@@ -44,7 +45,7 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
 @Component({
   selector: 'app-estructura-formulario',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, RouterLink, LucideAngularModule, ConfiguracionTabsComponent, CampoPreviewComponent, CampoModalComponent, OpcionesModalComponent],
+  imports: [NgTemplateOutlet, RouterLink, LucideAngularModule, ConfiguracionTabsComponent, RegistroConfiguracionComponent, CampoPreviewComponent, CampoModalComponent, OpcionesModalComponent],
   template: `
     <section class="p-6 lg:p-8 max-w-7xl mx-auto animate-page-in">
       <!-- Navegación entre las dos vistas de configuración (pestaña activa por ruta). -->
@@ -68,36 +69,9 @@ const SECTION_ICONS: Record<string, LucideIconData> = {
             </div>
 
             <!-- Registro en configuración: proviene de la etapa 1, es de solo
-                 lectura aquí para que no pueda cambiarse a mitad del flujo. -->
-            <div class="shrink-0 rounded-xl ring-1 ring-border bg-surface-2/60 px-4 py-3 min-w-0 xl:max-w-md">
-              <p class="label-ds mb-1">Registro en configuración</p>
-              @if (flujo.registro(); as registro) {
-                <p class="text-sm font-semibold text-foreground break-words">
-                  {{ registro.unidadResponsable }}
-                </p>
-                <dl class="mt-1 space-y-0.5 text-xs text-muted-foreground">
-                  <div class="flex gap-1.5">
-                    <dt class="shrink-0">Unidad funcional:</dt>
-                    <dd class="font-medium text-foreground break-words">{{ registro.unidadFuncional }}</dd>
-                  </div>
-                  <div class="flex gap-1.5">
-                    <dt class="shrink-0">Formulario:</dt>
-                    <dd class="font-medium text-foreground">{{ formLabel() }}</dd>
-                  </div>
-                  <div class="flex gap-1.5">
-                    <dt class="shrink-0">Temática:</dt>
-                    <dd class="font-medium text-foreground break-words">{{ registro.tematica }}</dd>
-                  </div>
-                </dl>
-              }
-              <a
-                routerLink="/configuracion/campos"
-                class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline"
-              >
-                <lucide-angular [img]="ChevronRightIcon" class="size-3 rotate-180" />
-                Cambiar registro
-              </a>
-            </div>
+                 lectura aquí para que no pueda cambiarse a mitad del flujo.
+                 Mismo componente que usa la vista de reglas. -->
+            <app-registro-configuracion class="block shrink-0 min-w-0 xl:max-w-md" />
           </div>
         </header>
 
