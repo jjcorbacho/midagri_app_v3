@@ -427,7 +427,7 @@ const INP_NORMAL = INPUT_BASE;
                     <thead class="bg-secondary">
                       <tr class="label-ds">
                         <th class="th-ds py-3 w-40">Tipo de Periodo</th>
-                        <th class="th-ds py-3">Meses / Fechas Activas</th>
+                        <th class="th-ds py-3">Fechas del Periodo</th>
                         <th class="th-ds py-3 w-32 text-center">Estado</th>
                         <th class="th-ds py-3 w-20 text-center">Acciones</th>
                       </tr>
@@ -1224,7 +1224,6 @@ export class UsuarioFormComponent implements OnInit {
 
   /** Periodo(s) del servicio en edición (máximo uno por servicio). */
   readonly periodos = signal<PeriodoGestion[]>([]);
-  /** Meses marcados mientras se configura un periodo Regular. */
 
   /** La sección se habilita al elegir el Régimen Laboral. */
   readonly mostrarSeccionPeriodo = computed(() => {

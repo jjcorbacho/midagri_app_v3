@@ -180,19 +180,42 @@ export function regimenConPeriodo(regimen: string): boolean {
   return REGIMENES_CON_PERIODO.includes(regimen);
 }
 
+/** ISO `YYYY-MM-DD` → `DD/MM/YYYY`. */
+function aDDMMYYYY(iso: string): string {
+  return iso.split('-').reverse().join('/');
+}
+
 /**
- * Etiqueta única del periodo (tabla y formulario):
- *  - Regular con meses      → "Enero, Febrero y Marzo"
- *  - Extraordinario con rango → "01/03/2026 - 31/08/2026"
- *  - Sin detalle (registros previos) → "Regular 2026"
+ * Rango de fechas que cubre un periodo de gestión, en ISO.
+ *
+ * Los periodos registrados desde el formulario guardan el rango elegido. Los
+ * anteriores solo guardaban los meses, así que se deriva: del día 1 del primer
+ * mes al último día del último mes. Con meses no contiguos el rango abarca
+ * desde el primero hasta el último, que es como se presenta el periodo.
+ */
+export function rangoDePeriodo(p: PeriodoGestion): { desde: string; hasta: string } | null {
+  if (p.fechaInicio && p.fechaFin) return { desde: p.fechaInicio, hasta: p.fechaFin };
+  const meses = [...new Set(p.meses ?? [])].sort((a, b) => a - b);
+  if (!meses.length) return null;
+  const primero = meses[0];
+  const ultimo = meses[meses.length - 1];
+  const dd = (n: number) => String(n).padStart(2, '0');
+  // Día 0 del mes siguiente = último día del mes pedido.
+  const ultimoDia = new Date(p.anio, ultimo, 0).getDate();
+  return {
+    desde: `${p.anio}-${dd(primero)}-01`,
+    hasta: `${p.anio}-${dd(ultimo)}-${dd(ultimoDia)}`,
+  };
+}
+
+/**
+ * Etiqueta única del periodo (tabla, formulario y cabecera): siempre el
+ * intervalo de fechas, "01/01/2026 - 30/04/2026", nunca la lista de meses.
+ * Sin datos suficientes (registros previos) cae al tipo y el año.
  */
 export function formatearPeriodo(p: PeriodoGestion): string {
-  if (p.tipo === 'Regular' && p.meses?.length) return nombresDeMeses(p.meses);
-  if (p.tipo === 'Extraordinario' && p.fechaInicio && p.fechaFin) {
-    const dm = (iso: string) => iso.split('-').reverse().join('/');
-    return `${dm(p.fechaInicio)} - ${dm(p.fechaFin)}`;
-  }
-  return `${p.tipo} ${p.anio}`;
+  const rango = rangoDePeriodo(p);
+  return rango ? `${aDDMMYYYY(rango.desde)} - ${aDDMMYYYY(rango.hasta)}` : `${p.tipo} ${p.anio}`;
 }
 
 /**
@@ -213,40 +236,6 @@ export function aniosDeRango(fechaIniISO: string, fechaFinISO: string): number[]
  */
 export function periodosDesdeRango(fechaIniISO: string, fechaFinISO: string): PeriodoGestion[] {
   return aniosDeRango(fechaIniISO, fechaFinISO).map((anio) => ({ tipo: 'Regular' as const, anio }));
-}
-
-export const MESES_ES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-];
-
-/** "Enero, Marzo y Julio" a partir de los números de mes (1–12). */
-export function nombresDeMeses(meses: readonly number[]): string {
-  const ordenados = [...new Set(meses)].sort((a, b) => a - b).map((m) => MESES_ES[m - 1]).filter(Boolean);
-  if (ordenados.length === 0) return '';
-  if (ordenados.length === 1) return ordenados[0];
-  return `${ordenados.slice(0, -1).join(', ')} y ${ordenados[ordenados.length - 1]}`;
-}
-
-/**
- * Meses comprendidos en el rango de un contrato temporal, en orden
- * cronológico, sin repetidos, con nombres completos en español y sin año.
- * Ej.: 2026-02-01 → 2026-07-23 = "Febrero, Marzo, Abril, Mayo, Junio y Julio".
- */
-export function mesesDeRango(fechaIniISO: string, fechaFinISO: string): string {
-  const ini = fechaIniISO?.split('-').map(Number);
-  const fin = fechaFinISO?.split('-').map(Number);
-  if (!ini || !fin || ini.length < 2 || fin.length < 2 || ini.some(Number.isNaN) || fin.some(Number.isNaN)) return '';
-  const desde = ini[0] * 12 + (ini[1] - 1);
-  const hasta = fin[0] * 12 + (fin[1] - 1);
-  if (hasta < desde) return '';
-  const meses: string[] = [];
-  for (let m = desde; m <= hasta && meses.length < 12; m++) {
-    const nombre = MESES_ES[m % 12];
-    if (!meses.includes(nombre)) meses.push(nombre);
-  }
-  if (meses.length === 1) return meses[0];
-  return `${meses.slice(0, -1).join(', ')} y ${meses[meses.length - 1]}`;
 }
 
 /**
@@ -343,24 +332,12 @@ export function mesesActivablesPeriodoRegular(
 }
 
 /**
- * Detalle del periodo tal como se muestra en la cabecera del sistema:
- *  - Regular con meses        → "Marzo - Abril - Mayo - Junio"
- *  - Extraordinario con rango → "15/03/2026 al 20/08/2026"
- *  - Sin detalle              → el año de gestión
+ * Detalle del periodo en la cabecera: el mismo intervalo de fechas que las
+ * tablas. Sin datos suficientes queda el año, porque el tipo ya se antepone.
  */
 export function detallePeriodoCabecera(p: PeriodoGestion): string {
-  if (p.tipo === 'Regular' && p.meses?.length) {
-    return [...new Set(p.meses)]
-      .sort((a, b) => a - b)
-      .map((m) => MESES_ES[m - 1])
-      .filter(Boolean)
-      .join(' - ');
-  }
-  if (p.tipo === 'Extraordinario' && p.fechaInicio && p.fechaFin) {
-    const dm = (iso: string) => iso.split('-').reverse().join('/');
-    return `${dm(p.fechaInicio)} al ${dm(p.fechaFin)}`;
-  }
-  return String(p.anio);
+  const rango = rangoDePeriodo(p);
+  return rango ? `${aDDMMYYYY(rango.desde)} - ${aDDMMYYYY(rango.hasta)}` : String(p.anio);
 }
 
 /** "Regular | Marzo - Abril - Mayo - Junio" (línea informativa de la cabecera). */

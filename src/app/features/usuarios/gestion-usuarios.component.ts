@@ -9,8 +9,9 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { ToastService } from '../../core/services/toast.service';
-import { estadoVigenciaDe, formatearPeriodo, mesesDeRango, UsuarioSodega, esUsuarioPermanente, toTitleCase } from '../../core/models/usuario-sodega.model';
+import { estadoVigenciaDe, formatearPeriodo, UsuarioSodega, esUsuarioPermanente, toTitleCase } from '../../core/models/usuario-sodega.model';
 import { formatearUbigeoTexto } from '../../core/constants/sodega.const';
+import { isoToDDMMYYYY } from '../../shared/utils/fecha.util';
 import { ModalService } from '../../core/services/modal.service';
 import { ColumnSelectorComponent, ColumnaTabla } from '../../shared/components/column-selector/column-selector.component';
 import {
@@ -237,9 +238,9 @@ const ICON_TONES: Record<string, string> = {
                       }
                       @case ('periodo') {
                         <td class="td-ds py-4">
-                          @if (mesesContrato(u); as meses) {
-                            <!-- Temporales: meses comprendidos en el contrato -->
-                            <span class="text-xs text-foreground/80 leading-snug">{{ meses }}</span>
+                          @if (rangoContrato(u); as rango) {
+                            <!-- Temporales: vigencia del contrato -->
+                            <span class="text-xs text-foreground/80 leading-snug whitespace-nowrap">{{ rango }}</span>
                           } @else if (u.periodosGestion?.length) {
                             <div class="flex flex-col gap-1">
                               @for (pg of u.periodosGestion; track pg.anio) {
@@ -451,10 +452,15 @@ export class GestionUsuariosComponent {
    * cuenta inhabilitada o vigencia expirada (función única del modelo).
    * Nunca para 728/276/CAS, aunque estén inhabilitados.
    */
-  /** Meses del contrato (solo CAS Temporal / Locador); '' para los demás. */
-  mesesContrato(u: UsuarioSodega): string {
+  /**
+   * Vigencia del contrato como intervalo de fechas (solo CAS Temporal /
+   * Locador); '' para los demás. Mismo criterio que el resto de periodos: se
+   * muestra el rango, no los meses que abarca.
+   */
+  rangoContrato(u: UsuarioSodega): string {
     const esTemporal = u.regimen === 'Régimen CAS Temporal' || u.regimen === 'Locador de Servicio (OS)';
-    return esTemporal ? mesesDeRango(u.fechaIni, u.fechaFin) : '';
+    if (!esTemporal || !u.fechaIni || !u.fechaFin) return '';
+    return `${isoToDDMMYYYY(u.fechaIni)} - ${isoToDDMMYYYY(u.fechaFin)}`;
   }
 
   puedeAgregarServicio(u: UsuarioSodega): boolean {
