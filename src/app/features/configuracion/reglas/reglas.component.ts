@@ -33,18 +33,20 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
   imports: [LucideAngularModule, RouterLink, ConfiguracionTabsComponent, RegistroConfiguracionComponent],
   template: `
     <!-- Mismo armazón que la estructura de formulario: encuadre, tarjeta y
-         reparto en dos columnas, para que ambas etapas del flujo se recorran
-         igual. -->
+         cabecera a dos columnas (identificación de la vista y registro en
+         configuración), con el flujo de pasos centrado debajo. -->
     <section class="p-6 lg:p-8 max-w-7xl mx-auto animate-page-in">
       <!-- Navegación entre las dos vistas de configuración (pestaña activa por ruta). -->
       <app-configuracion-tabs class="block mb-4" />
 
       <div class="bg-card rounded-xl shadow-xl border border-border overflow-hidden flex flex-col">
-        <!-- Main split -->
-        <div class="flex flex-col lg:flex-row min-h-[600px]">
-          <!-- Izquierda: jerarquía del flujo y configuración de reglas -->
-          <div class="lg:w-3/5 border-r border-border/60 bg-surface-2/50 p-6 overflow-y-auto space-y-9">
-            <header>
+        <!-- Cabecera: a la izquierda qué se está configurando, a la derecha el
+             registro que llega de la etapa 1 (mismo componente y misma fuente de
+             datos que la estructura de formulario, así ambas vistas muestran
+             siempre el mismo registro). -->
+        <header class="p-6 border-b border-border">
+          <div class="flex flex-col xl:flex-row xl:items-start justify-between gap-6">
+            <div class="min-w-0">
               <div class="flex items-center gap-2 text-xs font-semibold text-brand uppercase tracking-wider mb-1 flex-wrap">
                 <a routerLink="/configuracion/campos" class="hover:underline">Configuración</a>
                 <lucide-angular [img]="ChevronRightIcon" class="size-3 text-muted-foreground/60" />
@@ -67,8 +69,16 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
               <p class="text-xs text-muted-foreground">
                 {{ area().name }}. Define actividades, aforos y criterios de éxito del periodo.
               </p>
-            </header>
+            </div>
 
+            <app-registro-configuracion class="block shrink-0 min-w-0 xl:max-w-md" />
+          </div>
+        </header>
+
+        <!-- Continuación del flujo: los pasos ocupan todo el ancho bajo la
+             cabecera, centrados, en lugar de comprimirse en una columna. -->
+        <div class="bg-surface-2/50 p-6 lg:p-8 min-h-[600px]">
+          <div class="mx-auto w-full max-w-4xl space-y-9">
             <!-- 1. Actividades -->
             <section class="space-y-3">
               <div class="flex items-center gap-2">
@@ -525,13 +535,6 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                 </div>
               </div>
             </section>
-          </div>
-
-          <!-- Derecha: registro en configuración. Mismo componente y misma
-               fuente de datos que la estructura de formulario, de modo que
-               las dos vistas muestran siempre el mismo registro. -->
-          <div class="lg:flex-1 bg-muted p-6 lg:p-8 overflow-y-auto">
-            <app-registro-configuracion />
           </div>
         </div>
 
