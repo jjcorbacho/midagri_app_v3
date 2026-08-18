@@ -32,57 +32,42 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LucideAngularModule, RouterLink, ConfiguracionTabsComponent, RegistroConfiguracionComponent],
   template: `
-    <!-- El fondo va a sangre completa y el encuadre en el contenedor interior,
-         con el mismo par (p-6 lg:p-8 + max-w-7xl) sobre el mismo elemento que
-         usan campos y estructura. Repartir padding y ancho entre dos elementos
-         desplazaba las pestañas 32px al cambiar de vista. -->
-    <div class="min-h-full bg-muted/30 animate-page-in">
-      <div class="p-6 lg:p-8 max-w-7xl mx-auto">
-        <!-- Navegación entre las dos vistas de configuración (pestaña activa por ruta). -->
-        <div class="mb-4">
-          <app-configuracion-tabs />
-        </div>
+    <!-- Mismo armazón que la estructura de formulario: encuadre, tarjeta y
+         reparto en dos columnas, para que ambas etapas del flujo se recorran
+         igual. -->
+    <section class="p-6 lg:p-8 max-w-7xl mx-auto animate-page-in">
+      <!-- Navegación entre las dos vistas de configuración (pestaña activa por ruta). -->
+      <app-configuracion-tabs class="block mb-4" />
 
-        <!-- Mismo bloque que la estructura de formulario: qué registro se está
-             configurando. Va sobre la tabla de reglas para dar contexto antes de
-             tocar los aforos y criterios. -->
-        <div class="mb-4">
-          <app-registro-configuracion />
-        </div>
-
-        <div class="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
-
-        <!-- Header -->
-        <header class="px-6 py-4 border-b border-border bg-card flex justify-between items-center gap-3">
-          <div class="min-w-0">
-            <!-- Etapa 3 del flujo: se rotula el registro que viene de la
-                 etapa 1 para que el usuario sepa qué está configurando. -->
-            @if (flujo.registro(); as registro) {
+      <div class="bg-card rounded-xl shadow-xl border border-border overflow-hidden flex flex-col">
+        <!-- Main split -->
+        <div class="flex flex-col lg:flex-row min-h-[600px]">
+          <!-- Izquierda: jerarquía del flujo y configuración de reglas -->
+          <div class="lg:w-3/5 border-r border-border/60 bg-surface-2/50 p-6 overflow-y-auto space-y-9">
+            <header>
               <div class="flex items-center gap-2 text-xs font-semibold text-brand uppercase tracking-wider mb-1 flex-wrap">
                 <a routerLink="/configuracion/campos" class="hover:underline">Configuración</a>
                 <lucide-angular [img]="ChevronRightIcon" class="size-3 text-muted-foreground/60" />
                 <a routerLink="/configuracion/estructura-formulario" class="hover:underline">Estructura</a>
                 <lucide-angular [img]="ChevronRightIcon" class="size-3 text-muted-foreground/60" />
                 <span class="text-muted-foreground">Reglas</span>
-                <span class="ml-1 normal-case font-medium text-muted-foreground">
-                  · {{ flujo.labelFormulario(registro.formulario) }}
-                </span>
+                <span
+                  class="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                  [class]="dirty() ? 'bg-warning-soft text-warning-foreground' : 'bg-state-aprobado-soft text-state-aprobado-foreground'"
+                >{{ dirty() ? 'BORRADOR' : 'PUBLICADO' }}</span>
               </div>
-            }
-            <h1 class="text-h1 text-foreground">Configurador de Reglas — {{ area().code }}</h1>
-            <p class="text-xs text-muted-foreground truncate">
-              {{ area().name }}. Define actividades, aforos y criterios de éxito del periodo.
-            </p>
-          </div>
-          <span
-            class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md border"
-            [class]="dirty() ? 'bg-warning-soft text-warning-foreground border-warning/30' : 'bg-brand/10 text-brand border-brand/20'"
-          >{{ dirty() ? 'Borrador' : 'Publicado' }}</span>
-        </header>
-
-        <!-- Main form -->
-        <div class="grid grid-cols-1 lg:grid-cols-12">
-          <div class="lg:col-span-10 lg:col-start-2 p-6 space-y-9">
+              <!-- Formulario al que pertenece la configuración, tomado del
+                   registro elegido en la etapa 1. -->
+              @if (flujo.registro(); as registro) {
+                <p class="text-sm font-semibold text-foreground">
+                  {{ flujo.labelFormulario(registro.formulario) }}
+                </p>
+              }
+              <h1 class="text-h1 text-foreground">Configuración de Reglas</h1>
+              <p class="text-xs text-muted-foreground">
+                {{ area().name }}. Define actividades, aforos y criterios de éxito del periodo.
+              </p>
+            </header>
 
             <!-- 1. Actividades -->
             <section class="space-y-3">
@@ -541,9 +526,16 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
               </div>
             </section>
           </div>
+
+          <!-- Derecha: registro en configuración. Mismo componente y misma
+               fuente de datos que la estructura de formulario, de modo que
+               las dos vistas muestran siempre el mismo registro. -->
+          <div class="lg:flex-1 bg-muted p-6 lg:p-8 overflow-y-auto">
+            <app-registro-configuracion />
+          </div>
         </div>
 
-        <!-- Sticky footer -->
+        <!-- Footer -->
         <div class="px-6 py-3 bg-card border-t border-border flex justify-between items-center sticky bottom-0 z-20">
           <div class="text-[11px] text-muted-foreground flex items-center gap-1.5">
             @if (dirty()) {
@@ -570,8 +562,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
           </div>
         </div>
       </div>
-    </div>
-  </div>
+    </section>
   `,
 })
 export class ReglasComponent {
