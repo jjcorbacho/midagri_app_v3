@@ -6,6 +6,7 @@ import {
 } from 'lucide-angular';
 import { RouterLink } from '@angular/router';
 import { AreaService } from '../../../core/services/area.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { ConfiguracionFlujoService } from '../../../core/services/configuracion-flujo.service';
 import { ReglasService } from '../../../core/services/reglas.service';
 import { ToastService } from '../../../core/services/toast.service';
@@ -53,10 +54,13 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
                 <a routerLink="/configuracion/estructura-formulario" class="hover:underline">Estructura</a>
                 <lucide-angular [img]="ChevronRightIcon" class="size-3 text-muted-foreground/60" />
                 <span class="text-muted-foreground">Reglas</span>
+                <!-- Cargo de quien entra al sistema, con el mismo distintivo
+                     que la estructura de formulario. El estado del borrador ya
+                     se informa en el pie de la tarjeta. -->
                 <span
                   class="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold"
-                  [class]="dirty() ? 'bg-warning-soft text-warning-foreground' : 'bg-state-aprobado-soft text-state-aprobado-foreground'"
-                >{{ dirty() ? 'BORRADOR' : 'PUBLICADO' }}</span>
+                  [class]="isAdmin() ? 'bg-state-aprobado-soft text-state-aprobado-foreground' : 'bg-state-enviado-soft text-state-enviado-foreground'"
+                >{{ isAdmin() ? 'ADMINISTRADOR GENERAL' : 'ADMIN. UNIDAD ORGANIZACIONAL' }}</span>
               </div>
               <!-- Formulario al que pertenece la configuración, tomado del
                    registro elegido en la etapa 1. -->
@@ -570,6 +574,7 @@ function computeValidCriterio(cap: boolean, at: boolean, current: CriterioExito)
 })
 export class ReglasComponent {
   private readonly areaService = inject(AreaService);
+  private readonly auth = inject(AuthService);
   readonly flujo = inject(ConfiguracionFlujoService);
   readonly ChevronRightIcon = ChevronRight;
   private readonly reglasService = inject(ReglasService);
@@ -589,6 +594,9 @@ export class ReglasComponent {
   readonly SproutIcon = Sprout;
 
   readonly tituloMetaGeneral = TITULO_META_GENERAL;
+
+  /** Cargo del usuario autenticado; rotula la cabecera igual que la estructura. */
+  readonly isAdmin = computed(() => this.auth.isAdministrador());
 
   readonly area = computed(() => getArea(this.areaService.currentArea()));
   readonly saved = computed(() => this.reglasService.configs()[this.areaService.currentArea()]);
